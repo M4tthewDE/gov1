@@ -8,6 +8,8 @@ Not sure tbh
 
 Shitton of TDD, slowly building stuff up
 
+Testdata: https://aomedia.org/av1-video-decoder-verification-tool/ 
+
 Then refactor till I lose all my hair
 
 Also not caring about speed till it works
