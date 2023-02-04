@@ -18,6 +18,13 @@ const (
 	Padding              ObuType = 15
 )
 
+type SelectType int
+
+const (
+	SelectScreenContentTools SelectType = 2
+	SelectIntegerMv          SelectType = 2
+)
+
 type Obu struct {
 	Header ObuHeader
 	Size   int
@@ -155,9 +162,10 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 	operatingPointsCountMinusOne := false
 	operatingPointIdc := []int{0}
 	seqLevelIdx := []int{p.f(5)}
-	seqTier := make([]int, 0)
+	seqTier := []int{}
 	decoderModelPresentForThisOp := []bool{}
 	initialDisplayDelayPresentForThisOp := []bool{}
+	initialDisplayDelayMinusOne := []int{}
 
 	if !reducedStillPictureHeader {
 		timingInfoPresent := p.f(1) != 0
@@ -188,18 +196,111 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 					decoderModelPresentForThisOp[i] = p.f(1) != 0
 					if decoderModelPresentForThisOp[i] {
 						// TODO: what are we doing with this?
-						_ = p.parseOperatingParametersInfo()
+						_ = p.parseOperatingParametersInfo(i)
+					}
+				} else {
+					decoderModelPresentForThisOp[i] = false
+				}
+
+				if initialDisplayDelayPresent {
+					initialDisplayDelayPresentForThisOp[i] = p.f(1) != 0
+					if initialDisplayDelayPresentForThisOp[i] {
+						initialDisplayDelayMinusOne[i] = p.f(4)
 					}
 				}
 			}
 		}
+		operatingPoint := p.chooseOperatingPoint()
+		OperatingPointIdc := operatingPointIdc[operatingPoint]
+
+		frameWidthBitsMinusOne := p.f(4)
+		frameHeightBitsMinusOne := p.f(4)
+
+		n := frameWidthBitsMinusOne + 1
+		maxFrameWidthMinusOne := p.f(n)
+
+		n = frameHeightBitsMinusOne + 1
+		maxFrameHeightMinusOne := p.f(n)
+
+		frameIdNumbersPresent := false
+
+		if reducedStillPictureHeader {
+			frameIdNumbersPresent = false
+		} else {
+			frameIdNumbersPresent = p.f(1) != 0
+		}
+
+		if frameIdNumbersPresent {
+			deltaFrameIdLengthMinusTwo := p.f(4)
+			additionalFrameIdLengthMinusOne := p.f(3)
+		}
+
+		use128x128Superblock := p.f(1) != 0
+		enableFilterIntra := p.f(1) != 0
+		enableIntraEdgeFilter := p.f(1) != 0
+		enableInterIntraCompound := false
+		enableMaskedCompound := false
+		enableWarpedMotion := false
+		enableDualFilter := false
+		enableOrderHint := false
+		enableJntComp := false
+		enableRefFrameMvs := false
+		seqForceScreenContentTools := SelectScreenContentTools
+		seqForceIntegerMv := SelectIntegerMv
+		orderHintBits := 0
+		if !reducedStillPictureHeader {
+			enableInterIntraCompound = p.f(1) != 0
+			enableMaskedCompound = p.f(1) != 0
+			enableWarpedMotion = p.f(1) != 0
+			enableDualFilter = p.f(1) != 0
+			enableOrderHint = p.f(1) != 0
+			if enableOrderHint {
+				enableJntComp = p.f(1) != 0
+				enableRefFrameMvs = p.f(1) != 0
+			}
+			seqChooseScreenContentTools := p.f(1) != 0
+			if seqChooseScreenContentTools {
+				seqForceScreenContentTools = SelectScreenContentTools
+			} else {
+				seqForceScreenContentTools = p.f(1)
+			}
+
+			if seqForceScreenContentTools > 0 {
+				seqChooseIntegerMv := p.f(1) != 0
+
+				if seqChooseIntegerMv {
+					seqForceIntegerMv = SelectIntegerMv
+				} else {
+					seqForceIntegerMv = p.f(1)
+				}
+			} else {
+				seqForceIntegerMv = SelectIntegerMv
+			}
+
+			if enableOrderHint {
+				orderHintBits = p.f(3) + 1
+			}
+		}
 	}
+
+	enableSuperRes := p.f(1) != 0
+	enableCdef := p.f(1) != 0
+	enableRestoration := p.f(1) != 0
+	colorConfig := p.parseColorConfig()
+	filmGrainParamsPresent := p.f(1) != 0
 
 	return ObuSequenceHeader{
 		SeqProfile:                seqProfile,
 		StillPicture:              stillPicture,
 		ReducedStillPictureHeader: reducedStillPictureHeader,
 	}
+}
+
+// choose_operating_point()
+func (p *Parser) chooseOperatingPoint() int {
+	// TODO: implement
+	// can be chose by implementation!
+	return 0
 }
 
 // operating_parameters_inf( op )
