@@ -24,11 +24,12 @@ type Obu struct {
 }
 
 type ObuHeader struct {
-	ForbiddenBit  bool
-	Type          ObuType
-	ExtensionFlag bool
-	HasSizeField  bool
-	ReservedBit   bool
+	ForbiddenBit       bool
+	Type               ObuType
+	ExtensionFlag      bool
+	HasSizeField       bool
+	ReservedBit        bool
+	ObuExtensionHeader ObuExtensionHeader
 }
 
 type ObuExtensionHeader struct {
@@ -165,17 +166,32 @@ func (p *Parser) Parse() Obu {
 	return obu
 }
 
-func (p *Parser) ParseEndToEnd() {
-}
-
 // obu_header()
 func (p *Parser) ParseObuHeader() ObuHeader {
+	forbiddenBit := p.f(1) != 0
+	obuType := ObuType(p.f(4))
+	extensionFlag := p.f(1) != 0
+	hasSizeField := p.f(1) != 0
+	reservedBit := p.f(1) != 0
+
+	if extensionFlag {
+		extensionHeader := p.ParseObuExtensionHeader()
+		return ObuHeader{
+			ForbiddenBit:       forbiddenBit,
+			Type:               obuType,
+			ExtensionFlag:      extensionFlag,
+			HasSizeField:       hasSizeField,
+			ReservedBit:        reservedBit,
+			ObuExtensionHeader: extensionHeader,
+		}
+	}
+
 	return ObuHeader{
-		ForbiddenBit:  p.f(1) != 0,
-		Type:          ObuType(p.f(4)),
-		ExtensionFlag: p.f(1) != 0,
-		HasSizeField:  p.f(1) != 0,
-		ReservedBit:   p.f(1) != 0,
+		ForbiddenBit:  forbiddenBit,
+		Type:          obuType,
+		ExtensionFlag: extensionFlag,
+		HasSizeField:  hasSizeField,
+		ReservedBit:   reservedBit,
 	}
 }
 

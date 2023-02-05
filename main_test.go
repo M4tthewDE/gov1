@@ -61,7 +61,7 @@ func TestF(t *testing.T) {
 }
 
 func TestObuHeader(t *testing.T) {
-	var data = []byte{0b10001101}
+	var data = []byte{0b10001101, 0b11101001}
 	p := NewParser(data)
 
 	header := p.ParseObuHeader()
@@ -94,6 +94,5 @@ func TestParseEndToEnd(t *testing.T) {
 
 	p := NewParser(data)
 	obu := p.Parse()
-
-	fmt.Println(obu.Size)
+	fmt.Printf("%+v", obu)
 }
