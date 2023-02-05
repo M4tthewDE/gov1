@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -86,13 +85,12 @@ func TestObuExtensionHeader(t *testing.T) {
 
 // TODO: add assertions
 func TestParseEndToEnd(t *testing.T) {
-	fileName := "testdata/argon_coveragetool_av1_base_and_extended_profiles_v2.1/profile0_core/streams/test1228.obu"
+	fileName := "testdata/argon_coveragetool_av1_base_and_extended_profiles_v2.1/profile0_core/streams/test1216.obu"
 	data, err := os.ReadFile(fileName)
 	if err != nil {
 		panic(err)
 	}
 
 	p := NewParser(data)
-	obu := p.Parse()
-	fmt.Printf("%+v", obu)
+	p.bitStream()
 }

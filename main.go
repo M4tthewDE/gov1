@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"math"
 )
 
@@ -118,14 +120,22 @@ type ColorConfig struct {
 }
 
 type Parser struct {
-	data     []byte
-	position int
+	data              []byte
+	position          int
+	startPosition     int
+	operatingPointIdc int
+	seenFrameHeader   int
+	leb128Bytes       int
 }
 
 func NewParser(data []byte) Parser {
 	return Parser{
-		data:     data,
-		position: 0,
+		data:              data,
+		position:          0,
+		startPosition:     0,
+		operatingPointIdc: 0,
+		seenFrameHeader:   0,
+		leb128Bytes:       0,
 	}
 }
 
@@ -149,8 +159,41 @@ func (p *Parser) readBit() int {
 	return int((p.data[int(math.Floor(float64(p.position)/8))] >> (8 - p.position%8 - 1)) & 1)
 }
 
+// bitstream()
+func (p *Parser) bitStream() {
+	for p.moreDataInBistream() {
+		temporalUnitSize := p.leb128()
+		p.temporalUnit(temporalUnitSize)
+	}
+}
+
+func (p *Parser) moreDataInBistream() bool {
+	return p.position/8 != len(p.data)
+}
+
+// temporal_unit( sz )
+func (p *Parser) temporalUnit(sz int) {
+	for sz > 0 {
+		frameUnitSize := p.leb128()
+		sz -= p.leb128Bytes
+		p.frameUnit(frameUnitSize)
+		sz -= frameUnitSize
+	}
+}
+
+// frame_unit( sz )
+func (p *Parser) frameUnit(sz int) {
+	for sz > 0 {
+		obuLength := p.leb128()
+		sz -= p.leb128Bytes
+		p.ParseObu(obuLength)
+		sz -= obuLength
+
+	}
+}
+
 // open_bitstream_unit(sz)
-func (p *Parser) Parse() Obu {
+func (p *Parser) ParseObu(sz int) {
 	obu := Obu{}
 
 	obu.Header = p.ParseObuHeader()
@@ -161,9 +204,32 @@ func (p *Parser) Parse() Obu {
 		panic("not implemented")
 	}
 
-	// TODO: implement rest
+	if obu.Header.Type != SequenceHeader &&
+		obu.Header.Type != TemporalLimiter &&
+		p.operatingPointIdc != 0 &&
+		obu.Header.ExtensionFlag {
+		panic("not implemented")
+	}
 
-	return obu
+	switch obu.Header.Type {
+	case SequenceHeader:
+		_ = p.ParseObuSequenceHeader()
+	case TemporalLimiter:
+		p.seenFrameHeader = 0
+	}
+
+	payloadBits := p.position - p.startPosition
+
+	if obu.Size > 0 &&
+		obu.Header.Type != TileGroup &&
+		obu.Header.Type != TileList &&
+		obu.Header.Type != Frame {
+		p.trailingBits(obu.Size*8 - payloadBits)
+	}
+
+	x, _ := json.MarshalIndent(obu, "", "	")
+	fmt.Printf(string(x))
+
 }
 
 // obu_header()
@@ -600,13 +666,11 @@ func (p *Parser) uvlc() int {
 // leb128()
 func (p *Parser) leb128() int {
 	value := 0
-	Leb128Bytes := 0
-
 	for i := 0; i < 8; i++ {
 		leb128_byte := p.f(8)
 
 		value |= int((leb128_byte & 127) << (i * 7))
-		Leb128Bytes += 1
+		p.leb128Bytes += 1
 		if (leb128_byte & 0x80) == 0 {
 			break
 		}
@@ -614,4 +678,17 @@ func (p *Parser) leb128() int {
 	}
 
 	return value
+}
+
+// trailing_bits( nbBits )
+func (p *Parser) trailingBits(nbBits int) {
+	// trailingOneBit
+	p.f(1)
+	nbBits--
+
+	for nbBits > 0 {
+		//trailingZeroBit
+		p.f(1)
+		nbBits--
+	}
 }
