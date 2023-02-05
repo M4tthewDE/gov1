@@ -347,9 +347,9 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 				operatingPointIdcArray[i] = p.f(12)
 				seqLevelIdx[i] = p.f(12)
 				if seqLevelIdx[i] > 7 {
-					seqTier[i] = p.f(1)
+					seqTier = append(seqTier, p.f(1))
 				} else {
-					seqTier[i] = 0
+					seqTier = append(seqTier, 0)
 				}
 				if decoderModelInfoPresent {
 					decoderModelPresentForThisOp[i] = p.f(1) != 0
