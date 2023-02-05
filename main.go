@@ -50,7 +50,7 @@ type ObuSequenceHeader struct {
 	DecoderModelPresentForThisOp        []bool
 	InitialDisplayDelayPresentForThisOp []bool
 	InitialDisplayDelayMinusOne         []int
-	OperatingPointIdc                   []int
+	OperatingPointIdc                   int
 	FrameWidthbitsMinusOne              int
 	FrameHeightbitsMinusOne             int
 	MaxFrameWidthMinusOne               int
@@ -215,6 +215,8 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 	var seqForceIntegerMv int
 	var orderHintBits int
 
+	var operatingPointIdc int
+
 	seqProfile := p.f(3)
 	stillPicture := p.f(1) != 0
 	reducedStillPictureHeader := p.f(1) != 0
@@ -223,7 +225,7 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 	decoderModelInfoPresent := false
 	initialDisplayDelayPresent := false
 	operatingPointsCountMinusOne := 0
-	operatingPointIdc := []int{0}
+	operatingPointIdcArray := []int{0}
 	seqLevelIdx := []int{p.f(5)}
 	seqTier := []int{}
 	decoderModelPresentForThisOp := []bool{}
@@ -248,7 +250,7 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 			operatingPointsCountMinusOne = p.f(5)
 
 			for i := 0; i <= operatingPointsCountMinusOne; i++ {
-				operatingPointIdc[i] = p.f(12)
+				operatingPointIdcArray[i] = p.f(12)
 				seqLevelIdx[i] = p.f(12)
 				if seqLevelIdx[i] > 7 {
 					seqTier[i] = p.f(1)
@@ -275,7 +277,7 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 		}
 		operatingPoint := p.chooseOperatingPoint()
 		// FIXME: what does this mean
-		operatingPointIdc := operatingPointIdc[operatingPoint]
+		operatingPointIdc = operatingPointIdcArray[operatingPoint]
 
 		frameWidthBitsMinusOne = p.f(4)
 		frameHeightBitsMinusOne = p.f(4)

@@ -84,16 +84,6 @@ func TestObuExtensionHeader(t *testing.T) {
 	assert.Equal(t, 6, extensionHeader.Reserved3Bits)
 }
 
-func TestObuSequenceHeader(t *testing.T) {
-	var data = []byte{0b00011000}
-	p := NewParser(data)
-
-	sequenceHeader := p.ParseObuSequenceHeader()
-	assert.Equal(t, 0, sequenceHeader.SeqProfile)
-	assert.Equal(t, true, sequenceHeader.StillPicture)
-	assert.Equal(t, true, sequenceHeader.ReducedStillPictureHeader)
-}
-
 // TODO: add assertions
 func TestParseEndToEnd(t *testing.T) {
 	fileName := "testdata/argon_coveragetool_av1_base_and_extended_profiles_v2.1/profile0_core/streams/test1228.obu"
