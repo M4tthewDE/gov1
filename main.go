@@ -197,18 +197,30 @@ func (p *Parser) ParseObu(sz int) {
 	obu := Obu{}
 
 	obu.Header = p.ParseObuHeader()
+	fmt.Printf("Type: %d\n", obu.Header.Type)
 
 	if obu.Header.HasSizeField {
 		obu.Size = p.leb128()
 	} else {
-		panic("not implemented")
+		extensionFlagInt := 0
+		if obu.Header.ExtensionFlag {
+			extensionFlagInt = 1
+		}
+		obu.Size = sz - 1 - extensionFlagInt
 	}
 
 	if obu.Header.Type != SequenceHeader &&
 		obu.Header.Type != TemporalLimiter &&
 		p.operatingPointIdc != 0 &&
 		obu.Header.ExtensionFlag {
-		panic("not implemented")
+		inTemporalLayer := (p.operatingPointIdc >> obu.Header.ObuExtensionHeader.TemporalID) & 1
+		inSpatialLayer := (p.operatingPointIdc >> (obu.Header.ObuExtensionHeader.SpatialID + 8)) & 1
+
+		if !(inTemporalLayer != 0) || !(inSpatialLayer != 0) {
+			//drop_obu()
+			p.position = p.position + obu.Size*8
+			return
+		}
 	}
 
 	switch obu.Header.Type {
@@ -228,7 +240,7 @@ func (p *Parser) ParseObu(sz int) {
 	}
 
 	x, _ := json.MarshalIndent(obu, "", "	")
-	fmt.Printf(string(x))
+	fmt.Printf("%s\n", string(x))
 
 }
 
