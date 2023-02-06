@@ -45,6 +45,7 @@ type ObuSequenceHeader struct {
 	StillPicture                        bool
 	ReducedStillPictureHeader           bool
 	TimingInfo                          TimingInfo
+	DecoderModelInfoPresent             bool
 	DecoderModelInfo                    DecoderModelInfo
 	InitialDisplayDelayPresent          bool
 	OperatingPointsCountMinusOne        int
@@ -270,12 +271,12 @@ func (p *Parser) ParseFrame(sz int) ObuFrame {
 }
 
 // frame_header_obu()
-func (p *Parser) ParseFrameHeader() {
+func (p *Parser) ParseFrameHeader(sequenceHeader ObuSequenceHeader) {
 	if p.seenFrameHeader {
 		p.FrameHeaderCopy()
 	} else {
 		p.seenFrameHeader = true
-		uncompressedHeader := p.UncompressedHeader()
+		uncompressedHeader := p.UncompressedHeader(sequenceHeader)
 
 		if uncompressedHeader.ShowExistingFrame {
 			p.DecodeFrameWrapup()
@@ -294,7 +295,117 @@ func (p *Parser) FrameHeaderCopy() {
 }
 
 // uncompressed_header()
-func (p *Parser) UncompressedHeader() UncompressedHeader {
+func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader) UncompressedHeader {
+	var idLen int
+	if sequenceHeader.FrameIdNumbersPresent {
+		idLen = sequenceHeader.AdditionalFrameIdLengthMinusOne +
+			sequenceHeader.DeltaFrameIdLengthMinusTwo + 3
+	}
+
+	var showExistingFrame bool
+	var frameType int
+	var showFrame bool
+
+	// NUM_REF_FRAMES
+	allFrames := ((1 << 8) - 1) != 0
+	if sequenceHeader.ReducedStillPictureHeader {
+		showExistingFrame = false
+		// KEY_FRAME
+		frameType = 0
+		frameIsIntra := true
+		showFrame := true
+		showableFrame := false
+	} else {
+		showExistingFrame := p.f(1) != 0
+
+		if showExistingFrame {
+			frameToShowMapIdx := p.f(3)
+
+			if sequenceHeader.DecoderModelInfoPresent && !sequenceHeader.TimingInfo.EqualPictureInterval {
+				temporalPointInfo := p.TemporalPointInfo()
+			}
+
+			refreshImageFlags := false
+
+			if sequenceHeader.FrameIdNumbersPresent {
+				displayFrameId := p.f(idLen)
+			}
+
+			frameType := RefFrameType[frameToShowMapIdx]
+
+			// KEY_FRAME
+			if frameType == 0 {
+				refreshImageFlags = allFrames
+			}
+
+			if sequenceHeader.FilmGrainParamsPresent {
+				p.LoadGrainParams(frameToShowMapIdx)
+			}
+
+			// TODO: fill
+			return UncompressedHeader{}
+		}
+		frameType = p.f(2)
+
+		frameIsIntra := (frameType == 2 || frameType == 0)
+
+		showFrame = p.f(1) != 0
+
+		if showFrame && sequenceHeader.DecoderModelInfoPresent && !sequenceHeader.TimingInfo.EqualPictureInterval {
+			temporalPointInfo := p.TemporalPointInfo()
+		}
+
+		var showableFrame bool
+
+		if showFrame {
+			showableFrame = frameType != 0
+		} else {
+			showableFrame = p.f(1) != 0
+		}
+
+		var errorResilientMode bool
+
+		if frameType == 3 || frameType == 0 && showFrame {
+			errorResilientMode = true
+		} else {
+			errorResilientMode = p.f(1) != 0
+		}
+	}
+
+	if frameType == 0 && showFrame {
+		for i := 0; i < NUM_REF_FRAMES; i++ {
+			RefValid[i] = 0
+			RefOrderHint[i] = 0
+		}
+
+		for i := 0; i < REFS_PER_FRAME; i++ {
+			OrderHints[LAST_FRAME+1] = 0
+		}
+	}
+
+	disableCdfUpdate := p.f(1) != 0
+
+	var allowScreenContentTools bool
+	if sequenceHeader.SeqForceScreenContentTools == 2 {
+		allowScreenContentTools = p.f(1) != 0
+	} else {
+		allowScreenContentTools = true
+	}
+
+	var forceIntegerMv bool
+	if allowScreenContentTools {
+		if sequenceHeader.SeqForceIntegerMv == 2 {
+			forceIntegerMv = p.f(1) != 0
+		} else {
+			forceIntegerMv = true
+		}
+	} else {
+		forceIntegerMv = false
+	}
+
+	if FrameIsIntra {
+		forceIntegerMv = true
+	}
 
 	panic("not implemented")
 	return UncompressedHeader{}
@@ -302,6 +413,16 @@ func (p *Parser) UncompressedHeader() UncompressedHeader {
 
 // decode_frame_wrapup()
 func (p *Parser) DecodeFrameWrapup() {
+	panic("not implemented")
+}
+
+// temporal_point_info()
+func (p *Parser) TemporalPointInfo() {
+	panic("not implemented")
+}
+
+// load_grain_params( idx )
+func (p *Parser) LoadGrainParams(idx int) {
 	panic("not implemented")
 }
 
@@ -550,6 +671,7 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 		StillPicture:                        stillPicture,
 		ReducedStillPictureHeader:           reducedStillPictureHeader,
 		TimingInfo:                          timingInfo,
+		DecoderModelInfoPresent:             decoderModelInfoPresent,
 		DecoderModelInfo:                    decoderModelInfo,
 		InitialDisplayDelayPresent:          initialDisplayDelayPresent,
 		OperatingPointsCountMinusOne:        operatingPointsCountMinusOne,
