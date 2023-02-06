@@ -119,12 +119,19 @@ type ColorConfig struct {
 	NumPlanes               int
 }
 
+type ObuFrame struct{}
+
+type UncompressedHeader struct {
+	ShowExistingFrame bool
+}
+
 type Parser struct {
 	data              []byte
 	position          int
 	operatingPointIdc int
-	seenFrameHeader   int
+	seenFrameHeader   bool
 	leb128Bytes       int
+	tileNum           int
 }
 
 func NewParser(data []byte) Parser {
@@ -132,8 +139,9 @@ func NewParser(data []byte) Parser {
 		data:              data,
 		position:          0,
 		operatingPointIdc: 0,
-		seenFrameHeader:   0,
+		seenFrameHeader:   false,
 		leb128Bytes:       0,
+		tileNum:           0,
 	}
 }
 
@@ -230,6 +238,10 @@ func (p *Parser) ParseObu(sz int) {
 		sequenceHeader := p.ParseObuSequenceHeader()
 		x, _ := json.MarshalIndent(sequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))
+	case Frame:
+		frame := p.ParseFrame(obu.Size)
+		x, _ := json.MarshalIndent(frame, "", "	")
+		fmt.Printf("%s\n", string(x))
 	}
 
 	payloadBits := p.position - startPosition
@@ -248,6 +260,49 @@ func (p *Parser) ParseObu(sz int) {
 		p.trailingBits(obu.Size*8 - payloadBits)
 	}
 
+}
+
+// frame_obu( sz )
+func (p *Parser) ParseFrame(sz int) ObuFrame {
+	startBitPos := p.position
+
+	return ObuFrame{}
+}
+
+// frame_header_obu()
+func (p *Parser) ParseFrameHeader() {
+	if p.seenFrameHeader {
+		p.FrameHeaderCopy()
+	} else {
+		p.seenFrameHeader = true
+		uncompressedHeader := p.UncompressedHeader()
+
+		if uncompressedHeader.ShowExistingFrame {
+			p.DecodeFrameWrapup()
+			p.seenFrameHeader = false
+		} else {
+			p.tileNum = 0
+			p.seenFrameHeader = true
+		}
+
+	}
+}
+
+// frame_header_copy()
+func (p *Parser) FrameHeaderCopy() {
+	panic("not implemented")
+}
+
+// uncompressed_header()
+func (p *Parser) UncompressedHeader() UncompressedHeader {
+
+	panic("not implemented")
+	return UncompressedHeader{}
+}
+
+// decode_frame_wrapup()
+func (p *Parser) DecodeFrameWrapup() {
+	panic("not implemented")
 }
 
 // obu_header()
