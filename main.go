@@ -195,7 +195,6 @@ func (p *Parser) ParseObu(sz int) {
 	obu := Obu{}
 
 	obu.Header = p.ParseObuHeader()
-	fmt.Printf("Type: %d\n", obu.Header.Type)
 
 	if obu.Header.HasSizeField {
 		obu.Size = p.leb128()
@@ -223,26 +222,31 @@ func (p *Parser) ParseObu(sz int) {
 		}
 	}
 
+	x, _ := json.MarshalIndent(obu, "", "	")
+	fmt.Printf("%s\n", string(x))
+
 	switch obu.Header.Type {
 	case SequenceHeader:
-		_ = p.ParseObuSequenceHeader()
-	case TemporalLimiter:
-		p.seenFrameHeader = 0
+		sequenceHeader := p.ParseObuSequenceHeader()
+		x, _ := json.MarshalIndent(sequenceHeader, "", "	")
+		fmt.Printf("%s\n", string(x))
 	}
 
 	payloadBits := p.position - startPosition
+
+	fmt.Println("----------------------------------------")
+	fmt.Printf("p.position: %d\n", p.position)
+	fmt.Printf("startPosition: %d\n", startPosition)
+	fmt.Printf("payloadBits: %d\n", payloadBits)
+	fmt.Printf("obu.Size*8 - payloadBits: %d\n", obu.Size*8-payloadBits)
+	fmt.Println("----------------------------------------")
 
 	if obu.Size > 0 &&
 		obu.Header.Type != TileGroup &&
 		obu.Header.Type != TileList &&
 		obu.Header.Type != Frame {
-		fmt.Printf("Payloadbits: %d", payloadBits)
 		p.trailingBits(obu.Size*8 - payloadBits)
 	}
-
-	x, _ := json.MarshalIndent(obu, "", "	")
-	fmt.Printf("%s\n", string(x))
-	fmt.Printf("Position: %d\n", p.position)
 
 }
 
@@ -346,8 +350,18 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 			operatingPointsCountMinusOne = p.f(5)
 
 			for i := 0; i <= operatingPointsCountMinusOne; i++ {
-				operatingPointIdcArray[i] = p.f(12)
-				seqLevelIdx[i] = p.f(12)
+				if len(operatingPointIdcArray) >= i {
+					operatingPointIdcArray = append(operatingPointIdcArray, p.f(12))
+				} else {
+					operatingPointIdcArray[i] = p.f(12)
+				}
+
+				if len(seqLevelIdx) >= i {
+					seqLevelIdx = append(seqLevelIdx, p.f(12))
+				} else {
+					seqLevelIdx[i] = p.f(12)
+				}
+
 				if seqLevelIdx[i] > 7 {
 					seqTier = append(seqTier, p.f(1))
 				} else {
@@ -355,18 +369,37 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 				}
 				if decoderModelInfoPresent {
 					decoderModelPresentForThisOp[i] = p.f(1) != 0
+					if len(decoderModelPresentForThisOp) >= i {
+						decoderModelPresentForThisOp = append(decoderModelPresentForThisOp, p.f(1) != 0)
+					} else {
+						decoderModelPresentForThisOp[i] = p.f(1) != 0
+					}
 					if decoderModelPresentForThisOp[i] {
 						// TODO: what are we doing with this?
 						_ = p.parseOperatingParametersInfo(i)
 					}
 				} else {
-					decoderModelPresentForThisOp[i] = false
+					if len(decoderModelPresentForThisOp) >= i {
+						decoderModelPresentForThisOp = append(decoderModelPresentForThisOp, false)
+					} else {
+						decoderModelPresentForThisOp[i] = false
+					}
 				}
 
 				if initialDisplayDelayPresent {
+					if len(initialDisplayDelayPresentForThisOp) >= i {
+						initialDisplayDelayPresentForThisOp = append(initialDisplayDelayPresentForThisOp, p.f(1) != 0)
+					} else {
+						initialDisplayDelayPresentForThisOp[i] = p.f(1) != 0
+					}
 					initialDisplayDelayPresentForThisOp[i] = p.f(1) != 0
 					if initialDisplayDelayPresentForThisOp[i] {
-						initialDisplayDelayMinusOne[i] = p.f(4)
+						if len(initialDisplayDelayMinusOne) >= i {
+							initialDisplayDelayMinusOne = append(initialDisplayDelayMinusOne, p.f(4))
+
+						} else {
+							initialDisplayDelayMinusOne[i] = p.f(4)
+						}
 					}
 				}
 			}
