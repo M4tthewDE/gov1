@@ -122,7 +122,6 @@ type ColorConfig struct {
 type Parser struct {
 	data              []byte
 	position          int
-	startPosition     int
 	operatingPointIdc int
 	seenFrameHeader   int
 	leb128Bytes       int
@@ -132,7 +131,6 @@ func NewParser(data []byte) Parser {
 	return Parser{
 		data:              data,
 		position:          0,
-		startPosition:     0,
 		operatingPointIdc: 0,
 		seenFrameHeader:   0,
 		leb128Bytes:       0,
@@ -209,6 +207,8 @@ func (p *Parser) ParseObu(sz int) {
 		obu.Size = sz - 1 - extensionFlagInt
 	}
 
+	startPosition := p.position
+
 	if obu.Header.Type != SequenceHeader &&
 		obu.Header.Type != TemporalLimiter &&
 		p.operatingPointIdc != 0 &&
@@ -230,17 +230,19 @@ func (p *Parser) ParseObu(sz int) {
 		p.seenFrameHeader = 0
 	}
 
-	payloadBits := p.position - p.startPosition
+	payloadBits := p.position - startPosition
 
 	if obu.Size > 0 &&
 		obu.Header.Type != TileGroup &&
 		obu.Header.Type != TileList &&
 		obu.Header.Type != Frame {
+		fmt.Printf("Payloadbits: %d", payloadBits)
 		p.trailingBits(obu.Size*8 - payloadBits)
 	}
 
 	x, _ := json.MarshalIndent(obu, "", "	")
 	fmt.Printf("%s\n", string(x))
+	fmt.Printf("Position: %d\n", p.position)
 
 }
 
@@ -321,9 +323,9 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 	operatingPointsCountMinusOne := 0
 	operatingPointIdcArray := []int{0}
 	seqLevelIdx := []int{p.f(5)}
-	seqTier := []int{}
-	decoderModelPresentForThisOp := []bool{}
-	initialDisplayDelayPresentForThisOp := []bool{}
+	seqTier := []int{0}
+	decoderModelPresentForThisOp := []bool{false}
+	initialDisplayDelayPresentForThisOp := []bool{false}
 	initialDisplayDelayMinusOne := []int{}
 
 	if !reducedStillPictureHeader {
