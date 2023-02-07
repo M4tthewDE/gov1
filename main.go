@@ -562,7 +562,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	if primaryRefName == PRIMARY_REF_NONE {
 
 		p.initNonCoeffCdfs()
-		setupPastIndpendence()
+		p.setupPastIndpendence()
 	} else {
 		p.loadCdfs(ref_frame_idx[primaryRefName])
 		p.loadPrevious()
@@ -618,7 +618,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	p.frameReferenceMode()
 	p.skipModeParams()
 
-	var allowWarpedMotion = bool
+	var allowWarpedMotion bool
 	if FrameIsIntra || errorResilientMode || !sequenceHeader.EnableWarpedMotion {
 		allowWarpedMotion = false
 	} else {
@@ -633,13 +633,125 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	return UncompressedHeader{}
 }
 
+func (p *Parser) markRefFrames(a int) {
+	panic("not implemented")
+}
+
+func (p *Parser) setFrameRefs() {
+	panic("not implemented")
+}
+
+func (p *Parser) frameSizeWithRefs() {
+	panic("not implemented")
+}
+
+func (p *Parser) frameSize() {
+	panic("not implemented")
+}
+
+func (p *Parser) renderSize() {
+	panic("not implemented")
+}
+
+func (p *Parser) readInterpolationFilter() {
+	panic("not implemented")
+}
+
+func (p *Parser) getRelativeDist() {
+	panic("not implemented")
+}
+
+func (p *Parser) initNonCoeffCdfs() {
+	panic("not implemented")
+}
+
+func (p *Parser) setupPastIndpendence() {
+	panic("not implemented")
+}
+
+func (p *Parser) loadCdfs() {
+	panic("not implemented")
+}
+
+func (p *Parser) loadPrevious() {
+	panic("not implemented")
+}
+
+func (p *Parser) motionFieldEstimation() {
+	panic("not implemented")
+}
+
+func (p *Parser) tileInfo() {
+	panic("not implemented")
+}
+
+func (p *Parser) quantizationParams() {
+	panic("not implemented")
+}
+
+func (p *Parser) segmentationParams() {
+	panic("not implemented")
+}
+
+func (p *Parser) deltaQParams() {
+	panic("not implemented")
+}
+
+func (p *Parser) deltaLfParams() {
+	panic("not implemented")
+}
+
+func (p *Parser) initCoeffCdfs() {
+	panic("not implemented")
+}
+
+func (p *Parser) loadPreviousSegementIds() {
+	panic("not implemented")
+}
+
+func (p *Parser) getQIndex(a int, b int) int {
+	panic("not implemented")
+}
+
+func (p *Parser) loopFilterParams() {
+	panic("not implemented")
+}
+
+func (p *Parser) cdefParams() {
+	panic("not implemented")
+}
+
+func (p *Parser) lrParams() {
+	panic("not implemented")
+}
+
+func (p *Parser) readTxMode() {
+	panic("not implemented")
+}
+
+func (p *Parser) frameReferenceMode() {
+	panic("not implemented")
+}
+
+func (p *Parser) skipModeParams() {
+	panic("not implemented")
+}
+
+func (p *Parser) globalMotionParams() {
+	panic("not implemented")
+}
+
+func (p *Parser) filmGrainParams() {
+	panic("not implemented")
+}
+
 // decode_frame_wrapup()
 func (p *Parser) DecodeFrameWrapup() {
 	panic("not implemented")
 }
 
 // temporal_point_info()
-func (p *Parser) TemporalPointInfo() {
+func (p *Parser) TemporalPointInfo() int {
 	panic("not implemented")
 }
 
