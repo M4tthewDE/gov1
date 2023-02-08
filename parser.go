@@ -98,3 +98,10 @@ func (p *Parser) trailingBits(nbBits int) {
 		nbBits--
 	}
 }
+
+// byte_alignment()
+func (p *Parser) byteAlignment() {
+	for p.position&7 != 0 {
+		p.f(1)
+	}
+}

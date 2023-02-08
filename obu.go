@@ -20,11 +20,10 @@ const (
 )
 
 type Obu struct {
-	Header ObuHeader
-	Size   int
+	Header         ObuHeader
+	SequenceHeader ObuSequenceHeader
+	Size           int
 }
-
-type ObuFrame struct{}
 
 // temporal_unit( sz )
 func (p *Parser) temporalUnit(sz int) {
@@ -84,13 +83,12 @@ func (p *Parser) ParseObu(sz int) {
 
 	switch obu.Header.Type {
 	case SequenceHeader:
-		sequenceHeader := p.ParseObuSequenceHeader()
-		x, _ := json.MarshalIndent(sequenceHeader, "", "	")
+		obu.SequenceHeader = p.ParseObuSequenceHeader()
+
+		x, _ := json.MarshalIndent(obu.SequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))
 	case Frame:
-		frame := p.ParseFrame(obu.Size)
-		x, _ := json.MarshalIndent(frame, "", "	")
-		fmt.Printf("%s\n", string(x))
+		p.ParseFrame(obu.Size, obu.SequenceHeader, obu.Header.ObuExtensionHeader)
 	}
 
 	payloadBits := p.position - startPosition
@@ -112,20 +110,26 @@ func (p *Parser) ParseObu(sz int) {
 }
 
 // frame_obu( sz )
-func (p *Parser) ParseFrame(sz int) ObuFrame {
+func (p *Parser) ParseFrame(sz int, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
 	startBitPos := p.position
-	frameHeader := p.ParseFrameHeader()
 
-	return ObuFrame{}
+	p.ParseFrameHeader(sequenceHeader, extensionHeader)
+	p.byteAlignment()
+
+	endBitPos := p.position
+
+	headerBytes := (endBitPos - startBitPos) / 8
+	sz -= headerBytes
+	p.tileGroupObu(sz)
 }
 
 // frame_header_obu()
-func (p *Parser) ParseFrameHeader(sequenceHeader ObuSequenceHeader) {
+func (p *Parser) ParseFrameHeader(sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
 	if p.seenFrameHeader {
 		p.FrameHeaderCopy()
 	} else {
 		p.seenFrameHeader = true
-		uncompressedHeader := p.UncompressedHeader(sequenceHeader)
+		uncompressedHeader := p.UncompressedHeader(sequenceHeader, extensionHeader)
 
 		if uncompressedHeader.ShowExistingFrame {
 			p.DecodeFrameWrapup()
@@ -136,4 +140,9 @@ func (p *Parser) ParseFrameHeader(sequenceHeader ObuSequenceHeader) {
 		}
 
 	}
+}
+
+// tile_group_obu(sz)
+func (p *Parser) tileGroupObu(sz int) {
+	panic("not implemented!")
 }

@@ -1,8 +1,19 @@
 package main
 
 type UncompressedHeader struct {
-	ShowExistingFrame bool
+	ShowExistingFrame     bool
+	TemporalPointInfo     int
+	ShowableFrame         bool
+	RefreshImageFlags     int
+	DisplayFrameId        int
+	FrameIdNumbersPresent bool
 }
+
+const NUM_REF_FRAMES = 8
+const REFS_PER_FRAME = 7
+const KEY_FRAME = 0
+const LAST_FRAME = 1
+const PRIMARY_REF_NONE = 7
 
 // uncompressed_header()
 func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) UncompressedHeader {
@@ -15,16 +26,28 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	var showExistingFrame bool
 	var frameType int
 	var showFrame bool
+	var showableFrame bool
+	var frameIsIntra bool
 
-	// NUM_REF_FRAMES
-	allFrames := ((1 << 8) - 1) != 0
+	var temporalPointInfo int
+	var errorResilientMode bool
+
+	var refreshImageFlags int
+	var displayFrameId int
+
+	refFrameType := []int{}
+	refValid := []int{}
+	refOrderHint := []int{}
+	orderHints := []int{}
+
+	allFrames := ((1 << NUM_REF_FRAMES) - 1)
 	if sequenceHeader.ReducedStillPictureHeader {
 		showExistingFrame = false
-		// KEY_FRAME
-		frameType = 0
-		frameIsIntra := true
-		showFrame := true
-		showableFrame := false
+		frameType = KEY_FRAME
+		frameIsIntra = true
+
+		showFrame = true
+		showableFrame = false
 	} else {
 		showExistingFrame := p.f(1) != 0
 
@@ -32,19 +55,19 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 			frameToShowMapIdx := p.f(3)
 
 			if sequenceHeader.DecoderModelInfoPresent && !sequenceHeader.TimingInfo.EqualPictureInterval {
-				temporalPointInfo := p.TemporalPointInfo()
+				temporalPointInfo = p.TemporalPointInfo()
 			}
 
-			refreshImageFlags := false
+			refreshImageFlags = 0
 
 			if sequenceHeader.FrameIdNumbersPresent {
-				displayFrameId := p.f(idLen)
+				displayFrameId = p.f(idLen)
 			}
 
-			frameType := RefFrameType[frameToShowMapIdx]
+			frameType := refFrameType[frameToShowMapIdx]
 
 			// KEY_FRAME
-			if frameType == 0 {
+			if frameType == KEY_FRAME {
 				refreshImageFlags = allFrames
 			}
 
@@ -52,28 +75,29 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 				p.LoadGrainParams(frameToShowMapIdx)
 			}
 
-			// TODO: fill
-			return UncompressedHeader{}
+			return UncompressedHeader{
+				ShowExistingFrame: showExistingFrame,
+				TemporalPointInfo: temporalPointInfo,
+				ShowableFrame:     showableFrame,
+				RefreshImageFlags: refreshImageFlags,
+				DisplayFrameId:    displayFrameId,
+			}
 		}
 		frameType = p.f(2)
 
-		frameIsIntra := (frameType == 2 || frameType == 0)
+		frameIsIntra = (frameType == 2 || frameType == 0)
 
 		showFrame = p.f(1) != 0
 
 		if showFrame && sequenceHeader.DecoderModelInfoPresent && !sequenceHeader.TimingInfo.EqualPictureInterval {
-			temporalPointInfo := p.TemporalPointInfo()
+			temporalPointInfo = p.TemporalPointInfo()
 		}
-
-		var showableFrame bool
 
 		if showFrame {
 			showableFrame = frameType != 0
 		} else {
 			showableFrame = p.f(1) != 0
 		}
-
-		var errorResilientMode bool
 
 		if frameType == 3 || frameType == 0 && showFrame {
 			errorResilientMode = true
@@ -84,12 +108,12 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 
 	if frameType == 0 && showFrame {
 		for i := 0; i < NUM_REF_FRAMES; i++ {
-			RefValid[i] = 0
-			RefOrderHint[i] = 0
+			refValid[i] = 0
+			refOrderHint[i] = 0
 		}
 
 		for i := 0; i < REFS_PER_FRAME; i++ {
-			OrderHints[LAST_FRAME+1] = 0
+			orderHints[LAST_FRAME+1] = 0
 		}
 	}
 
@@ -113,15 +137,16 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		forceIntegerMv = false
 	}
 
-	if FrameIsIntra {
+	if frameIsIntra {
 		forceIntegerMv = true
 	}
 
 	var currentFrameId int
 
-	if frameIdNumbersPresent {
-		PrevFrameId = currentFrameId
-		currentFrameId := p.f(idLen)
+	if sequenceHeader.FrameIdNumbersPresent {
+		panic("What is supposed to happen here?")
+		//PrevFrameId = currentFrameId
+		currentFrameId = p.f(idLen)
 		p.markRefFrames(idLen)
 	} else {
 		currentFrameId = 0
@@ -132,21 +157,21 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	// SWITCH_FRAME
 	if frameType == 3 {
 		frameSizeOverrideFlag = true
-	} else if reducedStillPictureHeader {
+	} else if sequenceHeader.ReducedStillPictureHeader {
 		frameSizeOverrideFlag = false
 
 	} else {
 		frameSizeOverrideFlag = p.f(1) != 0
 	}
 
-	orderHint := p.f(OrderHintBits)
+	orderHint := p.f(sequenceHeader.OrderHintBits)
 	OrderHint := orderHint
 
-	var primaryRefName int
+	var primaryRefFrame int
 	if frameIsIntra || errorResilientMode {
-		primaryRefName = 7
+		primaryRefFrame = PRIMARY_REF_NONE
 	} else {
-		primaryRefName := p.f(3)
+		primaryRefFrame = p.f(3)
 	}
 
 	if sequenceHeader.DecoderModelInfoPresent {
@@ -179,10 +204,10 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		refreshFrameFlags = p.f(8)
 	}
 
-	if !FrameIsIntra || refreshFrameFlags != allFrames {
+	if !frameIsIntra || refreshFrameFlags != allFrames {
 		if errorResilientMode && enableOrderHint {
 			for i := 0; i < NUM_REF_FRAMES; i++ {
-				ref_order_hint[i] = p.f(OrderHintBits)
+				ref_order_hint[i] = p.f(sequenceHeader.OrderHintBits)
 
 				if ref_order_hint[i] != RefOrderHint[i] {
 					RefValid[i] = 0
@@ -192,7 +217,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		}
 	}
 
-	if FrameIsIntra {
+	if frameIsIntra {
 		p.frameSize()
 		p.renderSize()
 
@@ -218,7 +243,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 				ref_frame_idx[i] = p.f(3)
 			}
 
-			if frameIdNumbersPresent {
+			if sequenceHeader.FrameIdNumbersPresent {
 				n := sequenceHeader.DeltaFrameIdLengthMinusTwo + 2
 				deltaFrameIdMinusOne := p.f(n)
 				DeltaFrameId := deltaFrameIdMinusOne + 1
@@ -269,12 +294,12 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		disableFrameEndUpdateCdf = p.f(1) != 0
 	}
 
-	if primaryRefName == PRIMARY_REF_NONE {
+	if primaryRefFrame == PRIMARY_REF_NONE {
 
 		p.initNonCoeffCdfs()
 		p.setupPastIndpendence()
 	} else {
-		p.loadCdfs(ref_frame_idx[primaryRefName])
+		p.loadCdfs(ref_frame_idx[primaryRefFrame])
 		p.loadPrevious()
 	}
 
@@ -288,7 +313,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	p.deltaQParams()
 	p.deltaLfParams()
 
-	if primaryRefName == primaryRefName {
+	if primaryRefFrame == PRIMARY_REF_NONE {
 
 		p.initCoeffCdfs()
 	} else {
@@ -329,7 +354,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	p.skipModeParams()
 
 	var allowWarpedMotion bool
-	if FrameIsIntra || errorResilientMode || !sequenceHeader.EnableWarpedMotion {
+	if frameIsIntra || errorResilientMode || !sequenceHeader.EnableWarpedMotion {
 		allowWarpedMotion = false
 	} else {
 		allowWarpedMotion = p.f(1) != 0
@@ -340,7 +365,10 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	p.globalMotionParams()
 	p.filmGrainParams()
 
-	return UncompressedHeader{}
+	return UncompressedHeader{
+		ShowExistingFrame: showExistingFrame,
+		TemporalPointInfo: temporalPointInfo,
+	}
 }
 
 // frame_header_copy()
