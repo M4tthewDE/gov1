@@ -16,7 +16,7 @@ const LAST_FRAME = 1
 const PRIMARY_REF_NONE = 7
 
 // uncompressed_header()
-func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) UncompressedHeader {
+func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader, inTemporalLayer bool) UncompressedHeader {
 	var idLen int
 	if sequenceHeader.FrameIdNumbersPresent {
 		idLen = sequenceHeader.AdditionalFrameIdLengthMinusOne +
@@ -39,6 +39,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	refValid := []int{}
 	refOrderHint := []int{}
 	orderHints := []int{}
+	bufferRemovalTime := []int{}
 
 	allFrames := ((1 << NUM_REF_FRAMES) - 1)
 	if sequenceHeader.ReducedStillPictureHeader {
@@ -181,8 +182,8 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 			for opNum := 0; opNum <= sequenceHeader.OperatingPointsCountMinusOne; opNum++ {
 				if sequenceHeader.DecoderModelPresentForThisOp[opNum] {
 					opPtIdc := sequenceHeader.OperatingPointIdc[opNum]
-					inTemporalLayer := (opPtIdc >> extensionHeader.TemporalID) & 1
-					inSpatialLayer := (opPtIdc >> extensionHeader.SpatialID) & 1
+					inTemporalLayer := ((opPtIdc >> extensionHeader.TemporalID) & 1) != 0
+					inSpatialLayer := ((opPtIdc >> extensionHeader.SpatialID) & 1) != 0
 
 					if opPtIdc == 0 || (inTemporalLayer && inSpatialLayer) {
 						n := sequenceHeader.DecoderModelInfo.BufferRemovalTimeLengthMinusOne + 1
@@ -205,7 +206,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	}
 
 	if !frameIsIntra || refreshFrameFlags != allFrames {
-		if errorResilientMode && enableOrderHint {
+		if errorResilientMode && sequenceHeader.EnableOrderHint {
 			for i := 0; i < NUM_REF_FRAMES; i++ {
 				ref_order_hint[i] = p.f(sequenceHeader.OrderHintBits)
 
@@ -227,7 +228,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	} else {
 
 		var frameRefsShortSignaling bool
-		if !enableOrderHint {
+		if !sequenceHeader.EnableOrderHint {
 			frameRefsShortSignaling = false
 		} else {
 			frameRefsShortSignaling = p.f(1) != 0
@@ -279,7 +280,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 			refFrame := LAST_FRAME + 1
 			hint = RefOrderHint[ref_frame_idx[i]]
 			OrderHints[refFrame] = hint
-			if !enableOrderHint {
+			if !sequenceHeader.EnableOrderHint {
 				RefFrameSignBias[refFrame] = 0
 			} else {
 				RefFrameSignBias[refFrame] = p.getRelativeDist(hint, OrderHint) > 0

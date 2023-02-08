@@ -14,7 +14,7 @@ type ObuSequenceHeader struct {
 	DecoderModelPresentForThisOp        []bool
 	InitialDisplayDelayPresentForThisOp []bool
 	InitialDisplayDelayMinusOne         []int
-	OperatingPointIdc                   int
+	OperatingPointIdc                   []int
 	FrameWidthbitsMinusOne              int
 	FrameHeightbitsMinusOne             int
 	MaxFrameWidthMinusOne               int
@@ -107,8 +107,6 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 	var seqForceIntegerMv int
 	var orderHintBits int
 
-	var operatingPointIdc int
-
 	seqProfile := p.f(3)
 	stillPicture := p.f(1) != 0
 	reducedStillPictureHeader := p.f(1) != 0
@@ -197,8 +195,7 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 			}
 		}
 		operatingPoint := p.chooseOperatingPoint()
-		// FIXME: what does this mean
-		operatingPointIdc = operatingPointIdcArray[operatingPoint]
+		p.operatingPointIdc = operatingPointIdcArray[operatingPoint]
 
 		frameWidthBitsMinusOne = p.f(4)
 		frameHeightBitsMinusOne = p.f(4)
@@ -296,7 +293,7 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 		DecoderModelPresentForThisOp:        decoderModelPresentForThisOp,
 		InitialDisplayDelayPresentForThisOp: initialDisplayDelayPresentForThisOp,
 		InitialDisplayDelayMinusOne:         initialDisplayDelayMinusOne,
-		OperatingPointIdc:                   operatingPointIdc,
+		OperatingPointIdc:                   operatingPointIdcArray,
 		FrameWidthbitsMinusOne:              frameWidthBitsMinusOne,
 		FrameHeightbitsMinusOne:             frameHeightBitsMinusOne,
 		MaxFrameWidthMinusOne:               maxFrameWidthMinusOne,

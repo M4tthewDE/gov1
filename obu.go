@@ -68,10 +68,10 @@ func (p *Parser) ParseObu(sz int) {
 		obu.Header.Type != TemporalLimiter &&
 		p.operatingPointIdc != 0 &&
 		obu.Header.ExtensionFlag {
-		inTemporalLayer := (p.operatingPointIdc >> obu.Header.ObuExtensionHeader.TemporalID) & 1
-		inSpatialLayer := (p.operatingPointIdc >> (obu.Header.ObuExtensionHeader.SpatialID + 8)) & 1
+		inTemporalLayer := ((p.operatingPointIdc >> obu.Header.ObuExtensionHeader.TemporalID) & 1) != 0
+		inSpatialLayer := ((p.operatingPointIdc >> (obu.Header.ObuExtensionHeader.SpatialID + 8)) & 1) != 0
 
-		if !(inTemporalLayer != 0) || !(inSpatialLayer != 0) {
+		if !inTemporalLayer || !inSpatialLayer {
 			//drop_obu()
 			p.position = p.position + obu.Size*8
 			return
