@@ -89,6 +89,9 @@ func (p *Parser) ParseObu(sz int) {
 		fmt.Printf("%s\n", string(x))
 	case Frame:
 		p.ParseFrame(obu.Size, obu.SequenceHeader, obu.Header.ObuExtensionHeader)
+	default:
+		fmt.Printf("not implemented type %d\n", obu.Header.Type)
+		panic("")
 	}
 
 	payloadBits := p.position - startPosition
