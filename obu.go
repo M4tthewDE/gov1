@@ -132,7 +132,9 @@ func (p *Parser) ParseFrameHeader(sequenceHeader ObuSequenceHeader, extensionHea
 		p.FrameHeaderCopy()
 	} else {
 		p.seenFrameHeader = true
-		uncompressedHeader := p.UncompressedHeader(sequenceHeader, extensionHeader)
+
+		uncompressedHeader := UncompressedHeader{}
+		uncompressedHeader.Build(p, sequenceHeader, extensionHeader)
 
 		if uncompressedHeader.ShowExistingFrame {
 			p.DecodeFrameWrapup()
