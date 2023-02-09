@@ -9,6 +9,10 @@ type Parser struct {
 	seenFrameHeader   bool
 	leb128Bytes       int
 	tileNum           int
+	renderWidth       int
+	renderHeight      int
+	upscaledWidth     int
+	upscaledHeight    int
 }
 
 func NewParser(data []byte) Parser {

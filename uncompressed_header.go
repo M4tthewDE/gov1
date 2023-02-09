@@ -25,6 +25,12 @@ const LAST_FRAME = 1
 const PRIMARY_REF_NONE = 7
 const MAX_SEGMENTS = 8
 
+const EIGHTTAP = 0
+const EIGHTTAP_SMOOTH = 1
+const EIGHTTAP_SHARP = 2
+const BILINEAR = 3
+const SWITCHABLE = 4
+
 // uncompressed_header()
 func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) UncompressedHeader {
 	var idLen int
@@ -440,12 +446,33 @@ func (p *Parser) frameSize() {
 	panic("not implemented")
 }
 
+// render_size()
 func (p *Parser) renderSize() {
-	panic("not implemented")
+	renderAndFramSizeDifferent := p.f(1) != 0
+
+	if renderAndFramSizeDifferent {
+		renderWidthMinusOne := p.f(16)
+		renderHeightMinusOne := p.f(16)
+
+		p.renderWidth = renderWidthMinusOne + 1
+		p.renderHeight = renderHeightMinusOne + 1
+	} else {
+		p.renderWidth = p.upscaledWidth
+		p.renderHeight = p.upscaledHeight
+	}
 }
 
-func (p *Parser) readInterpolationFilter() {
-	panic("not implemented")
+func (p *Parser) readInterpolationFilter() int {
+	isFilterSwitchable := p.f(1) != 0
+
+	var interpolationFilter int
+	if isFilterSwitchable {
+		interpolationFilter = SWITCHABLE
+	} else {
+		interpolationFilter = p.f(2)
+	}
+
+	return interpolationFilter
 }
 
 func (p *Parser) getRelativeDist(hint int, OrderHint int) int {

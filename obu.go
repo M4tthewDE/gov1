@@ -85,6 +85,8 @@ func (p *Parser) ParseObu(sz int) {
 
 		x, _ := json.MarshalIndent(obu.SequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))
+	case OBU_TEMPORAL_DELIMITER:
+		p.seenFrameHeader = false
 	case OBU_FRAME:
 		p.ParseFrame(obu.Size, obu.SequenceHeader, obu.Header.ObuExtensionHeader)
 	default:
