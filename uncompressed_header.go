@@ -1,12 +1,21 @@
 package main
 
 type UncompressedHeader struct {
-	ShowExistingFrame     bool
-	TemporalPointInfo     int
-	ShowableFrame         bool
-	RefreshImageFlags     int
-	DisplayFrameId        int
-	FrameIdNumbersPresent bool
+	ShowExistingFrame        bool
+	TemporalPointInfo        int
+	ShowableFrame            bool
+	RefreshImageFlags        int
+	DisplayFrameId           int
+	FrameIdNumbersPresent    bool
+	AllowHighPrecisionMv     bool
+	AllowIntraBc             bool
+	LastFrameIdx             int
+	GoldFrameIdx             int
+	IsMotionModeSwitchable   bool
+	DisableFrameEndUpdateCdf bool
+	AllLossless              bool
+	AllowWarpedMotion        bool
+	ReducedTxSet             bool
 }
 
 const NUM_REF_FRAMES = 8
@@ -14,9 +23,10 @@ const REFS_PER_FRAME = 7
 const KEY_FRAME = 0
 const LAST_FRAME = 1
 const PRIMARY_REF_NONE = 7
+const MAX_SEGMENTS = 8
 
 // uncompressed_header()
-func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader, inTemporalLayer bool) UncompressedHeader {
+func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) UncompressedHeader {
 	var idLen int
 	if sequenceHeader.FrameIdNumbersPresent {
 		idLen = sequenceHeader.AdditionalFrameIdLengthMinusOne +
@@ -194,6 +204,10 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		}
 	}
 
+	RefOrderHint := []int{}
+	RefValid := []int{}
+	ref_order_hint := []int{}
+
 	allowHighPrecisionMv := false
 	useRefFrameMvs := false
 	allowIntrabc := false
@@ -218,6 +232,16 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		}
 	}
 
+	var UpscaledWidth int
+	var FrameWidth int
+
+	ref_frame_idx := []int{}
+	expectedFrameId := []int{}
+
+	var lastFrameIdx int
+	var goldFrameIdx int
+	var isMotionModeSwitchable bool
+
 	if frameIsIntra {
 		p.frameSize()
 		p.renderSize()
@@ -233,8 +257,8 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		} else {
 			frameRefsShortSignaling = p.f(1) != 0
 			if frameRefsShortSignaling {
-				lastFrameIdx := p.f(3)
-				goldFrameIdx := p.f(3)
+				lastFrameIdx = p.f(3)
+				goldFrameIdx = p.f(3)
 				p.setFrameRefs()
 			}
 		}
@@ -263,11 +287,11 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 			allowHighPrecisionMv = false
 		} else {
 
-			allowHighPrecisionMv := p.f(1) != 0
+			allowHighPrecisionMv = p.f(1) != 0
 		}
 
 		p.readInterpolationFilter()
-		isMotionModeSwitchable := p.f(1) != 0
+		isMotionModeSwitchable = p.f(1) != 0
 
 		if errorResilientMode || !sequenceHeader.EnableRefFrameMvs {
 			useRefFrameMvs = false
@@ -276,12 +300,15 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 			useRefFrameMvs = p.f(1) != 0
 		}
 
+		OrderHints := []int{}
+		RefFrameSignBias := []bool{}
+
 		for i := 0; i < REFS_PER_FRAME; i++ {
 			refFrame := LAST_FRAME + 1
-			hint = RefOrderHint[ref_frame_idx[i]]
+			hint := RefOrderHint[ref_frame_idx[i]]
 			OrderHints[refFrame] = hint
 			if !sequenceHeader.EnableOrderHint {
-				RefFrameSignBias[refFrame] = 0
+				RefFrameSignBias[refFrame] = false
 			} else {
 				RefFrameSignBias[refFrame] = p.getRelativeDist(hint, OrderHint) > 0
 			}
@@ -289,7 +316,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	}
 
 	var disableFrameEndUpdateCdf bool
-	if reducedStillPictureHeader || disableCdfUpdate {
+	if sequenceHeader.ReducedStillPictureHeader || disableCdfUpdate {
 		disableFrameEndUpdateCdf = true
 	} else {
 		disableFrameEndUpdateCdf = p.f(1) != 0
@@ -304,7 +331,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		p.loadPrevious()
 	}
 
-	if useRefFrameMvs == 1 {
+	if useRefFrameMvs {
 		p.motionFieldEstimation()
 	}
 
@@ -321,17 +348,28 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		p.loadPreviousSegementIds()
 	}
 
-	CodedLossless = 1
+	CodedLossless := true
+	LosslessArray := []bool{}
+
+	// TODO: use real values
+	var DeltaQYDc int
+	var DeltaQUAc int
+	var DeltaQUDc int
+	var DeltaQVAc int
+	var DeltaQVDc int
+	var usingQMatrix bool
+	SegQMLevel := [][]int{}
+	var qm_y int
 
 	for segmentId := 0; segmentId < MAX_SEGMENTS; segmentId++ {
 		qIndex := p.getQIndex(1, segmentId)
-		LosslessArray[segmentId] = qIndex == 0 && DeltaQYDc == 0 && DeltaQUAc == 0 && DeltaQUDc && DeltaQVAc == 0 && DeltaQVDc == 0
+		LosslessArray[segmentId] = qIndex == 0 && DeltaQYDc == 0 && DeltaQUAc == 0 && DeltaQUDc == 0 && DeltaQVAc == 0 && DeltaQVDc == 0
 
 		if !LosslessArray[segmentId] {
-			CodedLossless = 0
+			CodedLossless = false
 		}
 
-		if usingQMtraix {
+		if usingQMatrix {
 			if LosslessArray[segmentId] {
 				SegQMLevel[0][segmentId] = 15
 				SegQMLevel[1][segmentId] = 15
@@ -345,7 +383,7 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 		}
 	}
 
-	AllLossless = CodedLossless && (FrameWidth == UpscaledWidth)
+	AllLossless := CodedLossless && (FrameWidth == UpscaledWidth)
 
 	p.loopFilterParams()
 	p.cdefParams()
@@ -367,8 +405,17 @@ func (p *Parser) UncompressedHeader(sequenceHeader ObuSequenceHeader, extensionH
 	p.filmGrainParams()
 
 	return UncompressedHeader{
-		ShowExistingFrame: showExistingFrame,
-		TemporalPointInfo: temporalPointInfo,
+		ShowExistingFrame:        showExistingFrame,
+		TemporalPointInfo:        temporalPointInfo,
+		AllowHighPrecisionMv:     allowHighPrecisionMv,
+		AllowIntraBc:             allowIntrabc,
+		LastFrameIdx:             lastFrameIdx,
+		GoldFrameIdx:             goldFrameIdx,
+		IsMotionModeSwitchable:   isMotionModeSwitchable,
+		DisableFrameEndUpdateCdf: disableFrameEndUpdateCdf,
+		AllLossless:              AllLossless,
+		AllowWarpedMotion:        allowWarpedMotion,
+		ReducedTxSet:             reducedTxSet,
 	}
 }
 
@@ -401,7 +448,7 @@ func (p *Parser) readInterpolationFilter() {
 	panic("not implemented")
 }
 
-func (p *Parser) getRelativeDist() {
+func (p *Parser) getRelativeDist(hint int, OrderHint int) int {
 	panic("not implemented")
 }
 
@@ -413,7 +460,7 @@ func (p *Parser) setupPastIndpendence() {
 	panic("not implemented")
 }
 
-func (p *Parser) loadCdfs() {
+func (p *Parser) loadCdfs(a int) {
 	panic("not implemented")
 }
 
