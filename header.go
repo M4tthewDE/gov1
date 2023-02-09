@@ -2,7 +2,7 @@ package main
 
 type ObuHeader struct {
 	ForbiddenBit       bool
-	Type               ObuType
+	Type               int
 	ExtensionFlag      bool
 	HasSizeField       bool
 	ReservedBit        bool
@@ -18,7 +18,7 @@ type ObuExtensionHeader struct {
 // obu_header()
 func (p *Parser) ParseObuHeader() ObuHeader {
 	forbiddenBit := p.f(1) != 0
-	obuType := ObuType(p.f(4))
+	obuType := p.f(4)
 	extensionFlag := p.f(1) != 0
 	hasSizeField := p.f(1) != 0
 	reservedBit := p.f(1) != 0

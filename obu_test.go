@@ -66,7 +66,7 @@ func TestObuHeader(t *testing.T) {
 	header := p.ParseObuHeader()
 
 	assert.Equal(t, true, header.ForbiddenBit)
-	assert.Equal(t, SequenceHeader, header.Type)
+	assert.Equal(t, OBU_SEQUENCE_HEADER, header.Type)
 	assert.Equal(t, true, header.ExtensionFlag)
 	assert.Equal(t, false, header.HasSizeField)
 	assert.Equal(t, true, header.ReservedBit)

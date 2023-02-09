@@ -7,17 +7,15 @@ import (
 
 type ObuType int
 
-const (
-	SequenceHeader       ObuType = 1
-	TemporalLimiter      ObuType = 2
-	FrameHeader          ObuType = 3
-	TileGroup            ObuType = 4
-	Metadata             ObuType = 5
-	Frame                ObuType = 6
-	RedundantFrameHeader ObuType = 7
-	TileList             ObuType = 8
-	Padding              ObuType = 15
-)
+const OBU_SEQUENCE_HEADER = 1
+const OBU_TEMPORAL_DELIMITER = 2
+const OBU_FRAME_HEADER = 3
+const OBU_TILE_GROUP = 4
+const OBU_METADATA = 5
+const OBU_FRAME = 6
+const OBU_REDUNDANT_FRAME_HEADER = 7
+const OBU_TILE_LIST = 8
+const OBU_PADDING = 15
 
 type Obu struct {
 	Header         ObuHeader
@@ -64,8 +62,8 @@ func (p *Parser) ParseObu(sz int) {
 
 	startPosition := p.position
 
-	if obu.Header.Type != SequenceHeader &&
-		obu.Header.Type != TemporalLimiter &&
+	if obu.Header.Type != OBU_SEQUENCE_HEADER &&
+		obu.Header.Type != OBU_TEMPORAL_DELIMITER &&
 		p.operatingPointIdc != 0 &&
 		obu.Header.ExtensionFlag {
 		inTemporalLayer := ((p.operatingPointIdc >> obu.Header.ObuExtensionHeader.TemporalID) & 1) != 0
@@ -82,12 +80,12 @@ func (p *Parser) ParseObu(sz int) {
 	fmt.Printf("%s\n", string(x))
 
 	switch obu.Header.Type {
-	case SequenceHeader:
+	case OBU_SEQUENCE_HEADER:
 		obu.SequenceHeader = p.ParseObuSequenceHeader()
 
 		x, _ := json.MarshalIndent(obu.SequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))
-	case Frame:
+	case OBU_FRAME:
 		p.ParseFrame(obu.Size, obu.SequenceHeader, obu.Header.ObuExtensionHeader)
 	default:
 		fmt.Printf("not implemented type %d\n", obu.Header.Type)
@@ -104,9 +102,9 @@ func (p *Parser) ParseObu(sz int) {
 	fmt.Println("----------------------------------------")
 
 	if obu.Size > 0 &&
-		obu.Header.Type != TileGroup &&
-		obu.Header.Type != TileList &&
-		obu.Header.Type != Frame {
+		obu.Header.Type != OBU_TILE_GROUP &&
+		obu.Header.Type != OBU_TILE_LIST &&
+		obu.Header.Type != OBU_FRAME {
 		p.trailingBits(obu.Size*8 - payloadBits)
 	}
 
