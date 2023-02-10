@@ -323,7 +323,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 	if primaryRefFrame == PRIMARY_REF_NONE {
 
 		p.initNonCoeffCdfs()
-		p.setupPastIndpendence()
+		p.setupPastIndependence()
 	} else {
 		p.loadCdfs(ref_frame_idx[primaryRefFrame])
 		p.loadPrevious()
@@ -460,7 +460,7 @@ func (p *Parser) initNonCoeffCdfs() {
 	panic("not implemented")
 }
 
-func (p *Parser) setupPastIndpendence() {
+func (p *Parser) setupPastIndependence() {
 	panic("not implemented")
 }
 
