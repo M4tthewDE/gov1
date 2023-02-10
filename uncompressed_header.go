@@ -13,6 +13,10 @@ const EIGHTTAP_SHARP = 2
 const BILINEAR = 3
 const SWITCHABLE = 4
 
+const ONLY_4X4 = 0
+const TX_MODE_LARGEST = 1
+const TX_MODE_SELECT = 2
+
 type UncompressedHeader struct {
 	ShowExistingFrame        bool
 	TemporalPointInfo        int
@@ -31,6 +35,8 @@ type UncompressedHeader struct {
 	ReducedTxSet             bool
 	FrameIsIntra             bool
 	ReferenceSelect          bool
+	CodedLossless            bool
+	TxMode                   int
 }
 
 func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
@@ -335,7 +341,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 		p.loadPreviousSegementIds()
 	}
 
-	CodedLossless := true
+	u.CodedLossless = true
 	LosslessArray := []bool{}
 
 	// TODO: use real values
@@ -353,7 +359,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 		LosslessArray[segmentId] = qIndex == 0 && DeltaQYDc == 0 && DeltaQUAc == 0 && DeltaQUDc == 0 && DeltaQVAc == 0 && DeltaQVDc == 0
 
 		if !LosslessArray[segmentId] {
-			CodedLossless = false
+			u.CodedLossless = false
 		}
 
 		if usingQMatrix {
@@ -370,12 +376,12 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 		}
 	}
 
-	u.AllLossless = CodedLossless && (FrameWidth == UpscaledWidth)
+	u.AllLossless = u.CodedLossless && (FrameWidth == UpscaledWidth)
 
 	p.loopFilterParams()
 	p.cdefParams()
 	p.lrParams()
-	p.readTxMode()
+	u.readTxMode(p)
 	u.frameReferenceMode(p)
 	p.skipModeParams()
 
@@ -509,8 +515,19 @@ func (p *Parser) lrParams() {
 	panic("not implemented")
 }
 
-func (p *Parser) readTxMode() {
-	panic("not implemented")
+// read_tx_mode()
+func (u *UncompressedHeader) readTxMode(p *Parser) {
+	if u.CodedLossless {
+		u.TxMode = ONLY_4X4
+	} else {
+		txModeSelect := p.f(1) != 0
+
+		if txModeSelect {
+			u.TxMode = TX_MODE_SELECT
+		} else {
+			u.TxMode = TX_MODE_LARGEST
+		}
+	}
 }
 
 // frame_reference_mode()
