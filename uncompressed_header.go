@@ -29,9 +29,11 @@ type UncompressedHeader struct {
 	AllLossless              bool
 	AllowWarpedMotion        bool
 	ReducedTxSet             bool
+	FrameIsIntra             bool
+	ReferenceSelect          bool
 }
 
-func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
+func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
 	var idLen int
 	if sequenceHeader.FrameIdNumbersPresent {
 		idLen = sequenceHeader.AdditionalFrameIdLengthMinusOne +
@@ -40,7 +42,6 @@ func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, e
 
 	var frameType int
 	var showFrame bool
-	var frameIsIntra bool
 
 	var errorResilientMode bool
 
@@ -54,7 +55,7 @@ func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, e
 	if sequenceHeader.ReducedStillPictureHeader {
 		u.ShowExistingFrame = false
 		frameType = KEY_FRAME
-		frameIsIntra = true
+		u.FrameIsIntra = true
 
 		showFrame = true
 		u.ShowableFrame = false
@@ -87,7 +88,7 @@ func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, e
 
 		frameType = p.f(2)
 
-		frameIsIntra = (frameType == 2 || frameType == 0)
+		u.FrameIsIntra = (frameType == 2 || frameType == 0)
 
 		showFrame = p.f(1) != 0
 
@@ -141,7 +142,7 @@ func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, e
 		forceIntegerMv = false
 	}
 
-	if frameIsIntra {
+	if u.FrameIsIntra {
 		forceIntegerMv = true
 	}
 
@@ -172,7 +173,7 @@ func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, e
 	OrderHint := orderHint
 
 	var primaryRefFrame int
-	if frameIsIntra || errorResilientMode {
+	if u.FrameIsIntra || errorResilientMode {
 		primaryRefFrame = PRIMARY_REF_NONE
 	} else {
 		primaryRefFrame = p.f(3)
@@ -210,7 +211,7 @@ func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, e
 		refreshFrameFlags = p.f(8)
 	}
 
-	if !frameIsIntra || refreshFrameFlags != allFrames {
+	if !u.FrameIsIntra || refreshFrameFlags != allFrames {
 		if errorResilientMode && sequenceHeader.EnableOrderHint {
 			for i := 0; i < NUM_REF_FRAMES; i++ {
 				ref_order_hint[i] = p.f(sequenceHeader.OrderHintBits)
@@ -229,7 +230,7 @@ func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, e
 	ref_frame_idx := []int{}
 	expectedFrameId := []int{}
 
-	if frameIsIntra {
+	if u.FrameIsIntra {
 		p.frameSize()
 		p.renderSize()
 
@@ -375,10 +376,10 @@ func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, e
 	p.cdefParams()
 	p.lrParams()
 	p.readTxMode()
-	p.frameReferenceMode()
+	u.frameReferenceMode(p)
 	p.skipModeParams()
 
-	if frameIsIntra || errorResilientMode || !sequenceHeader.EnableWarpedMotion {
+	if u.FrameIsIntra || errorResilientMode || !sequenceHeader.EnableWarpedMotion {
 		u.AllowWarpedMotion = false
 	} else {
 		u.AllowWarpedMotion = p.f(1) != 0
@@ -512,8 +513,15 @@ func (p *Parser) readTxMode() {
 	panic("not implemented")
 }
 
-func (p *Parser) frameReferenceMode() {
-	panic("not implemented")
+// frame_reference_mode()
+func (u *UncompressedHeader) frameReferenceMode(p *Parser) {
+	if u.FrameIsIntra {
+		u.ReferenceSelect = false
+	} else {
+		//panic(p.f(1))
+		u.ReferenceSelect = p.f(1) != 0
+	}
+
 }
 
 func (p *Parser) skipModeParams() {
