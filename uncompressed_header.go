@@ -518,7 +518,6 @@ func (u *UncompressedHeader) frameReferenceMode(p *Parser) {
 	if u.FrameIsIntra {
 		u.ReferenceSelect = false
 	} else {
-		//panic(p.f(1))
 		u.ReferenceSelect = p.f(1) != 0
 	}
 
