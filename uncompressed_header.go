@@ -38,9 +38,11 @@ type UncompressedHeader struct {
 	CodedLossless            bool
 	TxMode                   int
 	DeltaQPresent            bool
+	DeltaQRes                int
 	DeltaLfPresent           bool
 	DeltaLfRes               int
 	DeltaLfMulti             int
+	BaseQIdx                 int
 }
 
 func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
@@ -334,7 +336,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 	p.tileInfo()
 	p.quantizationParams()
 	p.segmentationParams()
-	p.deltaQParams()
+	u.deltaQParams(p)
 	u.deltaLfParams(p)
 
 	if primaryRefFrame == PRIMARY_REF_NONE {
@@ -486,8 +488,18 @@ func (p *Parser) segmentationParams() {
 	panic("not implemented")
 }
 
-func (p *Parser) deltaQParams() {
-	panic("not implemented")
+// delta_q_parms()
+func (u *UncompressedHeader) deltaQParams(p *Parser) {
+	u.DeltaQRes = 0
+	u.DeltaQPresent = false
+
+	if u.BaseQIdx > 0 {
+		u.DeltaQPresent = p.f(1) != 0
+	}
+
+	if u.DeltaQPresent {
+		u.DeltaQRes = p.f(2)
+	}
 }
 
 // delta_lf_params()

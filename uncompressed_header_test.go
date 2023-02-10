@@ -88,3 +88,27 @@ func TestDeltaLfParamsPresent(t *testing.T) {
 	assert.Equal(t, 2, u.DeltaLfRes)
 	assert.Equal(t, 1, u.DeltaLfMulti)
 }
+
+func TestDeltaQParamsNotPresent(t *testing.T) {
+	var data = []byte{0b00000000}
+	p := NewParser(data)
+
+	u := UncompressedHeader{}
+	u.BaseQIdx = 0
+	u.deltaQParams(&p)
+
+	assert.False(t, u.DeltaQPresent)
+	assert.Equal(t, 0, u.DeltaQRes)
+}
+
+func TestDeltaQParamsPresent(t *testing.T) {
+	var data = []byte{0b11100000}
+	p := NewParser(data)
+
+	u := UncompressedHeader{}
+	u.BaseQIdx = 1
+	u.deltaQParams(&p)
+
+	assert.True(t, u.DeltaQPresent)
+	assert.Equal(t, 3, u.DeltaQRes)
+}
