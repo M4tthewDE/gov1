@@ -29,7 +29,6 @@ func TestFrameReferenceModeFalse(t *testing.T) {
 }
 
 func TestReadTxModeCodedLosslessTrue(t *testing.T) {
-
 	var data = []byte{0b00000000}
 	p := NewParser(data)
 
@@ -41,7 +40,6 @@ func TestReadTxModeCodedLosslessTrue(t *testing.T) {
 }
 
 func TestReadTxModeSelect(t *testing.T) {
-
 	var data = []byte{0b10000000}
 	p := NewParser(data)
 
@@ -53,7 +51,6 @@ func TestReadTxModeSelect(t *testing.T) {
 }
 
 func TestReadTxModeLargest(t *testing.T) {
-
 	var data = []byte{0b00000000}
 	p := NewParser(data)
 
@@ -62,4 +59,32 @@ func TestReadTxModeLargest(t *testing.T) {
 	u.readTxMode(&p)
 
 	assert.Equal(t, TX_MODE_LARGEST, u.TxMode)
+}
+
+func TestDeltaLfParamsNotPresent(t *testing.T) {
+	var data = []byte{0b00000000}
+	p := NewParser(data)
+
+	u := UncompressedHeader{}
+	u.DeltaQPresent = false
+	u.deltaLfParams(&p)
+
+	assert.False(t, u.DeltaLfPresent)
+	assert.Equal(t, 0, u.DeltaLfRes)
+	assert.Equal(t, 0, u.DeltaLfMulti)
+
+}
+
+func TestDeltaLfParamsPresent(t *testing.T) {
+	var data = []byte{0b11010000}
+	p := NewParser(data)
+
+	u := UncompressedHeader{}
+	u.DeltaQPresent = true
+	u.AllowIntraBc = false
+	u.deltaLfParams(&p)
+
+	assert.True(t, u.DeltaLfPresent)
+	assert.Equal(t, 2, u.DeltaLfRes)
+	assert.Equal(t, 1, u.DeltaLfMulti)
 }

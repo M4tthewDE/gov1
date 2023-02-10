@@ -37,6 +37,10 @@ type UncompressedHeader struct {
 	ReferenceSelect          bool
 	CodedLossless            bool
 	TxMode                   int
+	DeltaQPresent            bool
+	DeltaLfPresent           bool
+	DeltaLfRes               int
+	DeltaLfMulti             int
 }
 
 func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
@@ -164,7 +168,6 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 	}
 
 	var frameSizeOverrideFlag bool
-
 	// SWITCH_FRAME
 	if frameType == 3 {
 		frameSizeOverrideFlag = true
@@ -332,7 +335,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 	p.quantizationParams()
 	p.segmentationParams()
 	p.deltaQParams()
-	p.deltaLfParams()
+	u.deltaLfParams(p)
 
 	if primaryRefFrame == PRIMARY_REF_NONE {
 
@@ -487,8 +490,22 @@ func (p *Parser) deltaQParams() {
 	panic("not implemented")
 }
 
-func (p *Parser) deltaLfParams() {
-	panic("not implemented")
+// delta_lf_params()
+func (u *UncompressedHeader) deltaLfParams(p *Parser) {
+	u.DeltaLfPresent = false
+	u.DeltaLfRes = 0
+	u.DeltaLfMulti = 0
+
+	if u.DeltaQPresent {
+		if !u.AllowIntraBc {
+			u.DeltaLfPresent = p.f(1) != 0
+		}
+
+		if u.DeltaLfPresent {
+			u.DeltaLfRes = p.f(2)
+			u.DeltaLfMulti = p.f(1)
+		}
+	}
 }
 
 func (p *Parser) initCoeffCdfs() {
