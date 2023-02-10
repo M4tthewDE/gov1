@@ -69,7 +69,6 @@ func (u UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, e
 			}
 
 			u.RefreshImageFlags = 0
-
 			if sequenceHeader.FrameIdNumbersPresent {
 				u.DisplayFrameId = p.f(idLen)
 			}
@@ -548,5 +547,6 @@ func (p *Parser) LoadGrainParams(idx int) {
 func (p *Parser) chooseOperatingPoint() int {
 	// TODO: implement
 	// can be chose by implementation!
+	panic("not implemented")
 	return 0
 }
