@@ -142,7 +142,7 @@ func (s ObuSequenceHeader) Build(p *Parser) {
 					}
 					if s.DecoderModelPresentForThisOp[i] {
 						// TODO: what are we doing with this?
-						_ = p.parseOperatingParametersInfo(i)
+						_ = s.parseOperatingParametersInfo(p, i)
 					}
 				} else {
 					if len(s.DecoderModelPresentForThisOp) >= i {
@@ -398,7 +398,7 @@ func (p *Parser) parseColorConfig(seqProfile int) ColorConfig {
 }
 
 // operating_parameters_inf( op )
-func (p *Parser) parseOperatingParametersInfo(bufferDelayLengthMinusOne int) OperatingParametersInfo {
+func (s ObuSequenceHeader) parseOperatingParametersInfo(p *Parser, bufferDelayLengthMinusOne int) OperatingParametersInfo {
 	n := bufferDelayLengthMinusOne + 1
 
 	return OperatingParametersInfo{
