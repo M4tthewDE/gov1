@@ -17,6 +17,10 @@ const ONLY_4X4 = 0
 const TX_MODE_LARGEST = 1
 const TX_MODE_SELECT = 2
 
+const SUPERRES_DENOM_BITS = 3
+const SUPERRES_DENOM_MIN = 9
+const SUPERRES_NUM = 8
+
 type UncompressedHeader struct {
 	SequenceHeader           ObuSequenceHeader
 	ShowExistingFrame        bool
@@ -46,6 +50,10 @@ type UncompressedHeader struct {
 	BaseQIdx                 int
 	EnableOrderHint          bool
 	OrderHintBits            int
+	UseSuperRes              bool
+	SuperResDenom            int
+	FrameWidth               int
+	UpscaledWidth            int
 }
 
 func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
@@ -240,9 +248,6 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 		}
 	}
 
-	var UpscaledWidth int
-	var FrameWidth int
-
 	ref_frame_idx := []int{}
 	expectedFrameId := []int{}
 
@@ -250,7 +255,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 		p.frameSize()
 		p.renderSize()
 
-		if allowScreenContentTools && UpscaledWidth == FrameWidth {
+		if allowScreenContentTools && u.UpscaledWidth == u.FrameWidth {
 			u.AllowIntraBc = p.f(1) != 0
 		}
 	} else {
@@ -386,7 +391,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 		}
 	}
 
-	u.AllLossless = u.CodedLossless && (FrameWidth == UpscaledWidth)
+	u.AllLossless = u.CodedLossless && (u.FrameWidth == u.UpscaledWidth)
 
 	p.loopFilterParams()
 	p.cdefParams()
@@ -426,6 +431,25 @@ func (p *Parser) frameSizeWithRefs() {
 
 func (p *Parser) frameSize() {
 	panic("not implemented")
+}
+
+// superres_params()
+func (u *UncompressedHeader) superResParams(p *Parser) {
+	if u.SequenceHeader.EnableSuperRes {
+		u.UseSuperRes = p.f(1) != 0
+	} else {
+		u.UseSuperRes = false
+	}
+
+	if u.UseSuperRes {
+		codedDenom := p.f(SUPERRES_DENOM_BITS)
+		u.SuperResDenom = codedDenom + SUPERRES_DENOM_MIN
+	} else {
+		u.SuperResDenom = SUPERRES_NUM
+	}
+
+	u.UpscaledWidth = u.FrameWidth
+	u.FrameWidth = (u.UpscaledWidth*SUPERRES_NUM + (u.SuperResDenom / 2)) / u.SuperResDenom
 }
 
 // render_size()

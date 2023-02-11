@@ -133,3 +133,30 @@ func TestGetRelativeDist(t *testing.T) {
 	b := 5
 	assert.Equal(t, 1, u.getRelativeDist(a, b))
 }
+
+func TestSuperResparamsSuperResDisabled(t *testing.T) {
+	var data = []byte{0b00000000}
+	p := NewParser(data)
+
+	u := UncompressedHeader{}
+
+	u.superResParams(&p)
+
+	assert.False(t, u.UseSuperRes)
+	assert.Equal(t, 8, u.SuperResDenom)
+	assert.Equal(t, 0, u.FrameWidth)
+}
+
+func TestSuperResparams(t *testing.T) {
+	var data = []byte{0b10000000}
+	p := NewParser(data)
+
+	u := UncompressedHeader{}
+	u.SequenceHeader.EnableSuperRes = true
+
+	u.superResParams(&p)
+
+	assert.True(t, u.UseSuperRes)
+	assert.Equal(t, 9, u.SuperResDenom)
+	assert.Equal(t, 0, u.FrameWidth)
+}
