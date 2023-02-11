@@ -153,7 +153,7 @@ func (s *SequenceHeader) Build(p *Parser) {
 					}
 					if s.DecoderModelPresentForThisOp[i] {
 						// TODO: what are we doing with this?
-						_ = s.parseOperatingParametersInfo(p, i)
+						_ = NewOperatingParametersInfo(p, i)
 					}
 				} else {
 					if len(s.DecoderModelPresentForThisOp) >= i {
@@ -375,8 +375,8 @@ func (c *ColorConfig) build(p *Parser, seqProfile int) {
 	c.SeparateUvDeltaQ = p.f(1) != 0
 }
 
-// operating_parameters_inf( op )
-func (s *SequenceHeader) parseOperatingParametersInfo(p *Parser, bufferDelayLengthMinusOne int) OperatingParametersInfo {
+// operating_parameters_info( op )
+func NewOperatingParametersInfo(p *Parser, bufferDelayLengthMinusOne int) OperatingParametersInfo {
 	n := bufferDelayLengthMinusOne + 1
 
 	return OperatingParametersInfo{
