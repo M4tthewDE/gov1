@@ -715,8 +715,6 @@ func (p *Parser) LoadGrainParams(idx int) {
 
 // choose_operating_point()
 func (p *Parser) chooseOperatingPoint() int {
-	// TODO: implement
-	// can be chose by implementation!
-	panic("not implemented")
+	// TODO: implement properly
 	return 0
 }
