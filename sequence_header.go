@@ -127,57 +127,30 @@ func (s *SequenceHeader) Build(p *Parser) {
 			s.OperatingPointsCountMinusOne = p.f(5)
 
 			for i := 0; i <= s.OperatingPointsCountMinusOne; i++ {
-				if len(operatingPointIdcArray) >= i {
-					operatingPointIdcArray = append(operatingPointIdcArray, p.f(12))
-				} else {
-					operatingPointIdcArray[i] = p.f(12)
-				}
-
-				if len(s.SeqLevelIdx) >= i {
-					s.SeqLevelIdx = append(s.SeqLevelIdx, p.f(12))
-				} else {
-					s.SeqLevelIdx[i] = p.f(12)
-				}
+				operatingPointIdcArray = SliceAssign(operatingPointIdcArray, i, p.f(12))
+				s.SeqLevelIdx = SliceAssign(s.SeqLevelIdx, i, p.f(12))
 
 				if s.SeqLevelIdx[i] > 7 {
-					s.SeqTier = append(s.SeqTier, p.f(1))
+					s.SeqTier = SliceAssign(s.SeqTier, i, p.f(1))
 				} else {
-					s.SeqTier = append(s.SeqTier, 0)
+					s.SeqTier = SliceAssign(s.SeqTier, i, 0)
 				}
 				if s.DecoderModelInfoPresent {
-					s.DecoderModelPresentForThisOp[i] = p.f(1) != 0
-					if len(s.DecoderModelPresentForThisOp) >= i {
-						s.DecoderModelPresentForThisOp = append(s.DecoderModelPresentForThisOp, p.f(1) != 0)
-					} else {
-						s.DecoderModelPresentForThisOp[i] = p.f(1) != 0
-					}
+					s.DecoderModelPresentForThisOp = SliceAssign(s.DecoderModelPresentForThisOp, i, p.f(1) != 0)
+
 					if s.DecoderModelPresentForThisOp[i] {
 						// TODO: what are we doing with this?
 						_ = NewOperatingParametersInfo(p, i)
 					}
 				} else {
-					if len(s.DecoderModelPresentForThisOp) >= i {
-						s.DecoderModelPresentForThisOp = append(s.DecoderModelPresentForThisOp, false)
-					} else {
-						s.DecoderModelPresentForThisOp[i] = false
-					}
+					s.DecoderModelPresentForThisOp = SliceAssign(s.DecoderModelPresentForThisOp, i, false)
 				}
 
 				if s.InitialDisplayDelayPresent {
-					if len(s.InitialDisplayDelayPresentForThisOp) >= i {
-						s.InitialDisplayDelayPresentForThisOp = append(s.InitialDisplayDelayPresentForThisOp, p.f(1) != 0)
-					} else {
-						s.InitialDisplayDelayPresentForThisOp[i] = p.f(1) != 0
-					}
+					s.InitialDisplayDelayPresentForThisOp = SliceAssign(s.InitialDisplayDelayPresentForThisOp, i, p.f(1) != 0)
 
-					s.InitialDisplayDelayPresentForThisOp[i] = p.f(1) != 0
 					if s.InitialDisplayDelayPresentForThisOp[i] {
-						if len(s.InitialDisplayDelayMinusOne) >= i {
-							s.InitialDisplayDelayMinusOne = append(s.InitialDisplayDelayMinusOne, p.f(4))
-
-						} else {
-							s.InitialDisplayDelayMinusOne[i] = p.f(4)
-						}
+						s.InitialDisplayDelayMinusOne = SliceAssign(s.InitialDisplayDelayMinusOne, i, p.f(4))
 					}
 				}
 			}
