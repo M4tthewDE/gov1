@@ -112,3 +112,24 @@ func TestDeltaQParamsPresent(t *testing.T) {
 	assert.True(t, u.DeltaQPresent)
 	assert.Equal(t, 3, u.DeltaQRes)
 }
+
+func TestGetRelativeDistEnableOrderHintfalse(t *testing.T) {
+	u := UncompressedHeader{}
+
+	u.EnableOrderHint = false
+
+	a := 0
+	b := 0
+	assert.Equal(t, 0, u.getRelativeDist(a, b))
+}
+
+func TestGetRelativeDist(t *testing.T) {
+	u := UncompressedHeader{}
+
+	u.EnableOrderHint = true
+	u.SequenceHeader.OrderHintBits = 2
+
+	a := 10
+	b := 5
+	assert.Equal(t, 1, u.getRelativeDist(a, b))
+}

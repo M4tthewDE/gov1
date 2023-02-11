@@ -18,6 +18,7 @@ const TX_MODE_LARGEST = 1
 const TX_MODE_SELECT = 2
 
 type UncompressedHeader struct {
+	SequenceHeader           ObuSequenceHeader
 	ShowExistingFrame        bool
 	TemporalPointInfo        int
 	ShowableFrame            bool
@@ -43,9 +44,13 @@ type UncompressedHeader struct {
 	DeltaLfRes               int
 	DeltaLfMulti             int
 	BaseQIdx                 int
+	EnableOrderHint          bool
+	OrderHintBits            int
 }
 
 func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
+	u.SequenceHeader = sequenceHeader
+
 	var idLen int
 	if sequenceHeader.FrameIdNumbersPresent {
 		idLen = sequenceHeader.AdditionalFrameIdLengthMinusOne +
@@ -309,7 +314,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 			if !sequenceHeader.EnableOrderHint {
 				RefFrameSignBias[refFrame] = false
 			} else {
-				RefFrameSignBias[refFrame] = p.getRelativeDist(hint, OrderHint) > 0
+				RefFrameSignBias[refFrame] = u.getRelativeDist(hint, OrderHint) > 0
 			}
 		}
 	}
@@ -452,8 +457,17 @@ func (p *Parser) readInterpolationFilter() int {
 	return interpolationFilter
 }
 
-func (p *Parser) getRelativeDist(hint int, OrderHint int) int {
-	panic("not implemented")
+// get_relative_dist()
+func (u *UncompressedHeader) getRelativeDist(a int, b int) int {
+	if !u.EnableOrderHint {
+		return 0
+	}
+
+	diff := a - b
+	m := 1 << (u.SequenceHeader.OrderHintBits - 1)
+	diff = (diff & (m - 1)) - (diff & m)
+
+	return diff
 }
 
 func (p *Parser) initNonCoeffCdfs() {
