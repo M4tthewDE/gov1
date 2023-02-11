@@ -432,17 +432,17 @@ func (p *Parser) frameSizeWithRefs() {
 // frame_size()
 func (u *UncompressedHeader) frameSize(p *Parser) {
 	if u.FrameSizeOverrideFlag {
-		n := u.SequenceHeader.FrameWidthbitsMinusOne + 1
+		n := u.SequenceHeader.FrameWidthBitsMinusOne + 1
 		frameWidthMinusOne := p.f(n)
 
-		n = u.SequenceHeader.FrameHeightbitsMinusOne + 1
+		n = u.SequenceHeader.FrameHeightBitsMinusOne + 1
 		frameHeightMinusOne := p.f(n)
 
 		u.FrameWidth = frameWidthMinusOne + 1
 		u.FrameHeight = frameHeightMinusOne + 1
 	} else {
 		u.FrameWidth = u.SequenceHeader.MaxFrameWidthMinusOne + 1
-		u.FrameHeight = u.SequenceHeader.MaxFrameHeightinusOne + 1
+		u.FrameHeight = u.SequenceHeader.MaxFrameHeightMinusOne + 1
 	}
 
 	u.superResParams(p)

@@ -81,7 +81,9 @@ func (p *Parser) ParseObu(sz int) {
 
 	switch obu.Header.Type {
 	case OBU_SEQUENCE_HEADER:
-		obu.SequenceHeader = p.ParseObuSequenceHeader()
+		s := ObuSequenceHeader{}
+		s.Build(p)
+		obu.SequenceHeader = s
 
 		x, _ := json.MarshalIndent(obu.SequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))

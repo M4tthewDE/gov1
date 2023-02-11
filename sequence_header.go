@@ -15,10 +15,10 @@ type ObuSequenceHeader struct {
 	InitialDisplayDelayPresentForThisOp []bool
 	InitialDisplayDelayMinusOne         []int
 	OperatingPointIdc                   []int
-	FrameWidthbitsMinusOne              int
-	FrameHeightbitsMinusOne             int
+	FrameWidthBitsMinusOne              int
+	FrameHeightBitsMinusOne             int
 	MaxFrameWidthMinusOne               int
-	MaxFrameHeightinusOne               int
+	MaxFrameHeightMinusOne              int
 	FrameIdNumbersPresent               bool
 	AdditionalFrameIdLengthMinusOne     int
 	DeltaFrameIdLengthMinusTwo          int
@@ -81,114 +81,91 @@ type OperatingParametersInfo struct {
 }
 
 // sequence_header_obu()
-func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
-	var timingInfo TimingInfo
-	var decoderModelInfo DecoderModelInfo
-	var frameWidthBitsMinusOne int
-	var frameHeightBitsMinusOne int
-	var maxFrameWidthMinusOne int
-	var maxFrameHeightMinusOne int
-	var frameIdNumbersPresent bool
-	var additionalFrameIdLengthMinusOne int
-	var deltaFrameIdLengthMinusTwo int
-	var use128x128Superblock bool
-	var enableFilterIntra bool
-	var enableIntraEdgeFilter bool
-	var enableInterIntraCompound bool
-	var enableMaskedCompound bool
-	var enableWarpedMotion bool
-	var enableOrderHint bool
-	var enableDualFilter bool
-	var enableJntComp bool
-	var enableRefFrameMvs bool
-	var seqChooseScreenContentTools bool
-	var seqForceScreenContentTools int
-	var seqChooseIntegerMv bool
-	var seqForceIntegerMv int
-	var orderHintBits int
+func (s ObuSequenceHeader) Build(p *Parser) {
+	s.SeqProfile = p.f(3)
+	s.StillPicture = p.f(1) != 0
+	s.ReducedStillPictureHeader = p.f(1) != 0
 
-	seqProfile := p.f(3)
-	stillPicture := p.f(1) != 0
-	reducedStillPictureHeader := p.f(1) != 0
+	s.InitialDisplayDelayPresent = false
+	s.OperatingPointsCountMinusOne = 0
 
-	timingInfoPresent := false
-	decoderModelInfoPresent := false
-	initialDisplayDelayPresent := false
-	operatingPointsCountMinusOne := 0
 	operatingPointIdcArray := []int{0}
-	seqLevelIdx := []int{p.f(5)}
-	seqTier := []int{0}
-	decoderModelPresentForThisOp := []bool{false}
-	initialDisplayDelayPresentForThisOp := []bool{false}
-	initialDisplayDelayMinusOne := []int{}
 
-	if !reducedStillPictureHeader {
-		timingInfoPresent = p.f(1) != 0
+	s.SeqLevelIdx = []int{p.f(5)}
+	s.SeqTier = []int{0}
+	s.DecoderModelPresentForThisOp = []bool{false}
+	s.InitialDisplayDelayPresentForThisOp = []bool{false}
+	s.InitialDisplayDelayMinusOne = []int{}
+
+	if !s.ReducedStillPictureHeader {
+		timingInfoPresent := p.f(1) != 0
 		if timingInfoPresent {
-			timingInfo = p.parseTimingInfo()
-			decoderModelInfoPresent = p.f(1) != 0
+			s.TimingInfo = p.parseTimingInfo()
+			s.DecoderModelInfoPresent = p.f(1) != 0
 
-			if decoderModelInfoPresent {
-				decoderModelInfo = DecoderModelInfo{
+			if s.DecoderModelInfoPresent {
+				s.DecoderModelInfo = DecoderModelInfo{
 					BufferDelayLengthMinusOne:           p.f(5),
 					NumUnitsInDecodingTick:              p.f(32),
 					BufferRemovalTimeLengthMinusOne:     p.f(5),
 					FramePresentationTimeLengthMinusOne: p.f(5),
 				}
 			}
-			initialDisplayDelayPresent = p.f(1) != 0
-			operatingPointsCountMinusOne = p.f(5)
 
-			for i := 0; i <= operatingPointsCountMinusOne; i++ {
+			s.InitialDisplayDelayPresent = p.f(1) != 0
+			s.OperatingPointsCountMinusOne = p.f(5)
+
+			for i := 0; i <= s.OperatingPointsCountMinusOne; i++ {
 				if len(operatingPointIdcArray) >= i {
 					operatingPointIdcArray = append(operatingPointIdcArray, p.f(12))
 				} else {
 					operatingPointIdcArray[i] = p.f(12)
 				}
 
-				if len(seqLevelIdx) >= i {
-					seqLevelIdx = append(seqLevelIdx, p.f(12))
+				if len(s.SeqLevelIdx) >= i {
+					s.SeqLevelIdx = append(s.SeqLevelIdx, p.f(12))
 				} else {
-					seqLevelIdx[i] = p.f(12)
+					s.SeqLevelIdx[i] = p.f(12)
 				}
 
-				if seqLevelIdx[i] > 7 {
-					seqTier = append(seqTier, p.f(1))
+				if s.SeqLevelIdx[i] > 7 {
+					s.SeqTier = append(s.SeqTier, p.f(1))
 				} else {
-					seqTier = append(seqTier, 0)
+					s.SeqTier = append(s.SeqTier, 0)
 				}
-				if decoderModelInfoPresent {
-					decoderModelPresentForThisOp[i] = p.f(1) != 0
-					if len(decoderModelPresentForThisOp) >= i {
-						decoderModelPresentForThisOp = append(decoderModelPresentForThisOp, p.f(1) != 0)
+				if s.DecoderModelInfoPresent {
+					s.DecoderModelPresentForThisOp[i] = p.f(1) != 0
+					if len(s.DecoderModelPresentForThisOp) >= i {
+						s.DecoderModelPresentForThisOp = append(s.DecoderModelPresentForThisOp, p.f(1) != 0)
 					} else {
-						decoderModelPresentForThisOp[i] = p.f(1) != 0
+						s.DecoderModelPresentForThisOp[i] = p.f(1) != 0
 					}
-					if decoderModelPresentForThisOp[i] {
+					if s.DecoderModelPresentForThisOp[i] {
 						// TODO: what are we doing with this?
 						_ = p.parseOperatingParametersInfo(i)
 					}
 				} else {
-					if len(decoderModelPresentForThisOp) >= i {
-						decoderModelPresentForThisOp = append(decoderModelPresentForThisOp, false)
+					if len(s.DecoderModelPresentForThisOp) >= i {
+						s.DecoderModelPresentForThisOp = append(s.DecoderModelPresentForThisOp, false)
 					} else {
-						decoderModelPresentForThisOp[i] = false
+						s.DecoderModelPresentForThisOp[i] = false
 					}
 				}
 
-				if initialDisplayDelayPresent {
-					if len(initialDisplayDelayPresentForThisOp) >= i {
-						initialDisplayDelayPresentForThisOp = append(initialDisplayDelayPresentForThisOp, p.f(1) != 0)
+				if s.InitialDisplayDelayPresent {
+					if len(s.InitialDisplayDelayPresentForThisOp) >= i {
+						s.InitialDisplayDelayPresentForThisOp = append(s.InitialDisplayDelayPresentForThisOp, p.f(1) != 0)
 					} else {
-						initialDisplayDelayPresentForThisOp[i] = p.f(1) != 0
+						s.InitialDisplayDelayPresentForThisOp[i] = p.f(1) != 0
 					}
-					initialDisplayDelayPresentForThisOp[i] = p.f(1) != 0
-					if initialDisplayDelayPresentForThisOp[i] {
-						if len(initialDisplayDelayMinusOne) >= i {
-							initialDisplayDelayMinusOne = append(initialDisplayDelayMinusOne, p.f(4))
+
+					s.InitialDisplayDelayPresentForThisOp[i] = p.f(1) != 0
+					if s.InitialDisplayDelayPresentForThisOp[i] {
+						if len(s.InitialDisplayDelayMinusOne) >= i {
+							s.InitialDisplayDelayMinusOne = append(s.InitialDisplayDelayMinusOne, p.f(4))
 
 						} else {
-							initialDisplayDelayMinusOne[i] = p.f(4)
+							s.InitialDisplayDelayMinusOne[i] = p.f(4)
 						}
 					}
 				}
@@ -197,131 +174,88 @@ func (p *Parser) ParseObuSequenceHeader() ObuSequenceHeader {
 		operatingPoint := p.chooseOperatingPoint()
 		p.operatingPointIdc = operatingPointIdcArray[operatingPoint]
 
-		frameWidthBitsMinusOne = p.f(4)
-		frameHeightBitsMinusOne = p.f(4)
+		s.FrameWidthBitsMinusOne = p.f(4)
+		s.FrameHeightBitsMinusOne = p.f(4)
 
-		n := frameWidthBitsMinusOne + 1
-		maxFrameWidthMinusOne = p.f(n)
+		n := s.FrameWidthBitsMinusOne + 1
+		s.MaxFrameWidthMinusOne = p.f(n)
 
-		n = frameHeightBitsMinusOne + 1
-		maxFrameHeightMinusOne = p.f(n)
+		n = s.FrameHeightBitsMinusOne + 1
+		s.MaxFrameHeightMinusOne = p.f(n)
 
-		frameIdNumbersPresent = false
+		s.FrameIdNumbersPresent = false
 
-		if reducedStillPictureHeader {
-			frameIdNumbersPresent = false
+		if s.ReducedStillPictureHeader {
+			s.FrameIdNumbersPresent = false
 		} else {
-			frameIdNumbersPresent = p.f(1) != 0
+			s.FrameIdNumbersPresent = p.f(1) != 0
 		}
 
-		if frameIdNumbersPresent {
-			deltaFrameIdLengthMinusTwo = p.f(4)
-			additionalFrameIdLengthMinusOne = p.f(3)
+		if s.FrameIdNumbersPresent {
+			s.DeltaFrameIdLengthMinusTwo = p.f(4)
+			s.AdditionalFrameIdLengthMinusOne = p.f(3)
 		}
 
-		use128x128Superblock = p.f(1) != 0
-		enableFilterIntra = p.f(1) != 0
-		enableIntraEdgeFilter = p.f(1) != 0
-		enableInterIntraCompound = false
-		enableMaskedCompound = false
-		enableWarpedMotion = false
-		enableDualFilter = false
-		enableOrderHint := false
-		enableJntComp = false
-		enableRefFrameMvs = false
+		s.Use128x128SuperBlock = p.f(1) != 0
+		s.EnableFilterIntra = p.f(1) != 0
+		s.EnableIntraEdgeFilter = p.f(1) != 0
+		s.EnableInterIntraCompound = false
+		s.EnableMaskedCompound = false
+		s.EnableWarpedMotion = false
+		s.EnableDualFilter = false
+		s.EnableOrderHint = false
+		s.EnableJntComp = false
+		s.EnableRefFrameMvs = false
 
 		// SELECT_SCREEN_CONTENT_TOOLS
-		seqForceScreenContentTools = 2
+		s.SeqForceScreenContentTools = 2
 
 		// SELECT_INTEGER_MV
-		seqForceIntegerMv = 2
+		s.SeqForceIntegerMv = 2
 
-		orderHintBits = 0
+		s.OrderHintBits = 0
 
-		if !reducedStillPictureHeader {
-			enableInterIntraCompound = p.f(1) != 0
-			enableMaskedCompound = p.f(1) != 0
-			enableWarpedMotion = p.f(1) != 0
-			enableDualFilter = p.f(1) != 0
-			enableOrderHint = p.f(1) != 0
-			if enableOrderHint {
-				enableJntComp = p.f(1) != 0
-				enableRefFrameMvs = p.f(1) != 0
+		if !s.ReducedStillPictureHeader {
+			s.EnableInterIntraCompound = p.f(1) != 0
+			s.EnableMaskedCompound = p.f(1) != 0
+			s.EnableWarpedMotion = p.f(1) != 0
+			s.EnableDualFilter = p.f(1) != 0
+			s.EnableOrderHint = p.f(1) != 0
+			if s.EnableOrderHint {
+				s.EnableJntComp = p.f(1) != 0
+				s.EnableRefFrameMvs = p.f(1) != 0
 			}
-			seqChooseScreenContentTools = p.f(1) != 0
-			if seqChooseScreenContentTools {
-				seqForceScreenContentTools = 2
+
+			s.SeqChooseScreenContentTools = p.f(1) != 0
+			if s.SeqChooseScreenContentTools {
+				s.SeqForceScreenContentTools = 2
 			} else {
-				seqForceScreenContentTools = p.f(1)
+				s.SeqForceScreenContentTools = p.f(1)
 			}
 
-			if seqForceScreenContentTools > 0 {
+			if s.SeqForceScreenContentTools > 0 {
 				seqChooseIntegerMv := p.f(1) != 0
 
 				if seqChooseIntegerMv {
-					seqForceIntegerMv = 2
+					s.SeqForceIntegerMv = 2
 				} else {
-					seqForceIntegerMv = p.f(1)
+					s.SeqForceIntegerMv = p.f(1)
 				}
 			} else {
-				seqForceIntegerMv = 2
+				s.SeqForceIntegerMv = 2
 			}
 
-			if enableOrderHint {
-				orderHintBits = p.f(3) + 1
+			if s.EnableOrderHint {
+				s.OrderHintBits = p.f(3) + 1
 			}
 		}
 	}
 
-	enableSuperRes := p.f(1) != 0
-	enableCdef := p.f(1) != 0
-	enableRestoration := p.f(1) != 0
-	colorConfig := p.parseColorConfig(seqProfile)
-	filmGrainParamsPresent := p.f(1) != 0
-
-	return ObuSequenceHeader{
-		SeqProfile:                          seqProfile,
-		StillPicture:                        stillPicture,
-		ReducedStillPictureHeader:           reducedStillPictureHeader,
-		TimingInfo:                          timingInfo,
-		DecoderModelInfoPresent:             decoderModelInfoPresent,
-		DecoderModelInfo:                    decoderModelInfo,
-		InitialDisplayDelayPresent:          initialDisplayDelayPresent,
-		OperatingPointsCountMinusOne:        operatingPointsCountMinusOne,
-		SeqLevelIdx:                         seqLevelIdx,
-		SeqTier:                             seqTier,
-		DecoderModelPresentForThisOp:        decoderModelPresentForThisOp,
-		InitialDisplayDelayPresentForThisOp: initialDisplayDelayPresentForThisOp,
-		InitialDisplayDelayMinusOne:         initialDisplayDelayMinusOne,
-		OperatingPointIdc:                   operatingPointIdcArray,
-		FrameWidthbitsMinusOne:              frameWidthBitsMinusOne,
-		FrameHeightbitsMinusOne:             frameHeightBitsMinusOne,
-		MaxFrameWidthMinusOne:               maxFrameWidthMinusOne,
-		MaxFrameHeightinusOne:               maxFrameHeightMinusOne,
-		FrameIdNumbersPresent:               frameIdNumbersPresent,
-		AdditionalFrameIdLengthMinusOne:     additionalFrameIdLengthMinusOne,
-		DeltaFrameIdLengthMinusTwo:          deltaFrameIdLengthMinusTwo,
-		Use128x128SuperBlock:                use128x128Superblock,
-		EnableFilterIntra:                   enableFilterIntra,
-		EnableIntraEdgeFilter:               enableIntraEdgeFilter,
-		EnableInterIntraCompound:            enableInterIntraCompound,
-		EnableMaskedCompound:                enableMaskedCompound,
-		EnableWarpedMotion:                  enableWarpedMotion,
-		EnableOrderHint:                     enableOrderHint,
-		EnableDualFilter:                    enableDualFilter,
-		EnableJntComp:                       enableJntComp,
-		EnableRefFrameMvs:                   enableRefFrameMvs,
-		SeqChooseScreenContentTools:         seqChooseScreenContentTools,
-		SeqForceScreenContentTools:          seqForceScreenContentTools,
-		SeqChooseIntegerMv:                  seqChooseIntegerMv,
-		SeqForceIntegerMv:                   seqForceIntegerMv,
-		OrderHintBits:                       orderHintBits,
-		EnableSuperRes:                      enableSuperRes,
-		EnableCdef:                          enableCdef,
-		EnableRestoration:                   enableRestoration,
-		ColorConfig:                         colorConfig,
-		FilmGrainParamsPresent:              filmGrainParamsPresent,
-	}
+	s.EnableSuperRes = p.f(1) != 0
+	s.EnableCdef = p.f(1) != 0
+	s.EnableRestoration = p.f(1) != 0
+	s.ColorConfig = p.parseColorConfig(s.SeqProfile)
+	s.FilmGrainParamsPresent = p.f(1) != 0
 }
 
 func (p *Parser) parseTimingInfo() TimingInfo {
