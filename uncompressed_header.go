@@ -416,11 +416,6 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 	p.filmGrainParams()
 }
 
-// frame_header_copy()
-func (p *Parser) FrameHeaderCopy() {
-	panic("not implemented")
-}
-
 func (p *Parser) markRefFrames(a int) {
 	panic("not implemented")
 }
