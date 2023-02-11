@@ -21,6 +21,8 @@ const SUPERRES_DENOM_BITS = 3
 const SUPERRES_DENOM_MIN = 9
 const SUPERRES_NUM = 8
 
+const SWITCH_FRAME = 3
+
 type UncompressedHeader struct {
 	SequenceHeader           ObuSequenceHeader
 	ShowExistingFrame        bool
@@ -57,6 +59,7 @@ type UncompressedHeader struct {
 	UpscaledWidth            int
 	MiCols                   int
 	MiRows                   int
+	FrameSizeOverrideFlag    bool
 }
 
 func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
@@ -185,15 +188,13 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 		currentFrameId = 0
 	}
 
-	var frameSizeOverrideFlag bool
-	// SWITCH_FRAME
-	if frameType == 3 {
-		frameSizeOverrideFlag = true
+	if frameType == SWITCH_FRAME {
+		u.FrameSizeOverrideFlag = true
 	} else if sequenceHeader.ReducedStillPictureHeader {
-		frameSizeOverrideFlag = false
+		u.FrameSizeOverrideFlag = false
 
 	} else {
-		frameSizeOverrideFlag = p.f(1) != 0
+		u.FrameSizeOverrideFlag = p.f(1) != 0
 	}
 
 	orderHint := p.f(sequenceHeader.OrderHintBits)
@@ -255,7 +256,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 	expectedFrameId := []int{}
 
 	if u.FrameIsIntra {
-		p.frameSize()
+		u.frameSize(p)
 		p.renderSize()
 
 		if allowScreenContentTools && u.UpscaledWidth == u.FrameWidth {
@@ -288,10 +289,10 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 			}
 		}
 
-		if frameSizeOverrideFlag && !errorResilientMode {
+		if u.FrameSizeOverrideFlag && !errorResilientMode {
 			p.frameSizeWithRefs()
 		} else {
-			p.frameSize()
+			u.frameSize(p)
 			p.renderSize()
 
 		}
@@ -432,8 +433,24 @@ func (p *Parser) frameSizeWithRefs() {
 	panic("not implemented")
 }
 
-func (p *Parser) frameSize() {
-	panic("not implemented")
+// frame_size()
+func (u *UncompressedHeader) frameSize(p *Parser) {
+	if u.FrameSizeOverrideFlag {
+		n := u.SequenceHeader.FrameWidthbitsMinusOne + 1
+		frameWidthMinusOne := p.f(n)
+
+		n = u.SequenceHeader.FrameHeightbitsMinusOne + 1
+		frameHeightMinusOne := p.f(n)
+
+		u.FrameWidth = frameWidthMinusOne + 1
+		u.FrameHeight = frameHeightMinusOne + 1
+	} else {
+		u.FrameWidth = u.SequenceHeader.MaxFrameWidthMinusOne + 1
+		u.FrameHeight = u.SequenceHeader.MaxFrameHeightinusOne + 1
+	}
+
+	u.superResParams(p)
+	u.computeImageSize()
 }
 
 // superres_params()
