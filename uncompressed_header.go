@@ -53,7 +53,10 @@ type UncompressedHeader struct {
 	UseSuperRes              bool
 	SuperResDenom            int
 	FrameWidth               int
+	FrameHeight              int
 	UpscaledWidth            int
+	MiCols                   int
+	MiRows                   int
 }
 
 func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
@@ -450,6 +453,12 @@ func (u *UncompressedHeader) superResParams(p *Parser) {
 
 	u.UpscaledWidth = u.FrameWidth
 	u.FrameWidth = (u.UpscaledWidth*SUPERRES_NUM + (u.SuperResDenom / 2)) / u.SuperResDenom
+}
+
+// compute_image_size()
+func (u *UncompressedHeader) computeImageSize() {
+	u.MiCols = 2 * ((u.FrameWidth + 7) >> 3)
+	u.MiRows = 2 * ((u.FrameHeight + 7) >> 3)
 }
 
 // render_size()

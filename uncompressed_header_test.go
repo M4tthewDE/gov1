@@ -160,3 +160,14 @@ func TestSuperResparams(t *testing.T) {
 	assert.Equal(t, 9, u.SuperResDenom)
 	assert.Equal(t, 0, u.FrameWidth)
 }
+
+func TestComputeImageSize(t *testing.T) {
+	u := UncompressedHeader{}
+
+	u.FrameWidth = 3
+	u.FrameHeight = 2
+	u.computeImageSize()
+
+	assert.Equal(t, 2, u.MiCols)
+	assert.Equal(t, 2, u.MiRows)
+}
