@@ -57,6 +57,7 @@ type UncompressedHeader struct {
 	FrameWidth               int
 	FrameHeight              int
 	UpscaledWidth            int
+	UpscaledHeight           int
 	MiCols                   int
 	MiRows                   int
 	FrameSizeOverrideFlag    bool
@@ -69,6 +70,9 @@ type UncompressedHeader struct {
 	Qmy                      int
 	Qmu                      int
 	Qmv                      int
+	RenderWidth              int
+	RenderHeight             int
+	InterpolationFilter      int
 }
 
 func NewUncompressedHeader(p *Parser, sequenceHeader SequenceHeader, extensionHeader ObuExtensionHeader) UncompressedHeader {
@@ -272,7 +276,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 
 	if u.FrameIsIntra {
 		u.frameSize(p)
-		p.renderSize()
+		u.renderSize(p)
 
 		if allowScreenContentTools && u.UpscaledWidth == u.FrameWidth {
 			u.AllowIntraBc = p.f(1) != 0
@@ -308,7 +312,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 			p.frameSizeWithRefs()
 		} else {
 			u.frameSize(p)
-			p.renderSize()
+			u.renderSize(p)
 
 		}
 		if forceIntegerMv {
@@ -318,7 +322,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 			u.AllowHighPrecisionMv = p.f(1) != 0
 		}
 
-		p.readInterpolationFilter()
+		u.readInterpolationFilter(p)
 		u.IsMotionModeSwitchable = p.f(1) != 0
 
 		if errorResilientMode || !sequenceHeader.EnableRefFrameMvs {
@@ -481,32 +485,29 @@ func (u *UncompressedHeader) computeImageSize() {
 }
 
 // render_size()
-func (p *Parser) renderSize() {
+func (u *UncompressedHeader) renderSize(p *Parser) {
 	renderAndFramSizeDifferent := p.f(1) != 0
 
 	if renderAndFramSizeDifferent {
 		renderWidthMinusOne := p.f(16)
 		renderHeightMinusOne := p.f(16)
 
-		p.renderWidth = renderWidthMinusOne + 1
-		p.renderHeight = renderHeightMinusOne + 1
+		u.RenderWidth = renderWidthMinusOne + 1
+		u.RenderHeight = renderHeightMinusOne + 1
 	} else {
-		p.renderWidth = p.upscaledWidth
-		p.renderHeight = p.upscaledHeight
+		u.RenderWidth = u.UpscaledWidth
+		u.RenderHeight = u.UpscaledHeight
 	}
 }
 
-func (p *Parser) readInterpolationFilter() int {
+func (u *UncompressedHeader) readInterpolationFilter(p *Parser) {
 	isFilterSwitchable := p.f(1) != 0
 
-	var interpolationFilter int
 	if isFilterSwitchable {
-		interpolationFilter = SWITCHABLE
+		u.InterpolationFilter = SWITCHABLE
 	} else {
-		interpolationFilter = p.f(2)
+		u.InterpolationFilter = p.f(2)
 	}
-
-	return interpolationFilter
 }
 
 // get_relative_dist()

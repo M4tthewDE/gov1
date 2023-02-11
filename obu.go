@@ -132,7 +132,6 @@ func (p *Parser) ParseFrameHeader(sequenceHeader SequenceHeader, extensionHeader
 		p.FrameHeaderCopy()
 	} else {
 		p.seenFrameHeader = true
-
 		uncompressedHeader := NewUncompressedHeader(p, sequenceHeader, extensionHeader)
 
 		if uncompressedHeader.ShowExistingFrame {
