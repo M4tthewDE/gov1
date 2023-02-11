@@ -63,7 +63,7 @@ func TestObuHeader(t *testing.T) {
 	var data = []byte{0b10001101, 0b11101001}
 	p := NewParser(data)
 
-	header := p.ParseObuHeader()
+	header := NewHeader(&p)
 
 	assert.Equal(t, true, header.ForbiddenBit)
 	assert.Equal(t, OBU_SEQUENCE_HEADER, header.Type)
@@ -76,7 +76,7 @@ func TestObuExtensionHeader(t *testing.T) {
 	var data = []byte{0b01101110}
 	p := NewParser(data)
 
-	extensionHeader := p.ParseObuExtensionHeader()
+	extensionHeader := NewExtensionHeader(&p)
 
 	assert.Equal(t, 3, extensionHeader.TemporalID)
 	assert.Equal(t, 1, extensionHeader.SpatialID)

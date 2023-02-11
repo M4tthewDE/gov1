@@ -1,22 +1,22 @@
 package main
 
-type ObuHeader struct {
+type Header struct {
 	ForbiddenBit       bool
 	Type               int
 	ExtensionFlag      bool
 	HasSizeField       bool
 	ReservedBit        bool
-	ObuExtensionHeader ObuExtensionHeader
+	ObuExtensionHeader ExtensionHeader
 }
 
-type ObuExtensionHeader struct {
+type ExtensionHeader struct {
 	TemporalID    int
 	SpatialID     int
 	Reserved3Bits int
 }
 
 // obu_header()
-func (p *Parser) ParseObuHeader() ObuHeader {
+func NewHeader(p *Parser) Header {
 	forbiddenBit := p.f(1) != 0
 	obuType := p.f(4)
 	extensionFlag := p.f(1) != 0
@@ -24,8 +24,8 @@ func (p *Parser) ParseObuHeader() ObuHeader {
 	reservedBit := p.f(1) != 0
 
 	if extensionFlag {
-		extensionHeader := p.ParseObuExtensionHeader()
-		return ObuHeader{
+		extensionHeader := NewExtensionHeader(p)
+		return Header{
 			ForbiddenBit:       forbiddenBit,
 			Type:               obuType,
 			ExtensionFlag:      extensionFlag,
@@ -35,7 +35,7 @@ func (p *Parser) ParseObuHeader() ObuHeader {
 		}
 	}
 
-	return ObuHeader{
+	return Header{
 		ForbiddenBit:  forbiddenBit,
 		Type:          obuType,
 		ExtensionFlag: extensionFlag,
@@ -45,8 +45,8 @@ func (p *Parser) ParseObuHeader() ObuHeader {
 }
 
 // obu_extension(header)
-func (p *Parser) ParseObuExtensionHeader() ObuExtensionHeader {
-	return ObuExtensionHeader{
+func NewExtensionHeader(p *Parser) ExtensionHeader {
+	return ExtensionHeader{
 		TemporalID:    p.f(3),
 		SpatialID:     p.f(2),
 		Reserved3Bits: p.f(3),

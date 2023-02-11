@@ -75,13 +75,13 @@ type UncompressedHeader struct {
 	InterpolationFilter      int
 }
 
-func NewUncompressedHeader(p *Parser, sequenceHeader SequenceHeader, extensionHeader ObuExtensionHeader) UncompressedHeader {
+func NewUncompressedHeader(p *Parser, sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) UncompressedHeader {
 	u := UncompressedHeader{}
 	u.Build(p, sequenceHeader, extensionHeader)
 	return u
 }
 
-func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, extensionHeader ObuExtensionHeader) {
+func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) {
 	u.SequenceHeader = sequenceHeader
 
 	var idLen int

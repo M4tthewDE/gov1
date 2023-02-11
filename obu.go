@@ -18,7 +18,7 @@ const OBU_TILE_LIST = 8
 const OBU_PADDING = 15
 
 type Obu struct {
-	Header         ObuHeader
+	Header         Header
 	SequenceHeader SequenceHeader
 	Size           int
 }
@@ -48,7 +48,7 @@ func (p *Parser) frameUnit(sz int) {
 func (p *Parser) ParseObu(sz int) {
 	obu := Obu{}
 
-	obu.Header = p.ParseObuHeader()
+	obu.Header = NewHeader(p)
 
 	if obu.Header.HasSizeField {
 		obu.Size = p.leb128()
@@ -113,7 +113,7 @@ func (p *Parser) ParseObu(sz int) {
 }
 
 // frame_obu( sz )
-func (p *Parser) ParseFrame(sz int, sequenceHeader SequenceHeader, extensionHeader ObuExtensionHeader) {
+func (p *Parser) ParseFrame(sz int, sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) {
 	startBitPos := p.position
 
 	p.ParseFrameHeader(sequenceHeader, extensionHeader)
@@ -127,7 +127,7 @@ func (p *Parser) ParseFrame(sz int, sequenceHeader SequenceHeader, extensionHead
 }
 
 // frame_header_obu()
-func (p *Parser) ParseFrameHeader(sequenceHeader SequenceHeader, extensionHeader ObuExtensionHeader) {
+func (p *Parser) ParseFrameHeader(sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) {
 	if p.seenFrameHeader {
 		p.FrameHeaderCopy()
 	} else {
