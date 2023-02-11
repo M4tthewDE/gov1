@@ -85,7 +85,6 @@ func TestObuExtensionHeader(t *testing.T) {
 
 // TODO: fix
 func TestParseEndToEnd(t *testing.T) {
-	t.Skip("TODO")
 	fileName := "testdata/argon_coveragetool_av1_base_and_extended_profiles_v2.1/profile0_core/streams/test1228.obu"
 	data, err := os.ReadFile(fileName)
 	if err != nil {
