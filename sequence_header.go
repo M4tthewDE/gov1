@@ -111,7 +111,7 @@ func (s *SequenceHeader) Build(p *Parser) {
 	if !s.ReducedStillPictureHeader {
 		timingInfoPresent := p.f(1) != 0
 		if timingInfoPresent {
-			s.TimingInfo = p.parseTimingInfo()
+			s.TimingInfo = NewTimingInfo(p)
 			s.DecoderModelInfoPresent = p.f(1) != 0
 
 			if s.DecoderModelInfoPresent {
@@ -269,7 +269,7 @@ func (s *SequenceHeader) Build(p *Parser) {
 	s.FilmGrainParamsPresent = p.f(1) != 0
 }
 
-func (p *Parser) parseTimingInfo() TimingInfo {
+func NewTimingInfo(p *Parser) TimingInfo {
 	numUnitsInDisplayTick := p.f(32)
 	timeScale := p.f(32)
 	equalPictureInterval := p.f(1) != 0
