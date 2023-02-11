@@ -24,7 +24,7 @@ const SUPERRES_NUM = 8
 const SWITCH_FRAME = 3
 
 type UncompressedHeader struct {
-	SequenceHeader           ObuSequenceHeader
+	SequenceHeader           SequenceHeader
 	ShowExistingFrame        bool
 	TemporalPointInfo        int
 	ShowableFrame            bool
@@ -71,7 +71,13 @@ type UncompressedHeader struct {
 	Qmv                      int
 }
 
-func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
+func NewUncompressedHeader(p *Parser, sequenceHeader SequenceHeader, extensionHeader ObuExtensionHeader) UncompressedHeader {
+	u := UncompressedHeader{}
+	u.Build(p, sequenceHeader, extensionHeader)
+	return u
+}
+
+func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, extensionHeader ObuExtensionHeader) {
 	u.SequenceHeader = sequenceHeader
 
 	var idLen int

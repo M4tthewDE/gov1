@@ -19,7 +19,7 @@ const OBU_PADDING = 15
 
 type Obu struct {
 	Header         ObuHeader
-	SequenceHeader ObuSequenceHeader
+	SequenceHeader SequenceHeader
 	Size           int
 }
 
@@ -81,8 +81,7 @@ func (p *Parser) ParseObu(sz int) {
 
 	switch obu.Header.Type {
 	case OBU_SEQUENCE_HEADER:
-		s := ObuSequenceHeader{}
-		s.Build(p)
+		s := NewSequenceHeader(p)
 		obu.SequenceHeader = s
 
 		x, _ := json.MarshalIndent(obu.SequenceHeader, "", "	")
@@ -115,7 +114,7 @@ func (p *Parser) ParseObu(sz int) {
 }
 
 // frame_obu( sz )
-func (p *Parser) ParseFrame(sz int, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
+func (p *Parser) ParseFrame(sz int, sequenceHeader SequenceHeader, extensionHeader ObuExtensionHeader) {
 	startBitPos := p.position
 
 	p.ParseFrameHeader(sequenceHeader, extensionHeader)
@@ -129,14 +128,13 @@ func (p *Parser) ParseFrame(sz int, sequenceHeader ObuSequenceHeader, extensionH
 }
 
 // frame_header_obu()
-func (p *Parser) ParseFrameHeader(sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
+func (p *Parser) ParseFrameHeader(sequenceHeader SequenceHeader, extensionHeader ObuExtensionHeader) {
 	if p.seenFrameHeader {
 		p.FrameHeaderCopy()
 	} else {
 		p.seenFrameHeader = true
 
-		uncompressedHeader := UncompressedHeader{}
-		uncompressedHeader.Build(p, sequenceHeader, extensionHeader)
+		uncompressedHeader := NewUncompressedHeader(p, sequenceHeader, extensionHeader)
 
 		if uncompressedHeader.ShowExistingFrame {
 			p.DecodeFrameWrapup()

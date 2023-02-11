@@ -1,6 +1,10 @@
 package main
 
-type ObuSequenceHeader struct {
+const CP_UNSPECIFIED = 2
+const TC_UNSPECIFIED = 2
+const MC_UNSPECIFIED = 2
+
+type SequenceHeader struct {
 	SeqProfile                          int
 	StillPicture                        bool
 	ReducedStillPictureHeader           bool
@@ -72,6 +76,7 @@ type ColorConfig struct {
 	ChromaSamplePosition    int
 	SeparateUvDeltaQ        bool
 	NumPlanes               int
+	BitDepth                int
 }
 
 type OperatingParametersInfo struct {
@@ -80,8 +85,14 @@ type OperatingParametersInfo struct {
 	LowDelayModeFlag   []bool
 }
 
+func NewSequenceHeader(p *Parser) SequenceHeader {
+	s := SequenceHeader{}
+	s.Build(p)
+	return s
+}
+
 // sequence_header_obu()
-func (s ObuSequenceHeader) Build(p *Parser) {
+func (s *SequenceHeader) Build(p *Parser) {
 	s.SeqProfile = p.f(3)
 	s.StillPicture = p.f(1) != 0
 	s.ReducedStillPictureHeader = p.f(1) != 0
@@ -254,7 +265,7 @@ func (s ObuSequenceHeader) Build(p *Parser) {
 	s.EnableSuperRes = p.f(1) != 0
 	s.EnableCdef = p.f(1) != 0
 	s.EnableRestoration = p.f(1) != 0
-	s.ColorConfig = p.parseColorConfig(s.SeqProfile)
+	s.ColorConfig = NewColorConfig(p, s.SeqProfile)
 	s.FilmGrainParamsPresent = p.f(1) != 0
 }
 
@@ -276,129 +287,96 @@ func (p *Parser) parseTimingInfo() TimingInfo {
 	}
 }
 
-func (p *Parser) parseColorConfig(seqProfile int) ColorConfig {
-	var bitDepth int
-	var twelveBit bool
+func NewColorConfig(p *Parser, seqProfile int) ColorConfig {
+	c := ColorConfig{}
+	c.build(p, seqProfile)
+	return c
+}
 
-	highBitDepth := p.f(1) != 0
-	if seqProfile == 2 && highBitDepth {
-		twelveBit := p.f(1) != 0
-		bitDepth = 10
-		if twelveBit {
-			bitDepth = 12
+func (c *ColorConfig) build(p *Parser, seqProfile int) {
+	c.HighBitDepth = p.f(1) != 0
+
+	if seqProfile == 2 && c.HighBitDepth {
+		c.TwelveBit = p.f(1) != 0
+		c.BitDepth = 10
+		if c.TwelveBit {
+			c.BitDepth = 12
 		}
 	}
 
-	monoChrome := false
+	c.MonoChrome = false
 	if seqProfile != 1 {
-		monoChrome = p.f(1) != 0
+		c.MonoChrome = p.f(1) != 0
 	}
 
-	numPlanes := 3
-	if monoChrome {
-		numPlanes = 1
-	}
-	colorDescriptionPresent := p.f(1) != 0
-
-	// CP_UNSPECIFIED
-	colorPrimaries := 2
-	// TC_UNSPECIFIED
-	transferCharacteristics := 2
-	// MC_UNSPECIFIED
-	matrixCoefficientes := 2
-
-	if colorDescriptionPresent {
-		colorPrimaries = p.f(8)
-		transferCharacteristics = p.f(8)
-		matrixCoefficientes = p.f(8)
+	c.NumPlanes = 3
+	if c.MonoChrome {
+		c.NumPlanes = 1
 	}
 
-	var subsamplingX bool
-	var subsamplingY bool
-	var chromaSamplePosition int
-	var separateUvDeltaQ bool
-	var colorRange bool
+	c.ColorDescriptionPresent = p.f(1) != 0
 
-	if monoChrome {
-		colorRange = p.f(1) != 0
-		subsamplingX = true
-		subsamplingY = true
+	c.ColorPrimaries = CP_UNSPECIFIED
+	c.TransferCharacteristics = TC_UNSPECIFIED
+	c.MatrixCoefficients = MC_UNSPECIFIED
+
+	if c.ColorDescriptionPresent {
+		c.ColorPrimaries = p.f(8)
+		c.TransferCharacteristics = p.f(8)
+		c.MatrixCoefficients = p.f(8)
+	}
+
+	if c.MonoChrome {
+		c.ColorRange = p.f(1) != 0
+		c.SubsamplingX = true
+		c.SubsamplingY = true
 
 		//CSP_UNKNOWN
-		chromaSamplePosition = 0
-		separateUvDeltaQ = false
+		c.ChromaSamplePosition = 0
+		c.SeparateUvDeltaQ = false
 
-		return ColorConfig{
-			HighBitDepth:            highBitDepth,
-			TwelveBit:               twelveBit,
-			MonoChrome:              monoChrome,
-			ColorDescriptionPresent: colorDescriptionPresent,
-			ColorPrimaries:          colorPrimaries,
-			TransferCharacteristics: transferCharacteristics,
-			MatrixCoefficients:      matrixCoefficientes,
-			ColorRange:              colorRange,
-			SubsamplingX:            subsamplingX,
-			SubsamplingY:            subsamplingY,
-			ChromaSamplePosition:    chromaSamplePosition,
-			SeparateUvDeltaQ:        separateUvDeltaQ,
-			NumPlanes:               numPlanes,
-		}
+		return
 
-	} else if colorPrimaries == 1 && transferCharacteristics == 13 && matrixCoefficientes == 0 {
-		colorRange = true
-		subsamplingX = false
-		subsamplingY = false
+	} else if c.ColorPrimaries == 1 && c.TransferCharacteristics == 13 && c.MatrixCoefficients == 0 {
+		c.ColorRange = true
+		c.SubsamplingX = false
+		c.SubsamplingY = false
 	} else {
-		colorRange = p.f(1) != 0
+		c.ColorRange = p.f(1) != 0
 		if seqProfile == 0 {
-			subsamplingX = true
-			subsamplingY = true
+			c.SubsamplingX = true
+			c.SubsamplingY = true
 
 		} else if seqProfile == 1 {
-			subsamplingX = false
-			subsamplingY = false
+			c.SubsamplingX = false
+			c.SubsamplingY = false
 
 		} else {
-			if bitDepth == 12 {
-				subsamplingX = p.f(1) != 0
-				if subsamplingX {
-					subsamplingY = p.f(1) != 0
+			if c.BitDepth == 12 {
+				c.SubsamplingX = p.f(1) != 0
+				if c.SubsamplingX {
+					c.SubsamplingY = p.f(1) != 0
 				} else {
-					subsamplingY = false
+					c.SubsamplingY = false
 				}
 
 			} else {
-				subsamplingX = true
-				subsamplingY = false
+				c.SubsamplingX = true
+				c.SubsamplingY = false
 			}
 
 		}
-		if subsamplingX && subsamplingY {
-			chromaSamplePosition = p.f(2)
+		if c.SubsamplingX && c.SubsamplingY {
+			c.ChromaSamplePosition = p.f(2)
 		}
 
 	}
-	separateUvDeltaQ = p.f(1) != 0
 
-	return ColorConfig{
-		HighBitDepth:            highBitDepth,
-		TwelveBit:               twelveBit,
-		MonoChrome:              monoChrome,
-		ColorDescriptionPresent: colorDescriptionPresent,
-		ColorPrimaries:          colorPrimaries,
-		TransferCharacteristics: transferCharacteristics,
-		MatrixCoefficients:      matrixCoefficientes,
-		ColorRange:              colorRange,
-		SubsamplingX:            subsamplingX,
-		SubsamplingY:            subsamplingY,
-		ChromaSamplePosition:    chromaSamplePosition,
-		SeparateUvDeltaQ:        separateUvDeltaQ,
-		NumPlanes:               numPlanes,
-	}
+	c.SeparateUvDeltaQ = p.f(1) != 0
 }
 
 // operating_parameters_inf( op )
-func (s ObuSequenceHeader) parseOperatingParametersInfo(p *Parser, bufferDelayLengthMinusOne int) OperatingParametersInfo {
+func (s *SequenceHeader) parseOperatingParametersInfo(p *Parser, bufferDelayLengthMinusOne int) OperatingParametersInfo {
 	n := bufferDelayLengthMinusOne + 1
 
 	return OperatingParametersInfo{
