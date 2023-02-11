@@ -109,3 +109,15 @@ func (p *Parser) byteAlignment() {
 		p.f(1)
 	}
 }
+
+// su()
+func (p *Parser) su(n int) int {
+	value := p.f(n)
+	signMask := 1 << (n - 1)
+
+	if (value & signMask) != 0 {
+		value = value - 2*signMask
+	}
+
+	return value
+}

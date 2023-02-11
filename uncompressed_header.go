@@ -60,6 +60,15 @@ type UncompressedHeader struct {
 	MiCols                   int
 	MiRows                   int
 	FrameSizeOverrideFlag    bool
+	DeltaQYDc                int
+	DeltaQUAc                int
+	DeltaQUDc                int
+	DeltaQVAc                int
+	DeltaQVDc                int
+	UsingQMatrix             bool
+	Qmy                      int
+	Qmu                      int
+	Qmv                      int
 }
 
 func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, extensionHeader ObuExtensionHeader) {
@@ -348,7 +357,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 	}
 
 	p.tileInfo()
-	p.quantizationParams()
+	u.quantizationParams(p)
 	p.segmentationParams()
 	u.deltaQParams(p)
 	u.deltaLfParams(p)
@@ -363,33 +372,25 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader ObuSequenceHeader, 
 	u.CodedLossless = true
 	LosslessArray := []bool{}
 
-	// TODO: use real values
-	var DeltaQYDc int
-	var DeltaQUAc int
-	var DeltaQUDc int
-	var DeltaQVAc int
-	var DeltaQVDc int
-	var usingQMatrix bool
 	SegQMLevel := [][]int{}
-	var qm_y int
 
 	for segmentId := 0; segmentId < MAX_SEGMENTS; segmentId++ {
 		qIndex := p.getQIndex(1, segmentId)
-		LosslessArray[segmentId] = qIndex == 0 && DeltaQYDc == 0 && DeltaQUAc == 0 && DeltaQUDc == 0 && DeltaQVAc == 0 && DeltaQVDc == 0
+		LosslessArray[segmentId] = qIndex == 0 && u.DeltaQYDc == 0 && u.DeltaQUAc == 0 && u.DeltaQUDc == 0 && u.DeltaQVAc == 0 && u.DeltaQVDc == 0
 
 		if !LosslessArray[segmentId] {
 			u.CodedLossless = false
 		}
 
-		if usingQMatrix {
+		if u.UsingQMatrix {
 			if LosslessArray[segmentId] {
 				SegQMLevel[0][segmentId] = 15
 				SegQMLevel[1][segmentId] = 15
 				SegQMLevel[2][segmentId] = 15
 			} else {
-				SegQMLevel[0][segmentId] = qm_y
-				SegQMLevel[1][segmentId] = qm_y
-				SegQMLevel[2][segmentId] = qm_y
+				SegQMLevel[0][segmentId] = u.Qmy
+				SegQMLevel[1][segmentId] = u.Qmy
+				SegQMLevel[2][segmentId] = u.Qmy
 
 			}
 		}
@@ -539,8 +540,59 @@ func (p *Parser) tileInfo() {
 	panic("not implemented")
 }
 
-func (p *Parser) quantizationParams() {
-	panic("not implemented")
+// quantization_params()
+func (u *UncompressedHeader) quantizationParams(p *Parser) {
+	u.BaseQIdx = p.f(8)
+
+	u.DeltaQYDc = u.readDeltaQ(p)
+
+	var diffUvDelta bool
+	if u.SequenceHeader.ColorConfig.NumPlanes > 1 {
+		if u.SequenceHeader.ColorConfig.SeparateUvDeltaQ {
+			diffUvDelta = p.f(1) != 0
+		} else {
+			diffUvDelta = false
+		}
+
+		u.DeltaQUDc = u.readDeltaQ(p)
+		u.DeltaQUAc = u.readDeltaQ(p)
+
+		if diffUvDelta {
+			u.DeltaQVDc = u.readDeltaQ(p)
+			u.DeltaQVAc = u.readDeltaQ(p)
+
+		} else {
+			u.DeltaQVDc = u.DeltaQUDc
+			u.DeltaQVAc = u.DeltaQUAc
+		}
+	} else {
+		u.DeltaQUDc = 0
+		u.DeltaQUAc = 0
+		u.DeltaQVDc = 0
+		u.DeltaQVAc = 0
+	}
+
+	u.UsingQMatrix = p.f(1) != 0
+	if u.UsingQMatrix {
+		u.Qmy = p.f(4)
+		u.Qmu = p.f(4)
+
+		if !u.SequenceHeader.ColorConfig.SeparateUvDeltaQ {
+			u.Qmv = u.Qmu
+		} else {
+			u.Qmv = p.f(4)
+		}
+	}
+}
+
+// read_delta_q()
+func (u *UncompressedHeader) readDeltaQ(p *Parser) int {
+	deltaCoded := p.f(1) != 0
+	if deltaCoded {
+		return p.su(1 + 6)
+	} else {
+		return 0
+	}
 }
 
 func (p *Parser) segmentationParams() {
