@@ -72,10 +72,15 @@ type UncompressedHeader struct {
 	RenderWidth              int
 	RenderHeight             int
 	InterpolationFilter      int
+	PrevFrameId              int
+	CurrentFrameId           int
+	RefFrameId               []int
+	RefValid                 []int
 }
 
 func NewUncompressedHeader(p *Parser, sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) UncompressedHeader {
 	u := UncompressedHeader{}
+
 	u.Build(p, sequenceHeader, extensionHeader)
 	return u
 }
@@ -195,15 +200,12 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		forceIntegerMv = true
 	}
 
-	var currentFrameId int
-
 	if sequenceHeader.FrameIdNumbersPresent {
-		panic("What is supposed to happen here?")
-		//PrevFrameId = currentFrameId
-		currentFrameId = p.f(idLen)
-		p.markRefFrames(idLen)
+		u.PrevFrameId = u.CurrentFrameId
+		u.CurrentFrameId = p.f(idLen)
+		u.markRefFrames(idLen)
 	} else {
-		currentFrameId = 0
+		u.CurrentFrameId = 0
 	}
 
 	if frameType == SWITCH_FRAME {
@@ -303,7 +305,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 				n := sequenceHeader.DeltaFrameIdLengthMinusTwo + 2
 				deltaFrameIdMinusOne := p.f(n)
 				DeltaFrameId := deltaFrameIdMinusOne + 1
-				expectedFrameId = SliceAssign(expectedFrameId, i, (currentFrameId+(1<<idLen)-DeltaFrameId)%(1<<idLen))
+				expectedFrameId = SliceAssign(expectedFrameId, i, (u.CurrentFrameId+(1<<idLen)-DeltaFrameId)%(1<<idLen))
 			}
 		}
 
@@ -426,8 +428,22 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 	p.filmGrainParams()
 }
 
-func (p *Parser) markRefFrames(a int) {
-	panic("not implemented")
+// mark_ref_frames( idLen)
+func (u *UncompressedHeader) markRefFrames(idLen int) {
+	diffLen := u.SequenceHeader.DeltaFrameIdLengthMinusTwo + 2
+
+	for i := 0; i < NUM_REF_FRAMES; i++ {
+		if u.CurrentFrameId > (1 << diffLen) {
+			if u.RefFrameId[i] > u.CurrentFrameId ||
+				u.RefFrameId[i] < (u.CurrentFrameId-(1<<diffLen)) {
+				u.RefValid = SliceAssign(u.RefValid, i, 0)
+			}
+		} else {
+			if u.RefFrameId[i] > u.CurrentFrameId && u.RefFrameId[i] < ((1<<idLen)+u.CurrentFrameId-(1<<diffLen)) {
+				u.RefValid = SliceAssign(u.RefValid, i, 0)
+			}
+		}
+	}
 }
 
 func (p *Parser) setFrameRefs() {

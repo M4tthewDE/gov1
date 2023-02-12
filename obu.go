@@ -147,7 +147,7 @@ func (p *Parser) ParseFrameHeader(sequenceHeader SequenceHeader, extensionHeader
 
 // tile_group_obu(sz)
 func (p *Parser) tileGroupObu(sz int) {
-	panic("not implemented!")
+	panic("tile_group_obu( sz ) not implemented!")
 }
 
 // frame_header_copy()
