@@ -20,7 +20,6 @@ const TX_MODE_SELECT = 2
 const SUPERRES_DENOM_BITS = 3
 const SUPERRES_DENOM_MIN = 9
 const SUPERRES_NUM = 8
-
 const SWITCH_FRAME = 3
 
 type UncompressedHeader struct {
@@ -163,12 +162,12 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 
 	if frameType == 0 && showFrame {
 		for i := 0; i < NUM_REF_FRAMES; i++ {
-			refValid[i] = 0
-			refOrderHint[i] = 0
+			refValid = SliceAssign(refValid, i, 0)
+			refOrderHint = SliceAssign(refOrderHint, i, 0)
 		}
 
 		for i := 0; i < REFS_PER_FRAME; i++ {
-			orderHints[LAST_FRAME+1] = 0
+			orderHints = SliceAssign(orderHints, LAST_FRAME+1, 0)
 		}
 	}
 
@@ -238,7 +237,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 
 					if opPtIdc == 0 || (inTemporalLayer && inSpatialLayer) {
 						n := sequenceHeader.DecoderModelInfo.BufferRemovalTimeLengthMinusOne + 1
-						bufferRemovalTime[opNum] = p.f(n)
+						bufferRemovalTime = SliceAssign(bufferRemovalTime, opNum, p.f(n))
 					}
 				}
 			}
@@ -261,11 +260,10 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 	if !u.FrameIsIntra || refreshFrameFlags != allFrames {
 		if errorResilientMode && sequenceHeader.EnableOrderHint {
 			for i := 0; i < NUM_REF_FRAMES; i++ {
-				ref_order_hint[i] = p.f(sequenceHeader.OrderHintBits)
+				ref_order_hint = SliceAssign(ref_order_hint, i, p.f(sequenceHeader.OrderHintBits))
 
 				if ref_order_hint[i] != RefOrderHint[i] {
-					RefValid[i] = 0
-
+					RefValid = SliceAssign(RefValid, i, 0)
 				}
 			}
 		}
@@ -298,13 +296,14 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		for i := 0; i < REFS_PER_FRAME; i++ {
 			if !frameRefsShortSignaling {
 				ref_frame_idx[i] = p.f(3)
+				ref_frame_idx = SliceAssign(ref_frame_idx, i, p.f(3))
 			}
 
 			if sequenceHeader.FrameIdNumbersPresent {
 				n := sequenceHeader.DeltaFrameIdLengthMinusTwo + 2
 				deltaFrameIdMinusOne := p.f(n)
 				DeltaFrameId := deltaFrameIdMinusOne + 1
-				expectedFrameId[i] = ((currentFrameId + (1 << idLen) - DeltaFrameId) % (1 << idLen))
+				expectedFrameId = SliceAssign(expectedFrameId, i, (currentFrameId+(1<<idLen)-DeltaFrameId)%(1<<idLen))
 			}
 		}
 
@@ -338,11 +337,11 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		for i := 0; i < REFS_PER_FRAME; i++ {
 			refFrame := LAST_FRAME + 1
 			hint := RefOrderHint[ref_frame_idx[i]]
-			OrderHints[refFrame] = hint
+			OrderHints = SliceAssign(OrderHints, refFrame, hint)
 			if !sequenceHeader.EnableOrderHint {
-				RefFrameSignBias[refFrame] = false
+				RefFrameSignBias = SliceAssign(RefFrameSignBias, refFrame, false)
 			} else {
-				RefFrameSignBias[refFrame] = u.getRelativeDist(hint, OrderHint) > 0
+				RefFrameSignBias = SliceAssign(RefFrameSignBias, refFrame, u.getRelativeDist(hint, OrderHint) > 0)
 			}
 		}
 	}
@@ -386,7 +385,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 
 	for segmentId := 0; segmentId < MAX_SEGMENTS; segmentId++ {
 		qIndex := p.getQIndex(1, segmentId)
-		LosslessArray[segmentId] = qIndex == 0 && u.DeltaQYDc == 0 && u.DeltaQUAc == 0 && u.DeltaQUDc == 0 && u.DeltaQVAc == 0 && u.DeltaQVDc == 0
+		LosslessArray = SliceAssign(LosslessArray, segmentId, qIndex == 0 && u.DeltaQYDc == 0 && u.DeltaQUAc == 0 && u.DeltaQUDc == 0 && u.DeltaQVAc == 0 && u.DeltaQVDc == 0)
 
 		if !LosslessArray[segmentId] {
 			u.CodedLossless = false
@@ -394,13 +393,13 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 
 		if u.UsingQMatrix {
 			if LosslessArray[segmentId] {
-				SegQMLevel[0][segmentId] = 15
-				SegQMLevel[1][segmentId] = 15
-				SegQMLevel[2][segmentId] = 15
+				SliceAssignNested(SegQMLevel, 0, segmentId, 15)
+				SliceAssignNested(SegQMLevel, 1, segmentId, 15)
+				SliceAssignNested(SegQMLevel, 2, segmentId, 15)
 			} else {
-				SegQMLevel[0][segmentId] = u.Qmy
-				SegQMLevel[1][segmentId] = u.Qmy
-				SegQMLevel[2][segmentId] = u.Qmy
+				SliceAssignNested(SegQMLevel, 0, segmentId, u.Qmy)
+				SliceAssignNested(SegQMLevel, 1, segmentId, u.Qmy)
+				SliceAssignNested(SegQMLevel, 2, segmentId, u.Qmy)
 
 			}
 		}
