@@ -393,13 +393,13 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 
 		if u.UsingQMatrix {
 			if LosslessArray[segmentId] {
-				SegQMLevel[0][segmentId] = 15
-				SegQMLevel[1][segmentId] = 15
-				SegQMLevel[2][segmentId] = 15
+				SliceAssignNested(SegQMLevel, 0, segmentId, 15)
+				SliceAssignNested(SegQMLevel, 1, segmentId, 15)
+				SliceAssignNested(SegQMLevel, 2, segmentId, 15)
 			} else {
-				SegQMLevel[0][segmentId] = u.Qmy
-				SegQMLevel[1][segmentId] = u.Qmy
-				SegQMLevel[2][segmentId] = u.Qmy
+				SliceAssignNested(SegQMLevel, 0, segmentId, u.Qmy)
+				SliceAssignNested(SegQMLevel, 1, segmentId, u.Qmy)
+				SliceAssignNested(SegQMLevel, 2, segmentId, u.Qmy)
 
 			}
 		}

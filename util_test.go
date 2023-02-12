@@ -24,3 +24,27 @@ func TestSliceAssignOutOfBounds(t *testing.T) {
 	assert.Equal(t, 0, test[1])
 	assert.Equal(t, 10, test[2])
 }
+
+func TestSliceAssignTwoDimensionsInBounds(t *testing.T) {
+	test := [][]int{{0, 1, 2, 3}, {4, 5}}
+
+	test = SliceAssignNested(test, 0, 2, 10)
+	test = SliceAssignNested(test, 1, 1, 10)
+
+	assert.Equal(t, 2, len(test))
+	assert.Equal(t, 4, len(test[0]))
+	assert.Equal(t, 2, len(test[1]))
+	assert.Equal(t, []int{0, 1, 10, 3}, test[0])
+	assert.Equal(t, []int{4, 10}, test[1])
+}
+
+func TestSliceAssignTwoDimensionsOutOfBounds(t *testing.T) {
+	test := [][]int{}
+
+	test = SliceAssignNested(test, 0, 2, 10)
+
+	assert.Equal(t, 1, len(test))
+	assert.Equal(t, 3, len(test[0]))
+	assert.Equal(t, []int{0, 0, 10}, test[0])
+	assert.Equal(t, 10, test[0][2])
+}
