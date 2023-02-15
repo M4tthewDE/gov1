@@ -6,7 +6,6 @@ const MAX_TILE_COLS = 64
 const MAX_TILE_ROWS = 64
 
 type TileInfo struct {
-	UniformTileSpacing bool
 }
 
 func NewTileInfo(p *Parser, s SequenceHeader) TileInfo {
@@ -43,8 +42,8 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 	MiColStarts := []int{}
 	MiRowStarts := []int{}
 
-	t.UniformTileSpacing = p.f(1) != 0
-	if t.UniformTileSpacing {
+	uniformTileSpacing := p.f(1) != 0
+	if uniformTileSpacing {
 		p.TileColsLog2 = minLog2TileCols
 
 		for p.TileColsLog2 < maxLog2TileCols {
