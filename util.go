@@ -46,3 +46,12 @@ func Max(x int, y int) int {
 
 	return y
 }
+
+func FloorLog2(x int) int {
+	s := 0
+	for x != 0 {
+		x = x >> 1
+		s++
+	}
+	return s - 1
+}

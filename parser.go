@@ -127,3 +127,15 @@ func (p *Parser) su(n int) int {
 
 	return value
 }
+
+// ns( n )
+func (p *Parser) ns(n int) int {
+	w := FloorLog2(n) + 1
+	m := (1 << w) - n
+	v := p.f(w - 1)
+	if v < m {
+		return v
+	}
+	extraBit := p.f(1)
+	return (v << 1) - m + extraBit
+}

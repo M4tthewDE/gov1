@@ -85,6 +85,17 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 		MiRowStarts = SliceAssign(MiRowStarts, i, p.MiRows)
 		p.TileRows = i
 
+	} else {
+		widestTileSb := 0
+		startSb := 0
+		for i := 0; startSb < sbCols; i++ {
+			MiColStarts = SliceAssign(MiColStarts, i, startSb<<sbShift)
+			maxWidth := Min(sbCols-startSb, maxTileWidthSb)
+			widthInSbsMinusOne := p.ns(maxWidth)
+			sizeSb := widthInSbsMinusOne + 1
+			widestTileSb = Max(sizeSb, widestTileSb)
+			startSb += sizeSb
+		}
 	}
 
 }
