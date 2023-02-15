@@ -13,6 +13,8 @@ type Parser struct {
 	renderHeight      int
 	upscaledWidth     int
 	upscaledHeight    int
+	MiCols            int
+	MiRows            int
 }
 
 func NewParser(data []byte) Parser {

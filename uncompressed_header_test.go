@@ -162,12 +162,14 @@ func TestSuperResparams(t *testing.T) {
 }
 
 func TestComputeImageSize(t *testing.T) {
-	u := UncompressedHeader{}
+	var data = []byte{0b00000000}
+	p := NewParser(data)
 
+	u := UncompressedHeader{}
 	u.FrameWidth = 3
 	u.FrameHeight = 2
-	u.computeImageSize()
+	u.computeImageSize(&p)
 
-	assert.Equal(t, 2, u.MiCols)
-	assert.Equal(t, 2, u.MiRows)
+	assert.Equal(t, 2, p.MiCols)
+	assert.Equal(t, 2, p.MiRows)
 }
