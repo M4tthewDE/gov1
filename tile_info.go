@@ -6,6 +6,7 @@ const MAX_TILE_COLS = 64
 const MAX_TILE_ROWS = 64
 
 type TileInfo struct {
+	ContextUpdateTileId int
 }
 
 func NewTileInfo(p *Parser, s SequenceHeader) TileInfo {
@@ -125,5 +126,12 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 		p.TileRows = i
 		p.TileRowsLog2 = tileLog2(1, p.TileRows)
 	}
+	if p.TileColsLog2 > 0 || p.TileRowsLog2 > 0 {
 
+		t.ContextUpdateTileId = p.f(p.TileRowsLog2 + p.TileColsLog2)
+		tileSizeBytesMinusOne := p.f(2)
+		p.TileSizeBytes = tileSizeBytesMinusOne + 1
+	} else {
+		t.ContextUpdateTileId = 0
+	}
 }

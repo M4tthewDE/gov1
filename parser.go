@@ -19,6 +19,7 @@ type Parser struct {
 	TileRowsLog2      int
 	TileCols          int
 	TileRows          int
+	TileSizeBytes     int
 }
 
 func NewParser(data []byte) Parser {
