@@ -6,6 +6,7 @@ const MAX_TILE_COLS = 64
 const MAX_TILE_ROWS = 64
 
 type TileInfo struct {
+	UniformTileSpacing bool
 }
 
 func NewTileInfo(p *Parser, s SequenceHeader) TileInfo {
@@ -38,4 +39,53 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 	maxLog2TileCols := tileLog2(1, int(Min(sbCols, MAX_TILE_COLS)))
 	maxLog2TileRows := tileLog2(1, Min(sbRows, MAX_TILE_ROWS))
 	minLog2Tiles := Max(minLog2TileCols, tileLog2(maxTileAreaSb, sbRows*sbCols))
+
+	MiColStarts := []int{}
+	MiRowStarts := []int{}
+
+	t.UniformTileSpacing = p.f(1) != 0
+	if t.UniformTileSpacing {
+		p.TileColsLog2 = minLog2TileCols
+
+		for p.TileColsLog2 < maxLog2TileCols {
+			incrementTileColsLog2 := p.f(1) != 0
+			if incrementTileColsLog2 {
+				p.TileColsLog2++
+			} else {
+				break
+			}
+
+		}
+
+		tileWidthSb := (sbCols + (1 << p.TileColsLog2) - 1) >> p.TileColsLog2
+		i := 0
+		for startSb := 0; startSb < sbCols; startSb += tileWidthSb {
+			MiColStarts = SliceAssign(MiColStarts, i, startSb<<sbShift)
+			i += 1
+		}
+
+		MiColStarts = SliceAssign(MiColStarts, i, p.MiCols)
+		p.TileCols = i
+
+		minLog2TileRows := Max(minLog2Tiles-p.TileColsLog2, 0)
+		p.TileRowsLog2 = minLog2TileRows
+		for p.TileRowsLog2 > maxLog2TileRows {
+			incrementTileRowsLog2 := p.f(1) != 0
+			if incrementTileRowsLog2 {
+				p.TileRowsLog2++
+			} else {
+				break
+			}
+		}
+		tileHeightSb := (sbRows + (1 << p.TileRowsLog2) - 1) >> p.TileRowsLog2
+		i = 0
+		for startSb := 0; startSb < sbRows; startSb += tileHeightSb {
+			MiRowStarts = SliceAssign(MiRowStarts, i, startSb<<sbShift)
+			i += 1
+		}
+		MiRowStarts = SliceAssign(MiRowStarts, i, p.MiRows)
+		p.TileRows = i
+
+	}
+
 }

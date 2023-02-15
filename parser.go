@@ -15,6 +15,10 @@ type Parser struct {
 	upscaledHeight    int
 	MiCols            int
 	MiRows            int
+	TileColsLog2      int
+	TileRowsLog2      int
+	TileCols          int
+	TileRows          int
 }
 
 func NewParser(data []byte) Parser {
