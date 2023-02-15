@@ -57,8 +57,6 @@ type UncompressedHeader struct {
 	FrameHeight              int
 	UpscaledWidth            int
 	UpscaledHeight           int
-	MiCols                   int
-	MiRows                   int
 	FrameSizeOverrideFlag    bool
 	DeltaQYDc                int
 	DeltaQUAc                int
@@ -76,6 +74,7 @@ type UncompressedHeader struct {
 	CurrentFrameId           int
 	RefFrameId               []int
 	RefValid                 []int
+	TileInfo                 TileInfo
 }
 
 func NewUncompressedHeader(p *Parser, sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) UncompressedHeader {
@@ -367,7 +366,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		p.motionFieldEstimation()
 	}
 
-	p.tileInfo()
+	u.TileInfo = NewTileInfo(p, u.SequenceHeader)
 	u.quantizationParams(p)
 	p.segmentationParams()
 	u.deltaQParams(p)
@@ -471,7 +470,7 @@ func (u *UncompressedHeader) frameSize(p *Parser) {
 	}
 
 	u.superResParams(p)
-	u.computeImageSize()
+	u.computeImageSize(p)
 }
 
 // superres_params()
@@ -494,9 +493,9 @@ func (u *UncompressedHeader) superResParams(p *Parser) {
 }
 
 // compute_image_size()
-func (u *UncompressedHeader) computeImageSize() {
-	u.MiCols = 2 * ((u.FrameWidth + 7) >> 3)
-	u.MiRows = 2 * ((u.FrameHeight + 7) >> 3)
+func (u *UncompressedHeader) computeImageSize(p *Parser) {
+	p.MiCols = 2 * ((u.FrameWidth + 7) >> 3)
+	p.MiRows = 2 * ((u.FrameHeight + 7) >> 3)
 }
 
 // render_size()

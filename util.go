@@ -21,3 +21,37 @@ func SliceAssignNested[T any](s [][]T, i int, j int, v T) [][]T {
 	s[i][j] = v
 	return s
 }
+
+// tile_log2( blkSize, target )
+func tileLog2(blkSize int, target int) int {
+	k := 0
+	for (blkSize << k) < target {
+		k++
+	}
+	return k
+}
+
+func Min(x int, y int) int {
+	if x <= y {
+		return x
+	}
+
+	return y
+}
+
+func Max(x int, y int) int {
+	if x >= y {
+		return x
+	}
+
+	return y
+}
+
+func FloorLog2(x int) int {
+	s := 0
+	for x != 0 {
+		x = x >> 1
+		s++
+	}
+	return s - 1
+}

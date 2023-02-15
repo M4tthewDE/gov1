@@ -13,6 +13,13 @@ type Parser struct {
 	renderHeight      int
 	upscaledWidth     int
 	upscaledHeight    int
+	MiCols            int
+	MiRows            int
+	TileColsLog2      int
+	TileRowsLog2      int
+	TileCols          int
+	TileRows          int
+	TileSizeBytes     int
 }
 
 func NewParser(data []byte) Parser {
@@ -120,4 +127,16 @@ func (p *Parser) su(n int) int {
 	}
 
 	return value
+}
+
+// ns( n )
+func (p *Parser) ns(n int) int {
+	w := FloorLog2(n) + 1
+	m := (1 << w) - n
+	v := p.f(w - 1)
+	if v < m {
+		return v
+	}
+	extraBit := p.f(1)
+	return (v << 1) - m + extraBit
 }
