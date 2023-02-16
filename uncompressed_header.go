@@ -25,7 +25,6 @@ const SWITCH_FRAME = 3
 type UncompressedHeader struct {
 	SequenceHeader           SequenceHeader
 	ShowExistingFrame        bool
-	TemporalPointInfo        int
 	ShowableFrame            bool
 	RefreshImageFlags        int
 	DisplayFrameId           int
@@ -75,6 +74,7 @@ type UncompressedHeader struct {
 	RefFrameId               []int
 	RefValid                 []int
 	TileInfo                 TileInfo
+	FramePresentationTime    int
 }
 
 func NewUncompressedHeader(p *Parser, sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) UncompressedHeader {
@@ -119,7 +119,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 			frameToShowMapIdx := p.f(3)
 
 			if sequenceHeader.DecoderModelInfoPresent && !sequenceHeader.TimingInfo.EqualPictureInterval {
-				u.TemporalPointInfo = p.TemporalPointInfo()
+				u.TemporalPointInfo(p)
 			}
 
 			u.RefreshImageFlags = 0
@@ -146,7 +146,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		showFrame = p.f(1) != 0
 
 		if showFrame && sequenceHeader.DecoderModelInfoPresent && !sequenceHeader.TimingInfo.EqualPictureInterval {
-			u.TemporalPointInfo = p.TemporalPointInfo()
+			u.TemporalPointInfo(p)
 		}
 
 		if showFrame {
@@ -719,8 +719,9 @@ func (p *Parser) DecodeFrameWrapup() {
 }
 
 // temporal_point_info()
-func (p *Parser) TemporalPointInfo() int {
-	panic("not implemented")
+func (u *UncompressedHeader) TemporalPointInfo(p *Parser) {
+	n := u.SequenceHeader.DecoderModelInfo.FramePresentationTimeLengthMinusOne + 1
+	u.FramePresentationTime = p.f(n)
 }
 
 // load_grain_params( idx )
