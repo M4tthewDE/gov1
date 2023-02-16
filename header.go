@@ -1,12 +1,12 @@
 package main
 
 type Header struct {
-	ForbiddenBit       bool
-	Type               int
-	ExtensionFlag      bool
-	HasSizeField       bool
-	ReservedBit        bool
-	ObuExtensionHeader ExtensionHeader
+	ForbiddenBit    bool
+	Type            int
+	ExtensionFlag   bool
+	HasSizeField    bool
+	ReservedBit     bool
+	ExtensionHeader ExtensionHeader
 }
 
 type ExtensionHeader struct {
@@ -26,12 +26,12 @@ func NewHeader(p *Parser) Header {
 	if extensionFlag {
 		extensionHeader := NewExtensionHeader(p)
 		return Header{
-			ForbiddenBit:       forbiddenBit,
-			Type:               obuType,
-			ExtensionFlag:      extensionFlag,
-			HasSizeField:       hasSizeField,
-			ReservedBit:        reservedBit,
-			ObuExtensionHeader: extensionHeader,
+			ForbiddenBit:    forbiddenBit,
+			Type:            obuType,
+			ExtensionFlag:   extensionFlag,
+			HasSizeField:    hasSizeField,
+			ReservedBit:     reservedBit,
+			ExtensionHeader: extensionHeader,
 		}
 	}
 

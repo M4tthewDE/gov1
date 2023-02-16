@@ -3,23 +3,40 @@ package main
 import "math"
 
 type Parser struct {
-	data              []byte
-	position          int
+	data     []byte
+	position int
+
+	header             Header
+	sequenceHeader     SequenceHeader
+	uncompressedHeader UncompressedHeader
+
 	operatingPointIdc int
 	seenFrameHeader   bool
 	leb128Bytes       int
-	tileNum           int
 	renderWidth       int
 	renderHeight      int
 	upscaledWidth     int
 	upscaledHeight    int
+	TileNum           int
 	MiCols            int
 	MiRows            int
+	MiColStarts       []int
+	MiRowStarts       []int
+	MiRowStart        int
+	MiColStart        int
+	MiRowEnd          int
+	MiColEnd          int
 	TileColsLog2      int
 	TileRowsLog2      int
 	TileCols          int
 	TileRows          int
 	TileSizeBytes     int
+	CurrentQIndex     int
+	DeltaLF           []int
+	RefLrWiener       [][][]int
+	Num4x4BlocksWide  []int
+	ReadDeltas        bool
+	Cdef              Cdef
 }
 
 func NewParser(data []byte) Parser {
@@ -29,7 +46,6 @@ func NewParser(data []byte) Parser {
 		operatingPointIdc: 0,
 		seenFrameHeader:   false,
 		leb128Bytes:       0,
-		tileNum:           0,
 	}
 }
 
@@ -139,4 +155,29 @@ func (p *Parser) ns(n int) int {
 	}
 	extraBit := p.f(1)
 	return (v << 1) - m + extraBit
+}
+
+// le(n)
+func (p *Parser) le(n int) int {
+	t := 0
+	for i := 0; i < n; i++ {
+		byte := p.f(8)
+		t += (byte << (i * 8))
+	}
+	return t
+}
+
+// init_symbol( x )
+func (p *Parser) initSymbol(a int) {
+	panic("not implemented: init_symbol()")
+}
+
+// clear_above_context()
+func (p *Parser) clearAboveContext() {
+	panic("not implemented: clear_above_context()")
+}
+
+// clear_left_context( x )
+func (p *Parser) clearLeftContext() {
+	panic("not implemented: clear_left_context()")
 }

@@ -40,9 +40,6 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 	maxLog2TileRows := tileLog2(1, Min(sbRows, MAX_TILE_ROWS))
 	minLog2Tiles := Max(minLog2TileCols, tileLog2(maxTileAreaSb, sbRows*sbCols))
 
-	MiColStarts := []int{}
-	MiRowStarts := []int{}
-
 	uniformTileSpacing := p.f(1) != 0
 	if uniformTileSpacing {
 		p.TileColsLog2 = minLog2TileCols
@@ -60,11 +57,11 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 		tileWidthSb := (sbCols + (1 << p.TileColsLog2) - 1) >> p.TileColsLog2
 		i := 0
 		for startSb := 0; startSb < sbCols; startSb += tileWidthSb {
-			MiColStarts = SliceAssign(MiColStarts, i, startSb<<sbShift)
+			p.MiColStarts = SliceAssign(p.MiColStarts, i, startSb<<sbShift)
 			i += 1
 		}
 
-		MiColStarts = SliceAssign(MiColStarts, i, p.MiCols)
+		p.MiColStarts = SliceAssign(p.MiColStarts, i, p.MiCols)
 		p.TileCols = i
 
 		minLog2TileRows := Max(minLog2Tiles-p.TileColsLog2, 0)
@@ -80,10 +77,10 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 		tileHeightSb := (sbRows + (1 << p.TileRowsLog2) - 1) >> p.TileRowsLog2
 		i = 0
 		for startSb := 0; startSb < sbRows; startSb += tileHeightSb {
-			MiRowStarts = SliceAssign(MiRowStarts, i, startSb<<sbShift)
+			p.MiRowStarts = SliceAssign(p.MiRowStarts, i, startSb<<sbShift)
 			i += 1
 		}
-		MiRowStarts = SliceAssign(MiRowStarts, i, p.MiRows)
+		p.MiRowStarts = SliceAssign(p.MiRowStarts, i, p.MiRows)
 		p.TileRows = i
 
 	} else {
@@ -91,7 +88,7 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 		startSb := 0
 		i := 0
 		for startSb < sbCols {
-			MiColStarts = SliceAssign(MiColStarts, i, startSb<<sbShift)
+			p.MiColStarts = SliceAssign(p.MiColStarts, i, startSb<<sbShift)
 			maxWidth := Min(sbCols-startSb, maxTileWidthSb)
 			widthInSbsMinusOne := p.ns(maxWidth)
 			sizeSb := widthInSbsMinusOne + 1
@@ -100,7 +97,7 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 
 			i++
 		}
-		MiColStarts = SliceAssign(MiColStarts, i, p.MiCols)
+		p.MiColStarts = SliceAssign(p.MiColStarts, i, p.MiCols)
 		p.TileCols = i
 		p.TileColsLog2 = tileLog2(1, p.TileCols)
 
@@ -114,7 +111,7 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 		startSb = 0
 		i = 0
 		for startSb < sbRows {
-			MiRowStarts = SliceAssign(MiRowStarts, i, startSb<<sbShift)
+			p.MiRowStarts = SliceAssign(p.MiRowStarts, i, startSb<<sbShift)
 			maxHeight := Min(sbRows-startSb, maxTileHeightSb)
 			heightInSbsMinusOne := p.ns(maxHeight)
 			sizeSb := heightInSbsMinusOne + 1
@@ -122,7 +119,7 @@ func (t *TileInfo) Build(p *Parser, s SequenceHeader) {
 
 			i++
 		}
-		MiRowStarts = SliceAssign(MiRowStarts, i, p.MiRows)
+		p.MiRowStarts = SliceAssign(p.MiRowStarts, i, p.MiRows)
 		p.TileRows = i
 		p.TileRowsLog2 = tileLog2(1, p.TileRows)
 	}

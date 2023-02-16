@@ -20,7 +20,6 @@ func TestFrameReferenceModeTrue(t *testing.T) {
 func TestFrameReferenceModeFalse(t *testing.T) {
 	var data = []byte{0b01111111}
 	p := NewParser(data)
-
 	u := UncompressedHeader{}
 	u.FrameIsIntra = false
 	u.frameReferenceMode(&p)
@@ -114,24 +113,28 @@ func TestDeltaQParamsPresent(t *testing.T) {
 }
 
 func TestGetRelativeDistEnableOrderHintfalse(t *testing.T) {
+	var data = []byte{0b00000000}
+	p := NewParser(data)
 	u := UncompressedHeader{}
 
 	u.EnableOrderHint = false
 
 	a := 0
 	b := 0
-	assert.Equal(t, 0, u.getRelativeDist(a, b))
+	assert.Equal(t, 0, u.getRelativeDist(a, b, &p))
 }
 
 func TestGetRelativeDist(t *testing.T) {
+	var data = []byte{0b00000000}
+	p := NewParser(data)
 	u := UncompressedHeader{}
 
 	u.EnableOrderHint = true
-	u.SequenceHeader.OrderHintBits = 2
+	p.sequenceHeader.OrderHintBits = 2
 
 	a := 10
 	b := 5
-	assert.Equal(t, 1, u.getRelativeDist(a, b))
+	assert.Equal(t, 1, u.getRelativeDist(a, b, &p))
 }
 
 func TestSuperResparamsSuperResDisabled(t *testing.T) {
@@ -152,7 +155,7 @@ func TestSuperResparams(t *testing.T) {
 	p := NewParser(data)
 
 	u := UncompressedHeader{}
-	u.SequenceHeader.EnableSuperRes = true
+	p.sequenceHeader.EnableSuperRes = true
 
 	u.superResParams(&p)
 

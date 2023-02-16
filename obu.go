@@ -18,9 +18,7 @@ const OBU_TILE_LIST = 8
 const OBU_PADDING = 15
 
 type Obu struct {
-	Header         Header
-	SequenceHeader SequenceHeader
-	Size           int
+	Size int
 }
 
 // temporal_unit( sz )
@@ -48,13 +46,13 @@ func (p *Parser) frameUnit(sz int) {
 func (p *Parser) ParseObu(sz int) {
 	obu := Obu{}
 
-	obu.Header = NewHeader(p)
+	p.header = NewHeader(p)
 
-	if obu.Header.HasSizeField {
+	if p.header.HasSizeField {
 		obu.Size = p.leb128()
 	} else {
 		extensionFlagInt := 0
-		if obu.Header.ExtensionFlag {
+		if p.header.ExtensionFlag {
 			extensionFlagInt = 1
 		}
 		obu.Size = sz - 1 - extensionFlagInt
@@ -62,12 +60,12 @@ func (p *Parser) ParseObu(sz int) {
 
 	startPosition := p.position
 
-	if obu.Header.Type != OBU_SEQUENCE_HEADER &&
-		obu.Header.Type != OBU_TEMPORAL_DELIMITER &&
+	if p.header.Type != OBU_SEQUENCE_HEADER &&
+		p.header.Type != OBU_TEMPORAL_DELIMITER &&
 		p.operatingPointIdc != 0 &&
-		obu.Header.ExtensionFlag {
-		inTemporalLayer := ((p.operatingPointIdc >> obu.Header.ObuExtensionHeader.TemporalID) & 1) != 0
-		inSpatialLayer := ((p.operatingPointIdc >> (obu.Header.ObuExtensionHeader.SpatialID + 8)) & 1) != 0
+		p.header.ExtensionFlag {
+		inTemporalLayer := ((p.operatingPointIdc >> p.header.ExtensionHeader.TemporalID) & 1) != 0
+		inSpatialLayer := ((p.operatingPointIdc >> (p.header.ExtensionHeader.SpatialID + 8)) & 1) != 0
 
 		if !inTemporalLayer || !inSpatialLayer {
 			//drop_obu()
@@ -79,18 +77,18 @@ func (p *Parser) ParseObu(sz int) {
 	x, _ := json.MarshalIndent(obu, "", "	")
 	fmt.Printf("%s\n", string(x))
 
-	switch obu.Header.Type {
+	switch p.header.Type {
 	case OBU_SEQUENCE_HEADER:
-		obu.SequenceHeader = NewSequenceHeader(p)
+		p.sequenceHeader = NewSequenceHeader(p)
 
-		x, _ := json.MarshalIndent(obu.SequenceHeader, "", "	")
+		x, _ := json.MarshalIndent(p.sequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))
 	case OBU_TEMPORAL_DELIMITER:
 		p.seenFrameHeader = false
 	case OBU_FRAME:
-		p.ParseFrame(obu.Size, obu.SequenceHeader, obu.Header.ObuExtensionHeader)
+		p.ParseFrame(obu.Size)
 	default:
-		fmt.Printf("not implemented type %d\n", obu.Header.Type)
+		fmt.Printf("not implemented type %d\n", p.header.Type)
 		panic("")
 	}
 
@@ -104,50 +102,45 @@ func (p *Parser) ParseObu(sz int) {
 	fmt.Println("----------------------------------------")
 
 	if obu.Size > 0 &&
-		obu.Header.Type != OBU_TILE_GROUP &&
-		obu.Header.Type != OBU_TILE_LIST &&
-		obu.Header.Type != OBU_FRAME {
+		p.header.Type != OBU_TILE_GROUP &&
+		p.header.Type != OBU_TILE_LIST &&
+		p.header.Type != OBU_FRAME {
 		p.trailingBits(obu.Size*8 - payloadBits)
 	}
 
 }
 
 // frame_obu( sz )
-func (p *Parser) ParseFrame(sz int, sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) {
+func (p *Parser) ParseFrame(sz int) {
 	startBitPos := p.position
 
-	p.ParseFrameHeader(sequenceHeader, extensionHeader)
+	p.ParseFrameHeader()
 	p.byteAlignment()
 
 	endBitPos := p.position
 
 	headerBytes := (endBitPos - startBitPos) / 8
 	sz -= headerBytes
-	p.tileGroupObu(sz)
+	_ = NewTileGroup(p, sz)
 }
 
 // frame_header_obu()
-func (p *Parser) ParseFrameHeader(sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) {
+func (p *Parser) ParseFrameHeader() {
 	if p.seenFrameHeader {
 		p.FrameHeaderCopy()
 	} else {
 		p.seenFrameHeader = true
-		uncompressedHeader := NewUncompressedHeader(p, sequenceHeader, extensionHeader)
+		uncompressedHeader := NewUncompressedHeader(p)
 
 		if uncompressedHeader.ShowExistingFrame {
 			p.DecodeFrameWrapup()
 			p.seenFrameHeader = false
 		} else {
-			p.tileNum = 0
+			p.TileNum = 0
 			p.seenFrameHeader = true
 		}
 
 	}
-}
-
-// tile_group_obu(sz)
-func (p *Parser) tileGroupObu(sz int) {
-	panic("tile_group_obu( sz ) not implemented!")
 }
 
 // frame_header_copy()

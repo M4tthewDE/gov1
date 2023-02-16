@@ -23,7 +23,6 @@ const SUPERRES_NUM = 8
 const SWITCH_FRAME = 3
 
 type UncompressedHeader struct {
-	SequenceHeader           SequenceHeader
 	ShowExistingFrame        bool
 	ShowableFrame            bool
 	RefreshImageFlags        int
@@ -77,20 +76,18 @@ type UncompressedHeader struct {
 	FramePresentationTime    int
 }
 
-func NewUncompressedHeader(p *Parser, sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) UncompressedHeader {
+func NewUncompressedHeader(p *Parser) UncompressedHeader {
 	u := UncompressedHeader{}
 
-	u.Build(p, sequenceHeader, extensionHeader)
+	u.Build(p)
 	return u
 }
 
-func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, extensionHeader ExtensionHeader) {
-	u.SequenceHeader = sequenceHeader
-
+func (u *UncompressedHeader) Build(p *Parser) {
 	var idLen int
-	if sequenceHeader.FrameIdNumbersPresent {
-		idLen = sequenceHeader.AdditionalFrameIdLengthMinusOne +
-			sequenceHeader.DeltaFrameIdLengthMinusTwo + 3
+	if p.sequenceHeader.FrameIdNumbersPresent {
+		idLen = p.sequenceHeader.AdditionalFrameIdLengthMinusOne +
+			p.sequenceHeader.DeltaFrameIdLengthMinusTwo + 3
 	}
 
 	var frameType int
@@ -105,7 +102,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 	bufferRemovalTime := []int{}
 
 	allFrames := ((1 << NUM_REF_FRAMES) - 1)
-	if sequenceHeader.ReducedStillPictureHeader {
+	if p.sequenceHeader.ReducedStillPictureHeader {
 		u.ShowExistingFrame = false
 		frameType = KEY_FRAME
 		u.FrameIsIntra = true
@@ -118,12 +115,12 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		if showExistingFrame {
 			frameToShowMapIdx := p.f(3)
 
-			if sequenceHeader.DecoderModelInfoPresent && !sequenceHeader.TimingInfo.EqualPictureInterval {
+			if p.sequenceHeader.DecoderModelInfoPresent && !p.sequenceHeader.TimingInfo.EqualPictureInterval {
 				u.TemporalPointInfo(p)
 			}
 
 			u.RefreshImageFlags = 0
-			if sequenceHeader.FrameIdNumbersPresent {
+			if p.sequenceHeader.FrameIdNumbersPresent {
 				u.DisplayFrameId = p.f(idLen)
 			}
 
@@ -134,7 +131,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 				u.RefreshImageFlags = allFrames
 			}
 
-			if sequenceHeader.FilmGrainParamsPresent {
+			if p.sequenceHeader.FilmGrainParamsPresent {
 				p.LoadGrainParams(frameToShowMapIdx)
 			}
 		}
@@ -145,7 +142,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 
 		showFrame = p.f(1) != 0
 
-		if showFrame && sequenceHeader.DecoderModelInfoPresent && !sequenceHeader.TimingInfo.EqualPictureInterval {
+		if showFrame && p.sequenceHeader.DecoderModelInfoPresent && !p.sequenceHeader.TimingInfo.EqualPictureInterval {
 			u.TemporalPointInfo(p)
 		}
 
@@ -178,7 +175,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 	disableCdfUpdate := p.f(1) != 0
 
 	var allowScreenContentTools bool
-	if sequenceHeader.SeqForceScreenContentTools == 2 {
+	if p.sequenceHeader.SeqForceScreenContentTools == 2 {
 		allowScreenContentTools = p.f(1) != 0
 	} else {
 		allowScreenContentTools = true
@@ -186,7 +183,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 
 	var forceIntegerMv bool
 	if allowScreenContentTools {
-		if sequenceHeader.SeqForceIntegerMv == 2 {
+		if p.sequenceHeader.SeqForceIntegerMv == 2 {
 			forceIntegerMv = p.f(1) != 0
 		} else {
 			forceIntegerMv = true
@@ -199,24 +196,24 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		forceIntegerMv = true
 	}
 
-	if sequenceHeader.FrameIdNumbersPresent {
+	if p.sequenceHeader.FrameIdNumbersPresent {
 		u.PrevFrameId = u.CurrentFrameId
 		u.CurrentFrameId = p.f(idLen)
-		u.markRefFrames(idLen)
+		u.markRefFrames(idLen, p)
 	} else {
 		u.CurrentFrameId = 0
 	}
 
 	if frameType == SWITCH_FRAME {
 		u.FrameSizeOverrideFlag = true
-	} else if sequenceHeader.ReducedStillPictureHeader {
+	} else if p.sequenceHeader.ReducedStillPictureHeader {
 		u.FrameSizeOverrideFlag = false
 
 	} else {
 		u.FrameSizeOverrideFlag = p.f(1) != 0
 	}
 
-	orderHint := p.f(sequenceHeader.OrderHintBits)
+	orderHint := p.f(p.sequenceHeader.OrderHintBits)
 	OrderHint := orderHint
 
 	var primaryRefFrame int
@@ -226,18 +223,18 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		primaryRefFrame = p.f(3)
 	}
 
-	if sequenceHeader.DecoderModelInfoPresent {
+	if p.sequenceHeader.DecoderModelInfoPresent {
 		bufferRemovalTimePresent := p.f(1) != 0
 
 		if bufferRemovalTimePresent {
-			for opNum := 0; opNum <= sequenceHeader.OperatingPointsCountMinusOne; opNum++ {
-				if sequenceHeader.DecoderModelPresentForThisOp[opNum] {
-					opPtIdc := sequenceHeader.OperatingPointIdc[opNum]
-					inTemporalLayer := ((opPtIdc >> extensionHeader.TemporalID) & 1) != 0
-					inSpatialLayer := ((opPtIdc >> extensionHeader.SpatialID) & 1) != 0
+			for opNum := 0; opNum <= p.sequenceHeader.OperatingPointsCountMinusOne; opNum++ {
+				if p.sequenceHeader.DecoderModelPresentForThisOp[opNum] {
+					opPtIdc := p.sequenceHeader.OperatingPointIdc[opNum]
+					inTemporalLayer := ((opPtIdc >> p.header.ExtensionHeader.TemporalID) & 1) != 0
+					inSpatialLayer := ((opPtIdc >> p.header.ExtensionHeader.SpatialID) & 1) != 0
 
 					if opPtIdc == 0 || (inTemporalLayer && inSpatialLayer) {
-						n := sequenceHeader.DecoderModelInfo.BufferRemovalTimeLengthMinusOne + 1
+						n := p.sequenceHeader.DecoderModelInfo.BufferRemovalTimeLengthMinusOne + 1
 						bufferRemovalTime = SliceAssign(bufferRemovalTime, opNum, p.f(n))
 					}
 				}
@@ -259,9 +256,9 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 	}
 
 	if !u.FrameIsIntra || refreshFrameFlags != allFrames {
-		if errorResilientMode && sequenceHeader.EnableOrderHint {
+		if errorResilientMode && p.sequenceHeader.EnableOrderHint {
 			for i := 0; i < NUM_REF_FRAMES; i++ {
-				ref_order_hint = SliceAssign(ref_order_hint, i, p.f(sequenceHeader.OrderHintBits))
+				ref_order_hint = SliceAssign(ref_order_hint, i, p.f(p.sequenceHeader.OrderHintBits))
 
 				if ref_order_hint[i] != RefOrderHint[i] {
 					RefValid = SliceAssign(RefValid, i, 0)
@@ -283,7 +280,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 	} else {
 
 		var frameRefsShortSignaling bool
-		if !sequenceHeader.EnableOrderHint {
+		if !p.sequenceHeader.EnableOrderHint {
 			frameRefsShortSignaling = false
 		} else {
 			frameRefsShortSignaling = p.f(1) != 0
@@ -300,8 +297,8 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 				ref_frame_idx = SliceAssign(ref_frame_idx, i, p.f(3))
 			}
 
-			if sequenceHeader.FrameIdNumbersPresent {
-				n := sequenceHeader.DeltaFrameIdLengthMinusTwo + 2
+			if p.sequenceHeader.FrameIdNumbersPresent {
+				n := p.sequenceHeader.DeltaFrameIdLengthMinusTwo + 2
 				deltaFrameIdMinusOne := p.f(n)
 				DeltaFrameId := deltaFrameIdMinusOne + 1
 				expectedFrameId = SliceAssign(expectedFrameId, i, (u.CurrentFrameId+(1<<idLen)-DeltaFrameId)%(1<<idLen))
@@ -325,7 +322,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		u.readInterpolationFilter(p)
 		u.IsMotionModeSwitchable = p.f(1) != 0
 
-		if errorResilientMode || !sequenceHeader.EnableRefFrameMvs {
+		if errorResilientMode || !p.sequenceHeader.EnableRefFrameMvs {
 			useRefFrameMvs = false
 
 		} else {
@@ -339,15 +336,15 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 			refFrame := LAST_FRAME + 1
 			hint := RefOrderHint[ref_frame_idx[i]]
 			OrderHints = SliceAssign(OrderHints, refFrame, hint)
-			if !sequenceHeader.EnableOrderHint {
+			if !p.sequenceHeader.EnableOrderHint {
 				RefFrameSignBias = SliceAssign(RefFrameSignBias, refFrame, false)
 			} else {
-				RefFrameSignBias = SliceAssign(RefFrameSignBias, refFrame, u.getRelativeDist(hint, OrderHint) > 0)
+				RefFrameSignBias = SliceAssign(RefFrameSignBias, refFrame, u.getRelativeDist(hint, OrderHint, p) > 0)
 			}
 		}
 	}
 
-	if sequenceHeader.ReducedStillPictureHeader || disableCdfUpdate {
+	if p.sequenceHeader.ReducedStillPictureHeader || disableCdfUpdate {
 		u.DisableFrameEndUpdateCdf = true
 	} else {
 		u.DisableFrameEndUpdateCdf = p.f(1) != 0
@@ -366,7 +363,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 		p.motionFieldEstimation()
 	}
 
-	u.TileInfo = NewTileInfo(p, u.SequenceHeader)
+	u.TileInfo = NewTileInfo(p, p.sequenceHeader)
 	u.quantizationParams(p)
 	p.segmentationParams()
 	u.deltaQParams(p)
@@ -415,7 +412,7 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 	u.frameReferenceMode(p)
 	p.skipModeParams()
 
-	if u.FrameIsIntra || errorResilientMode || !sequenceHeader.EnableWarpedMotion {
+	if u.FrameIsIntra || errorResilientMode || !p.sequenceHeader.EnableWarpedMotion {
 		u.AllowWarpedMotion = false
 	} else {
 		u.AllowWarpedMotion = p.f(1) != 0
@@ -428,8 +425,8 @@ func (u *UncompressedHeader) Build(p *Parser, sequenceHeader SequenceHeader, ext
 }
 
 // mark_ref_frames( idLen)
-func (u *UncompressedHeader) markRefFrames(idLen int) {
-	diffLen := u.SequenceHeader.DeltaFrameIdLengthMinusTwo + 2
+func (u *UncompressedHeader) markRefFrames(idLen int, p *Parser) {
+	diffLen := p.sequenceHeader.DeltaFrameIdLengthMinusTwo + 2
 
 	for i := 0; i < NUM_REF_FRAMES; i++ {
 		if u.CurrentFrameId > (1 << diffLen) {
@@ -456,17 +453,17 @@ func (p *Parser) frameSizeWithRefs() {
 // frame_size()
 func (u *UncompressedHeader) frameSize(p *Parser) {
 	if u.FrameSizeOverrideFlag {
-		n := u.SequenceHeader.FrameWidthBitsMinusOne + 1
+		n := p.sequenceHeader.FrameWidthBitsMinusOne + 1
 		frameWidthMinusOne := p.f(n)
 
-		n = u.SequenceHeader.FrameHeightBitsMinusOne + 1
+		n = p.sequenceHeader.FrameHeightBitsMinusOne + 1
 		frameHeightMinusOne := p.f(n)
 
 		u.FrameWidth = frameWidthMinusOne + 1
 		u.FrameHeight = frameHeightMinusOne + 1
 	} else {
-		u.FrameWidth = u.SequenceHeader.MaxFrameWidthMinusOne + 1
-		u.FrameHeight = u.SequenceHeader.MaxFrameHeightMinusOne + 1
+		u.FrameWidth = p.sequenceHeader.MaxFrameWidthMinusOne + 1
+		u.FrameHeight = p.sequenceHeader.MaxFrameHeightMinusOne + 1
 	}
 
 	u.superResParams(p)
@@ -475,7 +472,7 @@ func (u *UncompressedHeader) frameSize(p *Parser) {
 
 // superres_params()
 func (u *UncompressedHeader) superResParams(p *Parser) {
-	if u.SequenceHeader.EnableSuperRes {
+	if p.sequenceHeader.EnableSuperRes {
 		u.UseSuperRes = p.f(1) != 0
 	} else {
 		u.UseSuperRes = false
@@ -525,13 +522,13 @@ func (u *UncompressedHeader) readInterpolationFilter(p *Parser) {
 }
 
 // get_relative_dist()
-func (u *UncompressedHeader) getRelativeDist(a int, b int) int {
+func (u *UncompressedHeader) getRelativeDist(a int, b int, p *Parser) int {
 	if !u.EnableOrderHint {
 		return 0
 	}
 
 	diff := a - b
-	m := 1 << (u.SequenceHeader.OrderHintBits - 1)
+	m := 1 << (p.sequenceHeader.OrderHintBits - 1)
 	diff = (diff & (m - 1)) - (diff & m)
 
 	return diff
@@ -568,8 +565,8 @@ func (u *UncompressedHeader) quantizationParams(p *Parser) {
 	u.DeltaQYDc = u.readDeltaQ(p)
 
 	var diffUvDelta bool
-	if u.SequenceHeader.ColorConfig.NumPlanes > 1 {
-		if u.SequenceHeader.ColorConfig.SeparateUvDeltaQ {
+	if p.sequenceHeader.ColorConfig.NumPlanes > 1 {
+		if p.sequenceHeader.ColorConfig.SeparateUvDeltaQ {
 			diffUvDelta = p.f(1) != 0
 		} else {
 			diffUvDelta = false
@@ -598,7 +595,7 @@ func (u *UncompressedHeader) quantizationParams(p *Parser) {
 		u.Qmy = p.f(4)
 		u.Qmu = p.f(4)
 
-		if !u.SequenceHeader.ColorConfig.SeparateUvDeltaQ {
+		if !p.sequenceHeader.ColorConfig.SeparateUvDeltaQ {
 			u.Qmv = u.Qmu
 		} else {
 			u.Qmv = p.f(4)
@@ -720,7 +717,7 @@ func (p *Parser) DecodeFrameWrapup() {
 
 // temporal_point_info()
 func (u *UncompressedHeader) TemporalPointInfo(p *Parser) {
-	n := u.SequenceHeader.DecoderModelInfo.FramePresentationTimeLengthMinusOne + 1
+	n := p.sequenceHeader.DecoderModelInfo.FramePresentationTimeLengthMinusOne + 1
 	u.FramePresentationTime = p.f(n)
 }
 
