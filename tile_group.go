@@ -102,6 +102,42 @@ func (t *TileGroup) decodeTile(p *Parser) {
 		for c := p.MiColStart; c < p.MiColEnd; c += sbSize4 {
 			p.ReadDeltas = p.uncompressedHeader.DeltaQPresent
 			p.Cdef.clear_cdef(r, c, p)
+			t.clearBlockDecodedFlags(r, c, sbSize, p)
 		}
 	}
+}
+
+// clear_block_decoded_flags( r, c, sbSize4)
+func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int, p *Parser) {
+	for plane := 0; plane < p.sequenceHeader.ColorConfig.NumPlanes; plane++ {
+		subX := 0
+		subY := 0
+		if plane > 0 {
+			if p.sequenceHeader.ColorConfig.SubsamplingX {
+				subX = 1
+			}
+			if p.sequenceHeader.ColorConfig.SubsamplingY {
+				subY = 1
+			}
+		}
+
+		sbWidth4 := (p.MiColEnd - c) >> subX
+		sbHeight4 := (p.MiRowEnd - r) >> subY
+
+		for y := -1; y <= (sbSize4 >> subY); y++ {
+			for x := -1; x <= (sbSize4 >> subX); x++ {
+
+				if y < 0 && x < sbWidth4 {
+					p.BlockDecoded[plane][y][x] = 1
+				} else if x < 0 && y < sbHeight4 {
+					p.BlockDecoded[plane][y][x] = 1
+				} else {
+					p.BlockDecoded[plane][y][x] = 0
+				}
+			}
+		}
+		lastElement := len(p.BlockDecoded[plane][sbSize4>>subY])
+		p.BlockDecoded[plane][sbSize4>>subY][lastElement] = 0
+	}
+
 }

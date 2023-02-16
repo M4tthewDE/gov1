@@ -37,6 +37,7 @@ type Parser struct {
 	Num4x4BlocksWide  []int
 	ReadDeltas        bool
 	Cdef              Cdef
+	BlockDecoded      [][][]int
 }
 
 func NewParser(data []byte) Parser {
