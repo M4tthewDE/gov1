@@ -9,6 +9,13 @@ const BLOCK_128x128 = 15
 var Sgrproj_Xqd_Mid = [...]int{-32, 31}
 var Wiender_Taps_Mid = [...]int{3, -7, 15}
 
+const RESTORE_NONE = 0
+const RESTORE_WIENER = 1
+const RESTORE_SGRPROJ = 2
+const RESTORE_SWITCHABLE = 3
+
+const MI_SIZE = 4
+
 type TileGroup struct {
 }
 
@@ -103,11 +110,12 @@ func (t *TileGroup) decodeTile(p *Parser) {
 			p.ReadDeltas = p.uncompressedHeader.DeltaQPresent
 			p.Cdef.clear_cdef(r, c, p)
 			t.clearBlockDecodedFlags(r, c, sbSize, p)
+			t.readLr(r, c, sbSize, p)
 		}
 	}
 }
 
-// clear_block_decoded_flags( r, c, sbSize4)
+// clear_block_decoded_flags( r, c, sbSize4 )
 func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int, p *Parser) {
 	for plane := 0; plane < p.sequenceHeader.ColorConfig.NumPlanes; plane++ {
 		subX := 0
@@ -140,4 +148,62 @@ func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int, p *Parser)
 		p.BlockDecoded[plane][sbSize4>>subY][lastElement] = 0
 	}
 
+}
+
+// read_lr( r, c, bSize )
+func (t *TileGroup) readLr(r int, c int, bSize int, p *Parser) {
+	if p.uncompressedHeader.AllowIntraBc {
+		return
+	}
+
+	w := p.Num4x4BlocksWide[bSize]
+	h := p.Num4x4BlocksHigh[bSize]
+
+	for plane := 0; plane < p.sequenceHeader.ColorConfig.NumPlanes; plane++ {
+		if p.FrameRestorationType[plane] != RESTORE_NONE {
+			// FIXME: lots of creative freedom here, dangerous!
+			subX := 0
+			subY := 0
+
+			if p.sequenceHeader.ColorConfig.SubsamplingX {
+				subX = 1
+			}
+
+			if p.sequenceHeader.ColorConfig.SubsamplingY {
+				subY = 1
+			}
+
+			unitSize := p.LoopRestorationSize[plane]
+			unitRows := countUnitsInFrame(unitSize, Round2(p.uncompressedHeader.FrameHeight, subY))
+			unitCols := countUnitsInFrame(unitSize, Round2(p.upscaledWidth, subX))
+			unitRowStart := (r*(MI_SIZE>>subY) + unitSize - 1) / unitSize
+			unitRowEnd := Min(unitRows, ((r+h)*(MI_SIZE>>subY)+unitSize-1)/unitSize)
+
+			var numerator int
+			var denominator int
+			if p.uncompressedHeader.UseSuperRes {
+				numerator = (MI_SIZE >> subX) * p.uncompressedHeader.SuperResDenom
+				denominator = unitSize * SUPERRES_NUM
+			} else {
+				numerator = MI_SIZE >> subX
+				denominator = unitSize
+			}
+			unitColStart := (c*numerator + denominator - 1) / denominator
+			unitColEnd := Min(unitCols, ((c+w)*numerator+denominator-1)/denominator)
+
+			for unitRow := unitRowStart; unitRow < unitRowEnd; unitRow++ {
+				for unitCol := unitColStart; unitCol < unitColEnd; unitCol++ {
+					t.readLrUnit(plane, unitRow, unitCol)
+				}
+			}
+		}
+	}
+}
+
+// read_lr_unit(plane, unitRow, unitCol)
+func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int) {
+}
+
+func countUnitsInFrame(unitSize int, frameSize int) int {
+	return Max((frameSize+(unitSize>>1))/unitSize, 1)
 }

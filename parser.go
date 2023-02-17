@@ -10,34 +10,37 @@ type Parser struct {
 	sequenceHeader     SequenceHeader
 	uncompressedHeader UncompressedHeader
 
-	operatingPointIdc int
-	seenFrameHeader   bool
-	leb128Bytes       int
-	renderWidth       int
-	renderHeight      int
-	upscaledWidth     int
-	upscaledHeight    int
-	TileNum           int
-	MiCols            int
-	MiRows            int
-	MiColStarts       []int
-	MiRowStarts       []int
-	MiRowStart        int
-	MiColStart        int
-	MiRowEnd          int
-	MiColEnd          int
-	TileColsLog2      int
-	TileRowsLog2      int
-	TileCols          int
-	TileRows          int
-	TileSizeBytes     int
-	CurrentQIndex     int
-	DeltaLF           []int
-	RefLrWiener       [][][]int
-	Num4x4BlocksWide  []int
-	ReadDeltas        bool
-	Cdef              Cdef
-	BlockDecoded      [][][]int
+	operatingPointIdc    int
+	seenFrameHeader      bool
+	leb128Bytes          int
+	renderWidth          int
+	renderHeight         int
+	upscaledWidth        int
+	upscaledHeight       int
+	TileNum              int
+	MiCols               int
+	MiRows               int
+	MiColStarts          []int
+	MiRowStarts          []int
+	MiRowStart           int
+	MiColStart           int
+	MiRowEnd             int
+	MiColEnd             int
+	TileColsLog2         int
+	TileRowsLog2         int
+	TileCols             int
+	TileRows             int
+	TileSizeBytes        int
+	CurrentQIndex        int
+	DeltaLF              []int
+	RefLrWiener          [][][]int
+	Num4x4BlocksWide     []int
+	Num4x4BlocksHigh     []int
+	ReadDeltas           bool
+	Cdef                 Cdef
+	BlockDecoded         [][][]int
+	FrameRestorationType []int
+	LoopRestorationSize  []int
 }
 
 func NewParser(data []byte) Parser {

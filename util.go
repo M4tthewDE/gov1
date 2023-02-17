@@ -55,3 +55,11 @@ func FloorLog2(x int) int {
 	}
 	return s - 1
 }
+
+func Round2(x int, n int) int {
+	if n == 0 {
+		return x
+	}
+
+	return (x + (1 << (n - 1))) >> n
+}
