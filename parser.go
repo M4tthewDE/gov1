@@ -185,3 +185,27 @@ func (p *Parser) clearAboveContext() {
 func (p *Parser) clearLeftContext() {
 	panic("not implemented: clear_left_context()")
 }
+
+// S()
+func (p *Parser) S() int {
+	panic("not implemented: S()")
+	return 0
+}
+
+// L()
+func (p *Parser) L(a int) int {
+	panic("not implemented: L()")
+	return 0
+}
+
+// NS( n )
+func (p *Parser) NS(n int) int {
+	w := FloorLog2(n) + 1
+	m := (1 << w) - n
+	v := p.L(w - 1)
+	if v < m {
+		return v
+	}
+	extraBit := p.L(1)
+	return (v << 1) - m + extraBit
+}

@@ -63,3 +63,25 @@ func Round2(x int, n int) int {
 
 	return (x + (1 << (n - 1))) >> n
 }
+
+func InverseRecenter(r int, v int) int {
+	if v > 2*r {
+		return v
+	} else if (v & 1) != 0 {
+		return r - ((v + 1) >> 1)
+	} else {
+		return r + (v >> 1)
+	}
+}
+
+func Clip3(x int, y int, z int) int {
+	if z < x {
+		return x
+	}
+
+	if z > y {
+		return y
+	}
+
+	return z
+}

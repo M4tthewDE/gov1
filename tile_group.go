@@ -6,8 +6,16 @@ const WIENER_COEFFS = 3
 const BLOCK_64x64 = 12
 const BLOCK_128x128 = 15
 
-var Sgrproj_Xqd_Mid = [...]int{-32, 31}
-var Wiender_Taps_Mid = [...]int{3, -7, 15}
+var Sgrproj_Xqd_Mid = []int{-32, 31}
+var Sgrproj_Xqd_Min = []int{-96, -32}
+var Sgrproj_Xqd_Max = []int{31, 95}
+var Wiener_Taps_Mid = []int{3, -7, 15}
+var Wiener_Taps_Min = []int{-5, -23, -17}
+var Wiener_Taps_Max = []int{10, 8, 46}
+var Wiener_Taps_K = []int{1, 2, 3}
+
+// TODO:
+var SgrParams = [][]int{}
 
 const RESTORE_NONE = 0
 const RESTORE_WIENER = 1
@@ -16,7 +24,17 @@ const RESTORE_SWITCHABLE = 3
 
 const MI_SIZE = 4
 
+const SGRPROJ_PARAMS_BITS = 4
+const SGRPROJ_BITS = 7
+const SGRPROJ_PRJ_SUBEXP_K = 4
+
 type TileGroup struct {
+	LrType      [][][]int
+	RefLrWiener [][][]int
+	LrWiener    [][][][][]int
+	LrSgrSet    [][][]int
+	RefSgrXqd   [][]int
+	LrSgrXqd    [][][][]int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -84,14 +102,12 @@ func (t *TileGroup) decodeTile(p *Parser) {
 		p.DeltaLF = SliceAssign(p.DeltaLF, i, 0)
 	}
 
-	var RefSgrXqd [][]int
 	for plane := 0; plane < p.sequenceHeader.ColorConfig.NumPlanes; plane++ {
 		for pass := 0; pass < 2; pass++ {
-			RefSgrXqd = SliceAssignNested(RefSgrXqd, plane, pass, Sgrproj_Xqd_Mid[pass])
+			t.RefSgrXqd = SliceAssignNested(t.RefSgrXqd, plane, pass, Sgrproj_Xqd_Mid[pass])
 
 			for i := 0; i < WIENER_COEFFS; i++ {
-				// TODO: this will blow up
-				p.RefLrWiener[plane][pass][i] = Wiender_Taps_Mid[i]
+				t.RefLrWiener[plane][pass][i] = Wiener_Taps_Mid[i]
 			}
 		}
 
@@ -193,7 +209,7 @@ func (t *TileGroup) readLr(r int, c int, bSize int, p *Parser) {
 
 			for unitRow := unitRowStart; unitRow < unitRowEnd; unitRow++ {
 				for unitCol := unitColStart; unitCol < unitColEnd; unitCol++ {
-					t.readLrUnit(plane, unitRow, unitCol)
+					t.readLrUnit(plane, unitRow, unitCol, p)
 				}
 			}
 		}
@@ -201,7 +217,110 @@ func (t *TileGroup) readLr(r int, c int, bSize int, p *Parser) {
 }
 
 // read_lr_unit(plane, unitRow, unitCol)
-func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int) {
+func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, p *Parser) {
+	var restorationType int
+	if p.FrameRestorationType[plane] == RESTORE_WIENER {
+		useWiener := p.S()
+		restorationType = RESTORE_NONE
+		if useWiener == 1 {
+			restorationType = RESTORE_WIENER
+		}
+	} else if p.FrameRestorationType[plane] == RESTORE_SGRPROJ {
+		useSgrproj := p.S()
+		restorationType = RESTORE_NONE
+		if useSgrproj == 1 {
+			restorationType = RESTORE_SGRPROJ
+		}
+	} else {
+		restorationType = p.S()
+	}
+
+	t.LrType[plane][unitRow][unitCol] = restorationType
+
+	if restorationType == RESTORE_WIENER {
+		for pass := 0; pass < 2; pass++ {
+			var firstCoeff int
+			if plane == 1 {
+				firstCoeff = 1
+				t.LrWiener[plane][unitRow][unitCol][pass][0] = 0
+			} else {
+				firstCoeff = 0
+			}
+			for j := firstCoeff; j < 3; j++ {
+				min := Wiener_Taps_Min[j]
+				max := Wiener_Taps_Max[j]
+				k := Wiener_Taps_K[j]
+				v := t.decodeSignedSubexpWithRefBool(min, max+1, k, t.RefLrWiener[plane][pass][j], p)
+				t.LrWiener[plane][unitRow][unitCol][pass][j] = v
+				t.RefLrWiener[plane][pass][j] = v
+			}
+		}
+	} else if restorationType == RESTORE_SGRPROJ {
+		lrSgrSet := p.L(SGRPROJ_PARAMS_BITS)
+		t.LrSgrSet[plane][unitRow][unitCol] = lrSgrSet
+
+		for i := 0; i < 2; i++ {
+			radius := SgrParams[lrSgrSet][i*2]
+			min := Sgrproj_Xqd_Min[i]
+			max := Sgrproj_Xqd_Max[i]
+
+			var v int
+			if radius != 0 {
+				v = t.decodeSignedSubexpWithRefBool(min, max+1, SGRPROJ_PRJ_SUBEXP_K, t.RefSgrXqd[plane][i], p)
+			} else {
+				v = 0
+				if i == 1 {
+					v = Clip3(min, max, (1<<SGRPROJ_BITS)-t.RefSgrXqd[plane][0])
+				}
+			}
+
+			t.LrSgrXqd[plane][unitRow][unitCol][i] = v
+			t.RefSgrXqd[plane][i] = v
+		}
+	}
+
+}
+
+func (t *TileGroup) decodeSignedSubexpWithRefBool(low int, high int, k int, r int, p *Parser) int {
+	x := t.decodeUnsignedSubexpWithRefBool(high-low, k, r-low, p)
+	return x + low
+
+}
+
+func (t *TileGroup) decodeUnsignedSubexpWithRefBool(mx int, k int, r int, p *Parser) int {
+	v := t.decodeSubexpBool(mx, k, p)
+	if (r << 1) <= mx {
+		return InverseRecenter(r, v)
+	} else {
+		return mx - 1 - InverseRecenter(mx-1-r, v)
+	}
+}
+
+func (t *TileGroup) decodeSubexpBool(numSyms int, k int, p *Parser) int {
+	i := 0
+	mk := 0
+	for {
+		b2 := k
+		if i == 1 {
+			b2 = k + i - 1
+		}
+
+		a := 1 << b2
+
+		if numSyms <= -mk+3*a {
+			subexpUnifBools := p.L(1)
+			return subexpUnifBools + mk
+		} else {
+			subexpMoreBools := p.L(1) != 0
+			if subexpMoreBools {
+				i++
+				mk += a
+			} else {
+				subexpBools := p.L(b2)
+				return subexpBools + mk
+			}
+		}
+	}
 }
 
 func countUnitsInFrame(unitSize int, frameSize int) int {
