@@ -3,8 +3,142 @@ package main
 const FRAME_LF_COUNT = 4
 const WIENER_COEFFS = 3
 
+const BLOCK_INVALID = 3
+const BLOCK_4x4 = 0
+const BLOCK_4x8 = 1
+const BLOCK_8x4 = 2
+const BLOCK_8x8 = 3
+const BLOCK_8x16 = 4
+const BLOCK_16x8 = 5
+const BLOCK_16x16 = 6
+const BLOCK_16x32 = 7
+const BLOCK_32x16 = 8
+const BLOCK_32x32 = 9
+const BLOCK_32x64 = 10
+const BLOCK_64x32 = 11
 const BLOCK_64x64 = 12
+const BLOCK_64x128 = 13
+const BLOCK_128x64 = 14
 const BLOCK_128x128 = 15
+const BLOCK_4x16 = 16
+const BLOCK_16x4 = 17
+const BLOCK_8x32 = 18
+const BLOCK_32x8 = 19
+const BLOCK_16x64 = 20
+const BLOCK_64x16 = 21
+const PARTITION_NONE = 0
+const PARTITION_HORZ = 1
+const PARTITION_VERT = 2
+const PARTITION_SPLIT = 3
+
+const DELTA_Q_SMALL = 3
+const DELTA_LF_SMALL = 3
+
+const INTRA_FRAME = 0
+const NONE = -1
+
+var Partition_Subsize = [][]int{
+	{
+		BLOCK_4x4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128x128,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x128,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x128,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x128,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+}
 
 var Sgrproj_Xqd_Mid = []int{-32, 31}
 var Sgrproj_Xqd_Min = []int{-96, -32}
@@ -13,8 +147,6 @@ var Wiener_Taps_Mid = []int{3, -7, 15}
 var Wiener_Taps_Min = []int{-5, -23, -17}
 var Wiener_Taps_Max = []int{10, 8, 46}
 var Wiener_Taps_K = []int{1, 2, 3}
-
-// TODO:
 var SgrParams = [][]int{}
 
 const RESTORE_NONE = 0
@@ -28,13 +160,29 @@ const SGRPROJ_PARAMS_BITS = 4
 const SGRPROJ_BITS = 7
 const SGRPROJ_PRJ_SUBEXP_K = 4
 
+const DC_PRED = 0
+
+const SIMPLE = 0
+
+const COMPUND_AVERAGE = 2
+
 type TileGroup struct {
-	LrType      [][][]int
-	RefLrWiener [][][]int
-	LrWiener    [][][][][]int
-	LrSgrSet    [][][]int
-	RefSgrXqd   [][]int
-	LrSgrXqd    [][][][]int
+	LrType         [][][]int
+	RefLrWiener    [][][]int
+	LrWiener       [][][][][]int
+	LrSgrSet       [][][]int
+	RefSgrXqd      [][]int
+	LrSgrXqd       [][][][]int
+	HasChroma      bool
+	SegmentId      int
+	SegmentIds     [][]int
+	Lossless       bool
+	Skip           int
+	YMode          int
+	UVMode         int
+	PalletteSizeY  int
+	PalletteSizeUV int
+	InterpFilter   []int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -127,7 +275,335 @@ func (t *TileGroup) decodeTile(p *Parser) {
 			p.Cdef.clear_cdef(r, c, p)
 			t.clearBlockDecodedFlags(r, c, sbSize, p)
 			t.readLr(r, c, sbSize, p)
+			t.decodePartition(r, c, sbSize, p)
 		}
+	}
+}
+
+// decode_partition(r, c, bSize)
+func (t *TileGroup) decodePartition(r int, c int, bSize int, p *Parser) {
+	if r >= p.MiRows || c >= p.MiCols {
+		return
+	}
+
+	p.AvailU = p.isInside(r-1, c)
+	p.AvailL = p.isInside(r, c-1)
+	num4x4 := p.Num4x4BlocksWide[bSize]
+	halfBlock4x4 := num4x4 >> 1
+	quarterBlock4x4 := halfBlock4x4 >> 1
+	hasRows := (r + halfBlock4x4) < p.MiRows
+	hasCols := (c + halfBlock4x4) < p.MiCols
+
+	var partition int
+	if bSize < BLOCK_8x8 {
+		partition = PARTITION_NONE
+	} else if hasRows && hasCols {
+		partition = p.S()
+	} else if hasCols {
+		splitOrHorz := p.S() != 0
+		if splitOrHorz {
+			partition = PARTITION_SPLIT
+		} else {
+			partition = PARTITION_HORZ
+		}
+	} else if hasRows {
+		splitOrVert := p.S() != 0
+		if splitOrVert {
+			partition = PARTITION_SPLIT
+		} else {
+			partition = PARTITION_VERT
+		}
+
+	} else {
+		partition = PARTITION_SPLIT
+	}
+
+	subSize := Partition_Subsize[partition][bSize]
+	splitSize := Partition_Subsize[PARTITION_SPLIT][bSize]
+	if partition == PARTITION_NONE {
+		t.decodeBlock(r, c, subSize, p)
+	}
+}
+
+// decode_block( r, c, subSize)
+func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
+	p.MiRow = r
+	p.MiCol = c
+	p.MiSize = subSize
+	bw4 := p.Num4x4BlocksWide[subSize]
+	bh4 := p.Num4x4BlocksHigh[subSize]
+
+	if bh4 == 1 && p.sequenceHeader.ColorConfig.SubsamplingY && (p.MiRow&1) == 0 {
+		t.HasChroma = false
+	} else if bw4 == 1 && p.sequenceHeader.ColorConfig.SubsamplingX && (p.MiCol&1) == 0 {
+		t.HasChroma = false
+	} else {
+		t.HasChroma = p.sequenceHeader.ColorConfig.NumPlanes > 1
+	}
+
+	p.AvailU = p.isInside(r-1, c)
+	p.AvailL = p.isInside(r, c-1)
+	availUChroma := p.AvailU
+	availLChroma := p.AvailL
+
+	if t.HasChroma {
+		if p.sequenceHeader.ColorConfig.SubsamplingY && bh4 == 1 {
+			availUChroma = p.isInside(r-2, c)
+		}
+		if p.sequenceHeader.ColorConfig.SubsamplingX && bw4 == 1 {
+			availLChroma = p.isInside(r, c-2)
+		}
+	} else {
+		availUChroma = false
+		availLChroma = false
+	}
+}
+
+// mode_info()
+func (t *TileGroup) modeInfo(p *Parser) {
+	if p.uncompressedHeader.FrameIsIntra {
+		t.intraFrameModeInfo()
+	} else {
+		t.interFrameModeInfo()
+	}
+}
+
+// intra_frame_mode_info()
+func (t *TileGroup) intraFrameModeInfo(p *Parser) {
+	t.Skip = 0
+	if p.uncompressedHeader.SegIdPreSkip == 1 {
+		t.intraSegmentId(p)
+	}
+
+	skipMode := 0
+	t.readSkip(p)
+
+	if !Bool(p.uncompressedHeader.SegIdPreSkip) {
+		t.intraSegmentId(p)
+	}
+	t.readCdef(p)
+	t.readDeltaQIndex(p)
+	t.readDeltaLf(p)
+
+	p.ReadDeltas = false
+	p.RefFrame[0] = INTRA_FRAME
+	p.RefFrame[0] = NONE
+
+	var useIntrabc int
+	if p.uncompressedHeader.AllowIntraBc {
+		useIntrabc = p.S()
+	} else {
+		useIntrabc = 0
+	}
+
+	if Bool(useIntrabc) {
+		isInter := -1
+		t.YMode = DC_PRED
+		t.UVMode = DC_PRED
+		motionMode := SIMPLE
+		compoundType := COMPUND_AVERAGE
+		t.PalletteSizeY = 0
+		t.PalletteSizeUV = 0
+		t.InterpFilter[0] = BILINEAR
+		t.InterpFilter[1] = BILINEAR
+
+		// NEXT:
+		// GOOD LUCK
+		t.findMvStack(0)
+	}
+
+}
+
+// read_delta_lf()
+func (t *TileGroup) readDeltaLf(p *Parser) {
+	var sbSize int
+	if p.sequenceHeader.Use128x128SuperBlock {
+		sbSize = BLOCK_128x128
+	} else {
+		sbSize = BLOCK_64x64
+	}
+
+	if p.MiSize == sbSize && Bool(t.Skip) {
+		return
+	}
+
+	if p.ReadDeltas && p.uncompressedHeader.DeltaLfPresent {
+		frameLfCount := 1
+
+		if Bool(p.uncompressedHeader.DeltaLfMulti) {
+			if p.sequenceHeader.ColorConfig.NumPlanes > 1 {
+				frameLfCount = FRAME_LF_COUNT
+			} else {
+				frameLfCount = FRAME_LF_COUNT - 2
+			}
+		}
+
+		for i := 0; i < frameLfCount; i++ {
+			var deltaLfAbs int
+			delta_lf_abs := p.S()
+
+			if delta_lf_abs == DELTA_LF_SMALL {
+				deltaLfRemBits := p.L(3)
+				n := deltaLfRemBits + 1
+				deltaLfAbsBits := p.L(n)
+				deltaLfAbs = deltaLfAbsBits + (1 << n) + 1
+			} else {
+				deltaLfAbs = delta_lf_abs
+			}
+
+			var reducedDeltaLfLevel int
+			if Bool(deltaLfAbs) {
+				deltaLfSignBit := p.L(1)
+				if Bool(deltaLfSignBit) {
+					reducedDeltaLfLevel = -deltaLfAbs
+				} else {
+					reducedDeltaLfLevel = deltaLfAbs
+
+				}
+
+				p.DeltaLF[i] = Clip3(-MAX_LOOP_FILTER, MAX_LOOP_FILTER, p.DeltaLF[i]+(reducedDeltaLfLevel<<p.uncompressedHeader.DeltaLfRes))
+			}
+		}
+	}
+}
+
+// read_delta_qindex()
+func (t *TileGroup) readDeltaQIndex(p *Parser) {
+	var sbSize int
+	if p.sequenceHeader.Use128x128SuperBlock {
+		sbSize = BLOCK_128x128
+	} else {
+		sbSize = BLOCK_64x64
+	}
+
+	if p.MiSize == sbSize && Bool(t.Skip) {
+		return
+	}
+
+	if p.ReadDeltas {
+		deltaQAbs := p.S()
+		if deltaQAbs == DELTA_Q_SMALL {
+			deltaQRemBits := p.L(3)
+			deltaQRemBits++
+			deltaQAbsBits := p.L(deltaQRemBits)
+			deltaQAbs = deltaQAbsBits + (1 << deltaQRemBits) + 1
+		}
+
+		if Bool(deltaQAbs) {
+			deltaQSignBit := p.L(1)
+			var reducedDeltaQIndex int
+			if Bool(deltaQSignBit) {
+				reducedDeltaQIndex = -deltaQAbs
+			} else {
+				reducedDeltaQIndex = deltaQAbs
+			}
+
+			p.CurrentQIndex = Clip3(1, 255, p.CurrentQIndex+(reducedDeltaQIndex<<p.uncompressedHeader.DeltaQRes))
+
+		}
+	}
+}
+
+// read_cdef()
+func (t *TileGroup) readCdef(p *Parser) {
+	if Bool(t.Skip) || p.uncompressedHeader.CodedLossless || !p.sequenceHeader.EnableCdef || p.uncompressedHeader.AllowIntraBc {
+		return
+	}
+
+	cdefSize4 := p.Num4x4BlocksWide[BLOCK_64x64]
+	cdefMask4 := ^(cdefSize4 - 1)
+	r := p.MiRow & cdefMask4
+	c := p.MiCol & cdefMask4
+
+	if p.Cdef.CdefIdx[r][c] == -1 {
+		p.Cdef.CdefIdx[r][c] = p.L(p.Cdef.CdefBits)
+		w4 := p.Num4x4BlocksWide[p.MiSize]
+		h4 := p.Num4x4BlocksHigh[p.MiSize]
+
+		for i := r; i < r+h4; i += cdefSize4 {
+			for j := c; i < c+w4; i += cdefSize4 {
+				p.Cdef.CdefIdx[i][j] = p.Cdef.CdefIdx[r][c]
+			}
+
+		}
+	}
+}
+
+// read_skip()
+func (t *TileGroup) readSkip(p *Parser) {
+	if (p.uncompressedHeader.SegIdPreSkip == 1) && t.segFeatureActive(SEG_LVL_SKIP, p) {
+		t.Skip = 1
+	} else {
+		t.Skip = p.S()
+	}
+}
+
+// seg_feature_active( feature )
+func (t *TileGroup) segFeatureActive(feature int, p *Parser) bool {
+	return t.segFeatureActiveIdx(t.SegmentId, feature, p)
+}
+
+// seg_feature_active_idx( idx, feature )
+func (t *TileGroup) segFeatureActiveIdx(idx int, feature int, p *Parser) bool {
+	return (p.uncompressedHeader.SegmentationEnabled == 1) && (p.FeatureEnabled[idx][feature] == 1)
+}
+
+// intra_segment_id()
+func (t *TileGroup) intraSegmentId(p *Parser) {
+	if p.uncompressedHeader.SegmentationEnabled == 1 {
+		t.readSegmentId(p)
+	} else {
+		t.SegmentId = 0
+	}
+
+	t.Lossless = p.uncompressedHeader.LosslessArray[t.SegmentId]
+}
+
+// read_segment_id()
+func (t *TileGroup) readSegmentId(p *Parser) {
+	var prevU int
+	var prevL int
+	var prevUL int
+	var pred int
+	if p.AvailU && p.AvailL {
+		prevUL = t.SegmentIds[p.MiRow-1][p.MiCol-1]
+	} else {
+		prevUL = -1
+	}
+
+	if p.AvailU {
+		prevU = t.SegmentIds[p.MiRow-1][p.MiCol]
+	} else {
+		prevU = -1
+	}
+
+	if p.AvailL {
+		prevL = t.SegmentIds[p.MiRow][p.MiCol-1]
+	} else {
+		prevL = -1
+	}
+
+	if prevU == -1 {
+		if prevL == -1 {
+			pred = 0
+		} else {
+			pred = prevL
+		}
+	} else if prevL == -1 {
+		pred = prevU
+	} else {
+		if prevUL == prevU {
+			pred = prevU
+		} else {
+			pred = prevL
+		}
+	}
+
+	if t.Skip == 1 {
+		t.SegmentId = pred
+	} else {
+		t.SegmentId = p.S()
+		t.SegmentId = NegDeinterleave(t.SegmentId, pred, p.uncompressedHeader.LastActiveSegId+1)
 	}
 }
 

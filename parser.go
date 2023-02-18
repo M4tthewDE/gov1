@@ -22,6 +22,9 @@ type Parser struct {
 	MiRows               int
 	MiColStarts          []int
 	MiRowStarts          []int
+	MiCol                int
+	MiRow                int
+	MiSize               int
 	MiRowStart           int
 	MiColStart           int
 	MiRowEnd             int
@@ -41,6 +44,11 @@ type Parser struct {
 	BlockDecoded         [][][]int
 	FrameRestorationType []int
 	LoopRestorationSize  []int
+	AvailU               bool
+	AvailL               bool
+	FeatureEnabled       [][]int
+	FeatureData          [][]int
+	RefFrame             []int
 }
 
 func NewParser(data []byte) Parser {
@@ -208,4 +216,8 @@ func (p *Parser) NS(n int) int {
 	}
 	extraBit := p.L(1)
 	return (v << 1) - m + extraBit
+}
+
+func (p *Parser) isInside(candidateR int, candidateC int) bool {
+	return candidateC >= p.MiColStart && candidateC < p.MiColEnd && candidateR >= p.MiRowStart && candidateR < p.MiRowEnd
 }

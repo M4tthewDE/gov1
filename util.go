@@ -85,3 +85,38 @@ func Clip3(x int, y int, z int) int {
 
 	return z
 }
+
+func NegDeinterleave(diff int, ref int, max int) int {
+	if !(ref == 1) {
+		return diff
+	}
+
+	if ref >= (max - 1) {
+		return max - diff - 1
+	}
+
+	if 2*ref < max {
+		if diff <= 2*ref {
+			if (diff & 1) == 1 {
+				return ref + ((diff + 1) >> 1)
+			} else {
+				return ref - (diff >> 1)
+			}
+		}
+
+		return diff
+	} else {
+		if diff <= 2*(max-ref-1) {
+			if (diff & 1) == 1 {
+				return ref + ((diff + 1) >> 1)
+			} else {
+				return ref - (diff >> 1)
+			}
+		}
+		return max - diff + 1
+	}
+}
+
+func Bool(x int) bool {
+	return x == 1
+}

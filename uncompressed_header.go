@@ -6,6 +6,9 @@ const KEY_FRAME = 0
 const LAST_FRAME = 1
 const PRIMARY_REF_NONE = 7
 const MAX_SEGMENTS = 8
+const SEG_LVL_MAX = 8
+const SEG_LVL_SKIP = 6
+const SEG_LVL_REF_FRAME = 5
 
 const EIGHTTAP = 0
 const EIGHTTAP_SMOOTH = 1
@@ -22,58 +25,70 @@ const SUPERRES_DENOM_MIN = 9
 const SUPERRES_NUM = 8
 const SWITCH_FRAME = 3
 
+const MAX_LOOP_FILTER = 63
+
+var Segmentation_Feature_Bits = []int{8, 6, 6, 6, 6, 3, 0, 0}
+var Segmentation_Feature_Signed = []int{1, 1, 1, 1, 1, 0, 0, 0}
+var Segmentation_Feature_Max = []int{255, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, 7, 0, 0}
+
 type UncompressedHeader struct {
-	ShowExistingFrame        bool
-	ShowableFrame            bool
-	RefreshImageFlags        int
-	DisplayFrameId           int
-	FrameIdNumbersPresent    bool
-	AllowHighPrecisionMv     bool
-	AllowIntraBc             bool
-	LastFrameIdx             int
-	GoldFrameIdx             int
-	IsMotionModeSwitchable   bool
-	DisableFrameEndUpdateCdf bool
-	AllLossless              bool
-	AllowWarpedMotion        bool
-	ReducedTxSet             bool
-	FrameIsIntra             bool
-	ReferenceSelect          bool
-	CodedLossless            bool
-	TxMode                   int
-	DeltaQPresent            bool
-	DeltaQRes                int
-	DeltaLfPresent           bool
-	DeltaLfRes               int
-	DeltaLfMulti             int
-	BaseQIdx                 int
-	EnableOrderHint          bool
-	OrderHintBits            int
-	UseSuperRes              bool
-	SuperResDenom            int
-	FrameWidth               int
-	FrameHeight              int
-	UpscaledWidth            int
-	UpscaledHeight           int
-	FrameSizeOverrideFlag    bool
-	DeltaQYDc                int
-	DeltaQUAc                int
-	DeltaQUDc                int
-	DeltaQVAc                int
-	DeltaQVDc                int
-	UsingQMatrix             bool
-	Qmy                      int
-	Qmu                      int
-	Qmv                      int
-	RenderWidth              int
-	RenderHeight             int
-	InterpolationFilter      int
-	PrevFrameId              int
-	CurrentFrameId           int
-	RefFrameId               []int
-	RefValid                 []int
-	TileInfo                 TileInfo
-	FramePresentationTime    int
+	ShowExistingFrame          bool
+	ShowableFrame              bool
+	RefreshImageFlags          int
+	DisplayFrameId             int
+	FrameIdNumbersPresent      bool
+	AllowHighPrecisionMv       bool
+	AllowIntraBc               bool
+	LastFrameIdx               int
+	GoldFrameIdx               int
+	IsMotionModeSwitchable     bool
+	DisableFrameEndUpdateCdf   bool
+	AllLossless                bool
+	AllowWarpedMotion          bool
+	ReducedTxSet               bool
+	FrameIsIntra               bool
+	ReferenceSelect            bool
+	CodedLossless              bool
+	TxMode                     int
+	DeltaQPresent              bool
+	DeltaQRes                  int
+	DeltaLfPresent             bool
+	DeltaLfRes                 int
+	DeltaLfMulti               int
+	BaseQIdx                   int
+	EnableOrderHint            bool
+	OrderHintBits              int
+	UseSuperRes                bool
+	SuperResDenom              int
+	FrameWidth                 int
+	FrameHeight                int
+	UpscaledWidth              int
+	UpscaledHeight             int
+	FrameSizeOverrideFlag      bool
+	DeltaQYDc                  int
+	DeltaQUAc                  int
+	DeltaQUDc                  int
+	DeltaQVAc                  int
+	DeltaQVDc                  int
+	UsingQMatrix               bool
+	Qmy                        int
+	Qmu                        int
+	Qmv                        int
+	RenderWidth                int
+	RenderHeight               int
+	InterpolationFilter        int
+	PrevFrameId                int
+	CurrentFrameId             int
+	RefFrameId                 []int
+	RefValid                   []int
+	TileInfo                   TileInfo
+	FramePresentationTime      int
+	PrimaryRefFrame            int
+	SegIdPreSkip               int
+	LastActiveSegId            int
+	SegmentationEnabled        int
+	SegmentationTemporalUpdate int
+	LosslessArray              []bool
 }
 
 func NewUncompressedHeader(p *Parser) UncompressedHeader {
@@ -216,11 +231,10 @@ func (u *UncompressedHeader) Build(p *Parser) {
 	orderHint := p.f(p.sequenceHeader.OrderHintBits)
 	OrderHint := orderHint
 
-	var primaryRefFrame int
 	if u.FrameIsIntra || errorResilientMode {
-		primaryRefFrame = PRIMARY_REF_NONE
+		u.PrimaryRefFrame = PRIMARY_REF_NONE
 	} else {
-		primaryRefFrame = p.f(3)
+		u.PrimaryRefFrame = p.f(3)
 	}
 
 	if p.sequenceHeader.DecoderModelInfoPresent {
@@ -350,12 +364,12 @@ func (u *UncompressedHeader) Build(p *Parser) {
 		u.DisableFrameEndUpdateCdf = p.f(1) != 0
 	}
 
-	if primaryRefFrame == PRIMARY_REF_NONE {
+	if u.PrimaryRefFrame == PRIMARY_REF_NONE {
 
 		p.initNonCoeffCdfs()
 		p.setupPastIndependence()
 	} else {
-		p.loadCdfs(ref_frame_idx[primaryRefFrame])
+		p.loadCdfs(ref_frame_idx[u.PrimaryRefFrame])
 		p.loadPrevious()
 	}
 
@@ -365,11 +379,11 @@ func (u *UncompressedHeader) Build(p *Parser) {
 
 	u.TileInfo = NewTileInfo(p, p.sequenceHeader)
 	u.quantizationParams(p)
-	p.segmentationParams()
+	u.segmentationParams(p)
 	u.deltaQParams(p)
 	u.deltaLfParams(p)
 
-	if primaryRefFrame == PRIMARY_REF_NONE {
+	if u.PrimaryRefFrame == PRIMARY_REF_NONE {
 
 		p.initCoeffCdfs()
 	} else {
@@ -377,20 +391,19 @@ func (u *UncompressedHeader) Build(p *Parser) {
 	}
 
 	u.CodedLossless = true
-	LosslessArray := []bool{}
 
 	SegQMLevel := [][]int{}
 
 	for segmentId := 0; segmentId < MAX_SEGMENTS; segmentId++ {
 		qIndex := p.getQIndex(1, segmentId)
-		LosslessArray = SliceAssign(LosslessArray, segmentId, qIndex == 0 && u.DeltaQYDc == 0 && u.DeltaQUAc == 0 && u.DeltaQUDc == 0 && u.DeltaQVAc == 0 && u.DeltaQVDc == 0)
+		u.LosslessArray = SliceAssign(u.LosslessArray, segmentId, qIndex == 0 && u.DeltaQYDc == 0 && u.DeltaQUAc == 0 && u.DeltaQUDc == 0 && u.DeltaQVAc == 0 && u.DeltaQVDc == 0)
 
-		if !LosslessArray[segmentId] {
+		if !u.LosslessArray[segmentId] {
 			u.CodedLossless = false
 		}
 
 		if u.UsingQMatrix {
-			if LosslessArray[segmentId] {
+			if u.LosslessArray[segmentId] {
 				SliceAssignNested(SegQMLevel, 0, segmentId, 15)
 				SliceAssignNested(SegQMLevel, 1, segmentId, 15)
 				SliceAssignNested(SegQMLevel, 2, segmentId, 15)
@@ -613,8 +626,74 @@ func (u *UncompressedHeader) readDeltaQ(p *Parser) int {
 	}
 }
 
-func (p *Parser) segmentationParams() {
-	panic("not implemented")
+// segmentation_params
+func (u *UncompressedHeader) segmentationParams(p *Parser) {
+	u.SegmentationEnabled = p.f(1)
+	if u.SegmentationEnabled == 1 {
+		var segmentationUpdateMap int
+		var segmentationUpdateData int
+		if u.PrimaryRefFrame == PRIMARY_REF_NONE {
+			segmentationUpdateMap = 1
+			u.SegmentationTemporalUpdate = 0
+			segmentationUpdateData = 1
+
+		} else {
+			segmentationUpdateMap = p.f(1)
+			if segmentationUpdateMap == 1 {
+				u.SegmentationTemporalUpdate = p.f(1)
+			}
+			segmentationUpdateData = p.f(1)
+		}
+
+		if segmentationUpdateData == 1 {
+			for i := 0; i < MAX_SEGMENTS; i++ {
+				for j := 0; j < SEG_LVL_MAX; i++ {
+					featureValue := 0
+					featureEnabled := p.f(1)
+					p.FeatureEnabled[i][j] = featureEnabled
+					clippedValue := 0
+
+					if featureEnabled == 1 {
+						bitsToRead := Segmentation_Feature_Bits[j]
+						limit := Segmentation_Feature_Max[j]
+						if Segmentation_Feature_Signed[j] == 1 {
+							featureValue = p.su(1 + bitsToRead)
+							clippedValue = Clip3(-limit, limit, featureValue)
+						} else {
+							featureValue = p.su(bitsToRead)
+							clippedValue = Clip3(0, limit, featureValue)
+
+						}
+					}
+					p.FeatureData[i][j] = clippedValue
+				}
+			}
+		}
+	} else {
+		for i := 0; i < MAX_SEGMENTS; i++ {
+			for j := 0; j < SEG_LVL_MAX; i++ {
+				p.FeatureEnabled[i][j] = 0
+				p.FeatureData[i][j] = 0
+			}
+
+		}
+	}
+	u.SegIdPreSkip = 0
+	u.LastActiveSegId = 0
+
+	for i := 0; i < MAX_SEGMENTS; i++ {
+		for j := 0; j < SEG_LVL_MAX; i++ {
+			if p.FeatureEnabled[i][j] == 1 {
+				u.LastActiveSegId = i
+
+				if j >= SEG_LVL_REF_FRAME {
+					u.SegIdPreSkip = 1
+				}
+			}
+		}
+
+	}
+
 }
 
 // delta_q_parms()

@@ -1,7 +1,8 @@
 package main
 
 type Cdef struct {
-	CdefIdx [][]int
+	CdefIdx  [][]int
+	CdefBits int
 }
 
 func (cdef *Cdef) clear_cdef(r int, c int, p *Parser) {
