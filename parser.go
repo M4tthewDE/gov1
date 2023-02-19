@@ -25,6 +25,7 @@ type Parser struct {
 	MiCol                int
 	MiRow                int
 	MiSize               int
+	MiSizes              [][]int
 	MiRowStart           int
 	MiColStart           int
 	MiRowEnd             int
@@ -49,6 +50,7 @@ type Parser struct {
 	FeatureEnabled       [][]int
 	FeatureData          [][]int
 	RefFrame             []int
+	RefFrames            [][][]int
 	GmType               []int
 	PrevGmParams         [][]int
 }

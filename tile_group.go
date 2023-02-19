@@ -166,6 +166,19 @@ const SIMPLE = 0
 
 const COMPUND_AVERAGE = 2
 
+const NEARESTMV = 14
+const NEARMV = 15
+const GLOBALMV = 16
+const NEWMV = 17
+const NEAREST_NEARESTMV = 18
+const NEAR_NEARMV = 19
+const NEAREST_NEWMV = 20
+const NEW_NEARESTMV = 21
+const NEAR_NEWMV = 22
+const NEW_NEARMV = 23
+const GLOBAL_GLOBALMV = 24
+const NEW_NEWMV = 25
+
 type TileGroup struct {
 	LrType         [][][]int
 	RefLrWiener    [][][]int
@@ -180,6 +193,7 @@ type TileGroup struct {
 	Skip           int
 	YMode          int
 	UVMode         int
+	YModes         [][]int
 	PalletteSizeY  int
 	PalletteSizeUV int
 	InterpFilter   []int
@@ -188,6 +202,10 @@ type TileGroup struct {
 	GlobalMvs      [][]int
 	Block_Width    []int
 	Block_Height   []int
+	IsInters       [][]int
+	Mvs            [][][][]int
+	FoundMatch     int
+	RefStackMv     [][][]int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -436,7 +454,93 @@ func (t *TileGroup) findMvStack(isCompound int, p *Parser) {
 		t.GlobalMvs[1] = t.setupGlobalMvProcess(1, p)
 	}
 
-	FoundMatch := 0
+	// 5.
+	t.FoundMatch = 0
+
+	// 6.
+	t.scanRowProcess(-1, isCompound, p)
+}
+
+func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, p *Parser) {
+	bw4 := p.Num4x4BlocksWide[p.MiSize]
+	end4 := Min(Min(bw4, p.MiCols-p.MiCol), 16)
+	deltaCol := 0
+	useStep16 := bw4 >= 16
+
+	if Abs(deltaRow) > 1 {
+		deltaRow += p.MiRow & 1
+		deltaCol = 1 - (p.MiCol & 1)
+	}
+
+	i := 0
+
+	for i < end4 {
+		mvRow := p.MiRow + deltaRow
+		mvCol := p.MiCol + deltaCol + i
+
+		if !p.isInside(mvRow, mvCol) {
+			break
+		}
+
+		len := Min(bw4, p.Num4x4BlocksWide[p.MiSizes[mvRow][mvCol]])
+		if Abs(deltaRow) > 1 {
+			len = Max(2, len)
+		}
+		if useStep16 {
+			len = Max(4, len)
+		}
+		weight := len * 2
+		t.addRefMvCandidate(mvRow, mvCol, isCompound, weight, p)
+		i += len
+	}
+}
+
+// 7.10.2.7. Add reference motion vector process
+func (t *TileGroup) addRefMvCandidate(mvRow int, mvCol int, isCompound int, weight int, p *Parser) {
+	if t.IsInters[mvRow][mvCol] == 0 {
+		return
+	}
+
+	// TODO: not sure if this loop is correct here
+	for candList := 0; candList < 2; candList++ {
+		if isCompound == 0 {
+			if p.RefFrames[mvRow][mvCol][candList] == p.RefFrame[0] {
+				t.searchStackProcess(mvRow, mvCol, candList, weight, p)
+			}
+
+		} else {
+			if p.RefFrames[mvRow][mvCol][0] == p.RefFrame[0] && p.RefFrames[mvRow][mvCol][1] == p.RefFrame[1] {
+				t.compoundSearchStackProcess(mvRow, mvCol, weight, p)
+			}
+		}
+	}
+}
+
+// 7.10.2.8. Search stack process
+func (t *TileGroup) searchStackProcess(mvRow int, mvCol int, candList int, weight int, p *Parser) {
+	candMode := t.YModes[mvRow][mvCol]
+	candSize := p.MiSizes[mvRow][mvCol]
+	large := Min(t.Block_Width[candSize], t.Block_Height[candSize]) >= 8
+
+	var candMv []int
+	if (candMode == GLOBALMV || candMode == GLOBAL_GLOBALMV) && (p.GmType[p.RefFrame[0]] > TRANSLATION) && large {
+		candMv = t.GlobalMvs[0]
+	} else {
+		candMv = t.Mvs[mvRow][mvCol][candList]
+	}
+
+	candMv = t.lowerPrecisionProcess(candMv, p)
+	if HasNewmv(candMode) {
+		t.NewMvCount += 1
+	}
+
+	t.FoundMatch = 1
+
+	// NEXT: continue here
+}
+
+// 7.10.2.9. Compound search stack process
+func (t *TileGroup) compoundSearchStackProcess(mvRow int, mvCol int, weight int, p *Parser) {
 }
 
 // 7.10.2.1 Setup global MV process

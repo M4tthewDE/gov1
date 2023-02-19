@@ -143,3 +143,7 @@ func Int(x bool) int {
 	}
 	return 0
 }
+
+func HasNewmv(mode int) bool {
+	return mode == NEWMV || mode == NEW_NEWMV || mode == NEAR_NEWMV || mode == NEW_NEARMV || mode == NEAREST_NEWMV || mode == NEW_NEARESTMV
+}
