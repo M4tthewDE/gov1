@@ -183,6 +183,11 @@ type TileGroup struct {
 	PalletteSizeY  int
 	PalletteSizeUV int
 	InterpFilter   []int
+	NumMvFound     int
+	NewMvCount     int
+	GlobalMvs      [][]int
+	Block_Width    []int
+	Block_Height   []int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -362,7 +367,7 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
 // mode_info()
 func (t *TileGroup) modeInfo(p *Parser) {
 	if p.uncompressedHeader.FrameIsIntra {
-		t.intraFrameModeInfo()
+		t.intraFrameModeInfo(p)
 	} else {
 		t.interFrameModeInfo()
 	}
@@ -409,9 +414,101 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 
 		// NEXT:
 		// GOOD LUCK
-		t.findMvStack(0)
+		t.findMvStack(0, p)
 	}
 
+}
+
+// 7.10.2. Find MV stack process
+// find_mv_stack( isCompound )
+func (t *TileGroup) findMvStack(isCompound int, p *Parser) {
+	// 1.
+	t.NumMvFound = 0
+
+	// 2.
+	t.NewMvCount = 0
+
+	// 3.
+	t.GlobalMvs[0] = t.setupGlobalMvProcess(0, p)
+
+	// 4.
+	if Bool(isCompound) {
+		t.GlobalMvs[1] = t.setupGlobalMvProcess(1, p)
+	}
+
+	FoundMatch := 0
+}
+
+// 7.10.2.1 Setup global MV process
+func (t *TileGroup) setupGlobalMvProcess(refList int, p *Parser) []int {
+	ref := p.RefFrame[refList]
+
+	var typ int
+	if ref != INTRA_FRAME {
+		typ = p.GmType[ref]
+	}
+
+	bw := t.Block_Width[p.MiSize]
+	bh := t.Block_Height[p.MiSize]
+
+	var xc int
+	var yc int
+	mv := []int{}
+	if ref == INTRA_FRAME || typ == IDENTITY {
+		mv[0] = 0
+		mv[1] = 0
+	} else if typ == TRANSLATION {
+		mv[0] = p.uncompressedHeader.GmParams[ref][0] >> (WARPEDMODEL_PREC_BITS - 3)
+		mv[1] = p.uncompressedHeader.GmParams[ref][1] >> (WARPEDMODEL_PREC_BITS - 3)
+	} else {
+		x := p.MiCol*MI_SIZE + bw/2 - 1
+		y := p.MiRow*MI_SIZE + bh/2 - 1
+
+		xc = (p.uncompressedHeader.GmParams[ref][2]-(1<<WARPEDMODEL_PREC_BITS))*x + p.uncompressedHeader.GmParams[ref][3]*y + p.uncompressedHeader.GmParams[ref][0]
+		yc = p.uncompressedHeader.GmParams[ref][4]*x + (p.uncompressedHeader.GmParams[ref][5]-(1<<WARPEDMODEL_PREC_BITS))*y + p.uncompressedHeader.GmParams[ref][1]
+
+		if p.uncompressedHeader.AllowHighPrecisionMv {
+			mv[0] = Round2Signed(yc, WARPEDMODEL_PREC_BITS-3)
+			mv[1] = Round2Signed(xc, WARPEDMODEL_PREC_BITS-3)
+		} else {
+			mv[0] = Round2Signed(yc, WARPEDMODEL_PREC_BITS-2) * 2
+			mv[1] = Round2Signed(xc, WARPEDMODEL_PREC_BITS-2) * 2
+		}
+	}
+	mv = t.lowerPrecisionProcess(mv, p)
+
+	return mv
+}
+
+// 7.10.2.10. Lower precision process
+func (t *TileGroup) lowerPrecisionProcess(candMv []int, p *Parser) []int {
+	if p.uncompressedHeader.AllowHighPrecisionMv {
+		return candMv
+	}
+
+	for i := 0; i < 2; i++ {
+		if p.uncompressedHeader.ForceIntegerMv {
+			a := Abs(candMv[i])
+			aInt := (a + 3) >> 3
+
+			if candMv[i] > 0 {
+				candMv[i] = aInt << 3
+			} else {
+				candMv[i] = -(aInt << 3)
+			}
+		} else {
+			if Bool(candMv[i] & 1) {
+				if candMv[i] > 0 {
+					// TODO: does this work?/
+					candMv[i]--
+				} else {
+					candMv[i]++
+				}
+			}
+		}
+	}
+
+	return candMv
 }
 
 // read_delta_lf()

@@ -4,6 +4,7 @@ const NUM_REF_FRAMES = 8
 const REFS_PER_FRAME = 7
 const KEY_FRAME = 0
 const LAST_FRAME = 1
+const ALTREF_FRAME = 7
 const PRIMARY_REF_NONE = 7
 const MAX_SEGMENTS = 8
 const SEG_LVL_MAX = 8
@@ -26,6 +27,19 @@ const SUPERRES_NUM = 8
 const SWITCH_FRAME = 3
 
 const MAX_LOOP_FILTER = 63
+
+const IDENTITY = 0
+const TRANSLATION = 1
+const ROTZOOM = 2
+const AFFINE = 3
+const WARPEDMODEL_PREC_BITS = 16
+
+const GM_TRANS_ONLY_PREC_BITS = 3
+const GM_TRANS_PREC_BITS = 6
+const GM_ABS_TRANS_ONLY_BITS = 9
+const GM_ABS_ALPHA_BITS = 12
+const GM_ABS_TRANS_BITS = 12
+const GM_ALPHA_PREC_BITS = 15
 
 var Segmentation_Feature_Bits = []int{8, 6, 6, 6, 6, 3, 0, 0}
 var Segmentation_Feature_Signed = []int{1, 1, 1, 1, 1, 0, 0, 0}
@@ -89,6 +103,8 @@ type UncompressedHeader struct {
 	SegmentationEnabled        int
 	SegmentationTemporalUpdate int
 	LosslessArray              []bool
+	GmParams                   [][]int
+	ForceIntegerMv             bool
 }
 
 func NewUncompressedHeader(p *Parser) UncompressedHeader {
@@ -196,19 +212,18 @@ func (u *UncompressedHeader) Build(p *Parser) {
 		allowScreenContentTools = true
 	}
 
-	var forceIntegerMv bool
 	if allowScreenContentTools {
 		if p.sequenceHeader.SeqForceIntegerMv == 2 {
-			forceIntegerMv = p.f(1) != 0
+			u.ForceIntegerMv = p.f(1) != 0
 		} else {
-			forceIntegerMv = true
+			u.ForceIntegerMv = true
 		}
 	} else {
-		forceIntegerMv = false
+		u.ForceIntegerMv = false
 	}
 
 	if u.FrameIsIntra {
-		forceIntegerMv = true
+		u.ForceIntegerMv = true
 	}
 
 	if p.sequenceHeader.FrameIdNumbersPresent {
@@ -781,8 +796,120 @@ func (p *Parser) skipModeParams() {
 	panic("not implemented")
 }
 
-func (p *Parser) globalMotionParams() {
-	panic("not implemented")
+func (u *UncompressedHeader) globalMotionParams(p *Parser) {
+	for ref := LAST_FRAME; ref <= ALTREF_FRAME; ref++ {
+		p.GmType[ref] = IDENTITY
+		for i := 0; i < 6; i++ {
+			if i%3 == 2 {
+				u.GmParams[ref][i] = 1 << WARPEDMODEL_PREC_BITS
+
+			} else {
+				u.GmParams[ref][i] = 0
+
+			}
+		}
+	}
+
+	if u.FrameIsIntra {
+		return
+	}
+
+	for ref := LAST_FRAME; ref <= ALTREF_FRAME; ref++ {
+		var typ int
+		isGlobal := p.f(1)
+		if Bool(isGlobal) {
+			isRotZoom := p.f(1)
+			if Bool(isRotZoom) {
+				typ = ROTZOOM
+			} else {
+
+				isTranslation := p.f(1)
+				if Bool(isTranslation) {
+					typ = TRANSLATION
+				} else {
+					typ = AFFINE
+				}
+			}
+		} else {
+			typ = IDENTITY
+		}
+		p.GmType[ref] = typ
+	}
+
+}
+
+func (u *UncompressedHeader) readGlobalParam(typ int, ref int, idx int, p *Parser) {
+	absBits := GM_ABS_ALPHA_BITS
+	precBits := GM_ALPHA_PREC_BITS
+
+	if idx < 2 {
+		if typ == TRANSLATION {
+			absBits = GM_ABS_TRANS_ONLY_BITS - Int(!u.AllowHighPrecisionMv)
+			precBits = GM_TRANS_ONLY_PREC_BITS - Int(!u.AllowHighPrecisionMv)
+		} else {
+			absBits = GM_ABS_TRANS_BITS
+			precBits = GM_TRANS_PREC_BITS
+		}
+	}
+
+	precDiff := WARPEDMODEL_PREC_BITS - precBits
+
+	var round int
+	if idx%3 == 2 {
+		round = 1 << WARPEDMODEL_PREC_BITS
+	} else {
+		round = 0
+	}
+
+	var sub int
+	if idx%3 == 2 {
+		sub = 1 << precBits
+	} else {
+		sub = 0
+	}
+
+	mx := 1 << absBits
+	r := (p.PrevGmParams[ref][idx] >> precDiff) - sub
+	u.GmParams[ref][idx] = (u.decodeSignedSubexpWithRef(mx, r, p) << precDiff) + round
+}
+
+func (u *UncompressedHeader) decodeSignedSubexpWithRef(mx int, r int, p *Parser) int {
+	v := u.decodeSubexp(mx, p)
+	if (r << 1) <= mx {
+		return InverseRecenter(r, v)
+	} else {
+		return mx - 1 - InverseRecenter(mx-1-r, v)
+	}
+}
+
+func (u *UncompressedHeader) decodeSubexp(numSyms int, p *Parser) int {
+	i := 0
+	mk := 0
+	k := 3
+
+	var b2 int
+	for {
+		if Bool(i) {
+			b2 = k + i - 1
+		} else {
+			b2 = k
+		}
+
+		a := 1 << b2
+		if numSyms <= mk+3*a {
+			subexpFinalBits := p.ns(numSyms - mk)
+			return subexpFinalBits + mk
+		} else {
+			subexmpMoreBits := p.f(1)
+			if Bool(subexmpMoreBits) {
+				i++
+				mk += a
+			} else {
+				subexpBits := p.f(b2)
+				return subexpBits + mk
+			}
+		}
+	}
 }
 
 func (p *Parser) filmGrainParams() {

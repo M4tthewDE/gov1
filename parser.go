@@ -49,6 +49,8 @@ type Parser struct {
 	FeatureEnabled       [][]int
 	FeatureData          [][]int
 	RefFrame             []int
+	GmType               []int
+	PrevGmParams         [][]int
 }
 
 func NewParser(data []byte) Parser {

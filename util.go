@@ -56,12 +56,28 @@ func FloorLog2(x int) int {
 	return s - 1
 }
 
+func Abs(x int) int {
+	if x >= 0 {
+		return x
+	} else {
+		return -x
+	}
+}
+
 func Round2(x int, n int) int {
 	if n == 0 {
 		return x
 	}
 
 	return (x + (1 << (n - 1))) >> n
+}
+
+func Round2Signed(x int, n int) int {
+	if x >= 0 {
+		return Round2(2, n)
+	} else {
+		return -Round2(-x, n)
+	}
 }
 
 func InverseRecenter(r int, v int) int {
@@ -119,4 +135,11 @@ func NegDeinterleave(diff int, ref int, max int) int {
 
 func Bool(x int) bool {
 	return x == 1
+}
+
+func Int(x bool) int {
+	if x {
+		return 1
+	}
+	return 0
 }
