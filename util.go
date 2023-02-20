@@ -22,6 +22,19 @@ func SliceAssignNested[T any](s [][]T, i int, j int, v T) [][]T {
 	return s
 }
 
+func Equals[T comparable](a []T, b []T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // tile_log2( blkSize, target )
 func tileLog2(blkSize int, target int) int {
 	k := 0
@@ -134,7 +147,7 @@ func NegDeinterleave(diff int, ref int, max int) int {
 }
 
 func Bool(x int) bool {
-	return x == 1
+	return x != 0
 }
 
 func Int(x bool) int {

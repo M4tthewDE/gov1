@@ -179,6 +179,8 @@ const NEW_NEARMV = 23
 const GLOBAL_GLOBALMV = 24
 const NEW_NEWMV = 25
 
+const MAX_REF_MV_STACK_SIZE = 8
+
 type TileGroup struct {
 	LrType         [][][]int
 	RefLrWiener    [][][]int
@@ -206,6 +208,7 @@ type TileGroup struct {
 	Mvs            [][][][]int
 	FoundMatch     int
 	RefStackMv     [][][]int
+	WeightStack    []int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -380,6 +383,8 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
 		availUChroma = false
 		availLChroma = false
 	}
+
+	t.modeInfo(p)
 }
 
 // mode_info()
@@ -536,7 +541,18 @@ func (t *TileGroup) searchStackProcess(mvRow int, mvCol int, candList int, weigh
 
 	t.FoundMatch = 1
 
-	// NEXT: continue here
+	for idx := 0; idx < t.NumMvFound; idx++ {
+		if Equals(candMv, t.RefStackMv[idx][0]) {
+			t.WeightStack[idx] += weight
+			return
+		}
+	}
+
+	if t.NumMvFound < MAX_REF_MV_STACK_SIZE {
+		t.RefStackMv[t.NumMvFound][0] = candMv
+		t.WeightStack[t.NumMvFound] = weight
+		t.NumMvFound += 1
+	}
 }
 
 // 7.10.2.9. Compound search stack process
