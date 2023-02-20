@@ -243,6 +243,7 @@ type TileGroup struct {
 	RefStackMv     [][][]int
 	WeightStack    []int
 	AngleDeltaY    int
+	AngleDeltaUV   int
 	CflAlphaU      int
 	CflAlphaV      int
 	useIntrabc     int
@@ -490,9 +491,22 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 			if t.UVMode == UV_CFL_PRED {
 				t.readCflAlphas(p)
 			}
+
+			t.intraAngleInfoUv(p)
 		}
 	}
 
+}
+
+// intra_angle_info_uv()
+func (t *TileGroup) intraAngleInfoUv(p *Parser) {
+	t.AngleDeltaUV = 0
+	if p.MiSize >= BLOCK_8x8 {
+		if t.isDirectionalMode(t.UVMode) {
+			angleDeltaUv := p.S()
+			t.AngleDeltaUV = angleDeltaUv - MAX_ANGLE_DELTA
+		}
+	}
 }
 
 // assign_mv( isCompound )
