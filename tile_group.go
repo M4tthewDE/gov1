@@ -214,48 +214,53 @@ const MV_CLASS_9 = 9
 const MV_CLASS_10 = 10
 
 type TileGroup struct {
-	LrType         [][][]int
-	RefLrWiener    [][][]int
-	LrWiener       [][][][][]int
-	LrSgrSet       [][][]int
-	RefSgrXqd      [][]int
-	LrSgrXqd       [][][][]int
-	HasChroma      bool
-	SegmentId      int
-	SegmentIds     [][]int
-	Lossless       bool
-	Skip           int
-	YMode          int
-	UVMode         int
-	YModes         [][]int
-	PaletteSizeY   int
-	PaletteSizeUV  int
-	InterpFilter   []int
-	NumMvFound     int
-	NewMvCount     int
-	GlobalMvs      [][]int
-	Block_Width    []int
-	Block_Height   []int
-	IsInters       [][]int
-	Mv             [][]int
-	Mvs            [][][][]int
-	FoundMatch     int
-	RefStackMv     [][][]int
-	WeightStack    []int
-	AngleDeltaY    int
-	AngleDeltaUV   int
-	CflAlphaU      int
-	CflAlphaV      int
-	useIntrabc     int
-	PredMv         [][]int
-	RefMvIdx       int
-	MvCtx          int
-	PaletteSizes   [][][]int
-	PaletteColors  [][][][]int
-	PaletteCache   []int
-	PaletteColorsY []int
-	PaletteColorsU []int
-	PaletteColorsV []int
+	LrType          [][][]int
+	RefLrWiener     [][][]int
+	LrWiener        [][][][][]int
+	LrSgrSet        [][][]int
+	RefSgrXqd       [][]int
+	LrSgrXqd        [][][][]int
+	HasChroma       bool
+	SegmentId       int
+	SegmentIds      [][]int
+	Lossless        bool
+	Skip            int
+	YMode           int
+	UVMode          int
+	YModes          [][]int
+	PaletteSizeY    int
+	PaletteSizeUV   int
+	InterpFilter    []int
+	NumMvFound      int
+	NewMvCount      int
+	GlobalMvs       [][]int
+	Block_Width     []int
+	Block_Height    []int
+	IsInters        [][]int
+	Mv              [][]int
+	Mvs             [][][][]int
+	FoundMatch      int
+	RefStackMv      [][][]int
+	WeightStack     []int
+	AngleDeltaY     int
+	AngleDeltaUV    int
+	CflAlphaU       int
+	CflAlphaV       int
+	useIntrabc      int
+	PredMv          [][]int
+	RefMvIdx        int
+	MvCtx           int
+	PaletteSizes    [][][]int
+	PaletteColors   [][][][]int
+	PaletteCache    []int
+	PaletteColorsY  []int
+	PaletteColorsU  []int
+	PaletteColorsV  []int
+	FilterIntraMode int
+	SkipMode        int
+	IsInter         int
+	MotionMode      int
+	CompoundType    int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -450,7 +455,7 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		t.intraSegmentId(p)
 	}
 
-	skipMode := 0
+	t.SkipMode = 0
 	t.readSkip(p)
 
 	if !Bool(p.uncompressedHeader.SegIdPreSkip) {
@@ -470,13 +475,12 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		t.useIntrabc = 0
 	}
 
-	var isInter int
 	if Bool(t.useIntrabc) {
-		isInter = -1
+		t.IsInter = -1
 		t.YMode = DC_PRED
 		t.UVMode = DC_PRED
-		motionMode := SIMPLE
-		compoundType := COMPUND_AVERAGE
+		t.MotionMode = SIMPLE
+		t.CompoundType = COMPUND_AVERAGE
 		t.PaletteSizeY = 0
 		t.PaletteSizeUV = 0
 		t.InterpFilter[0] = BILINEAR
@@ -484,7 +488,7 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		t.findMvStack(0, p)
 		t.assignMv(0, p)
 	} else {
-		isInter = 0
+		t.IsInter = 0
 		intraFrameYMode := p.S()
 		t.YMode = intraFrameYMode
 		t.intraAngleInfoY(p)
@@ -507,9 +511,20 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		if p.MiSize >= BLOCK_8x8 && t.Block_Width[p.MiSize] <= 64 && t.Block_Height[p.MiSize] <= 64 && Bool(p.uncompressedHeader.AllowScreenContentTools) {
 			t.paletteModeInfo(p)
 		}
-
+		t.filterIntraModeInfo(p)
 	}
+}
 
+// filter_intra_mode_info()
+func (t *TileGroup) filterIntraModeInfo(p *Parser) {
+	useFilterIntra := false
+	if p.sequenceHeader.EnableFilterIntra && t.YMode == DC_PRED && t.PaletteSizeY == 0 && Max(t.Block_Width[p.MiSize], t.Block_Height[p.MiSize]) <= 32 {
+		useFilterIntra = Bool(p.S())
+
+		if useFilterIntra {
+			t.FilterIntraMode = p.S()
+		}
+	}
 }
 
 // palette_mode_info()
