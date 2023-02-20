@@ -1,5 +1,10 @@
 package main
 
+import (
+	"math"
+	"sort"
+)
+
 func SliceAssign[T any](s []T, i int, v T) []T {
 	for i >= len(s) {
 		s = append(s, make([]T, 1)...)
@@ -35,6 +40,13 @@ func Equals[T comparable](a []T, b []T) bool {
 	return true
 }
 
+func Sort(arr []int, i1 int, i2 int) []int {
+	arrTmp := arr[i1 : i2+1]
+	sort.Ints(arrTmp)
+	copy(arr[i1:i2], arrTmp)
+	return arr
+}
+
 // tile_log2( blkSize, target )
 func tileLog2(blkSize int, target int) int {
 	k := 0
@@ -42,6 +54,21 @@ func tileLog2(blkSize int, target int) int {
 		k++
 	}
 	return k
+}
+
+func CeilLog2(x int) int {
+	if x < 2 {
+		return 0
+	}
+	i := 1
+	p := 2
+
+	for p < x {
+		i++
+		p = p << 1
+	}
+
+	return i
 }
 
 func Min(x int, y int) int {
@@ -113,6 +140,10 @@ func Clip3(x int, y int, z int) int {
 	}
 
 	return z
+}
+
+func Clip1(x int, p *Parser) int {
+	return Clip3(0, int(math.Pow(2, float64(p.sequenceHeader.ColorConfig.BitDepth)-1)), 2)
 }
 
 func NegDeinterleave(diff int, ref int, max int) int {

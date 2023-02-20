@@ -48,3 +48,10 @@ func TestSliceAssignTwoDimensionsOutOfBounds(t *testing.T) {
 	assert.Equal(t, []int{0, 0, 10}, test[0])
 	assert.Equal(t, 10, test[0][2])
 }
+
+func TestSort(t *testing.T) {
+	test := []int{7, 5, 8, 3, 10}
+
+	test = Sort(test, 1, 3)
+	assert.Equal(t, []int{7, 3, 5, 8, 10}, test)
+}

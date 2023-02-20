@@ -228,8 +228,8 @@ type TileGroup struct {
 	YMode          int
 	UVMode         int
 	YModes         [][]int
-	PalletteSizeY  int
-	PalletteSizeUV int
+	PaletteSizeY   int
+	PaletteSizeUV  int
 	InterpFilter   []int
 	NumMvFound     int
 	NewMvCount     int
@@ -250,6 +250,12 @@ type TileGroup struct {
 	PredMv         [][]int
 	RefMvIdx       int
 	MvCtx          int
+	PaletteSizes   [][][]int
+	PaletteColors  [][][][]int
+	PaletteCache   []int
+	PaletteColorsY []int
+	PaletteColorsU []int
+	PaletteColorsV []int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -471,8 +477,8 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		t.UVMode = DC_PRED
 		motionMode := SIMPLE
 		compoundType := COMPUND_AVERAGE
-		t.PalletteSizeY = 0
-		t.PalletteSizeUV = 0
+		t.PaletteSizeY = 0
+		t.PaletteSizeUV = 0
 		t.InterpFilter[0] = BILINEAR
 		t.InterpFilter[1] = BILINEAR
 		t.findMvStack(0, p)
@@ -494,8 +500,187 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 
 			t.intraAngleInfoUv(p)
 		}
+
+		t.PaletteSizeY = 0
+		t.PaletteSizeUV = 0
+
+		if p.MiSize >= BLOCK_8x8 && t.Block_Width[p.MiSize] <= 64 && t.Block_Height[p.MiSize] <= 64 && Bool(p.uncompressedHeader.AllowScreenContentTools) {
+			t.paletteModeInfo(p)
+		}
+
 	}
 
+}
+
+// palette_mode_info()
+func (t *TileGroup) paletteModeInfo(p *Parser) {
+	// TODO: this is used for initilization of has_palette_y I think
+	//bSizeCtx := Mi_Width_Log2[p.MiSize] + Mi_Height_Log2[p.MiSize] - 2
+
+	if t.YMode == DC_PRED {
+		hasPaletteY := p.S()
+
+		if Bool(hasPaletteY) {
+			paletteSizeYMinus2 := p.S()
+			t.PaletteSizeY = paletteSizeYMinus2 + 2
+			cacheN := t.getPaletteCache(0, p)
+			idx := 0
+
+			for i := 0; i < cacheN && idx < t.PaletteSizeY; i++ {
+				usePaletteColorCacheY := p.L(1)
+
+				if Bool(usePaletteColorCacheY) {
+					t.PaletteColorsY[idx] = t.PaletteCache[i]
+					idx++
+				}
+			}
+
+			if idx < t.PaletteSizeY {
+				t.PaletteColorsY[idx] = p.L(p.sequenceHeader.ColorConfig.BitDepth)
+				idx++
+			}
+
+			var paletteBits int
+			if idx < t.PaletteSizeY {
+				minBits := p.sequenceHeader.ColorConfig.BitDepth - 1
+				paletteNumExtraBitsY := p.L(2)
+				paletteBits = minBits + paletteNumExtraBitsY
+			}
+
+			for idx < t.PaletteSizeY {
+				paletteDeltaY := p.L(paletteBits)
+				paletteDeltaY++
+				t.PaletteColorsY[idx] = Clip1(t.PaletteColorsY[idx-1]+paletteDeltaY, p)
+				rangE := (1 << p.sequenceHeader.ColorConfig.BitDepth) - t.PaletteColorsY[idx] - 1
+				paletteBits = Min(paletteBits, CeilLog2(rangE))
+				idx++
+			}
+			t.PaletteColorsY = Sort(t.PaletteColorsY, 0, t.PaletteSizeY-1)
+		}
+	}
+
+	if t.HasChroma && t.UVMode == DC_PRED {
+		hasPaletteUv := p.S()
+		if Bool(hasPaletteUv) {
+			paletteSizeUvMinus2 := p.S()
+			t.PaletteSizeUV = paletteSizeUvMinus2 + 2
+			cacheN := t.getPaletteCache(1, p)
+			idx := 0
+
+			for i := 0; i < cacheN && idx < t.PaletteSizeUV; i++ {
+				usePaletteColorCacheU := p.L(1)
+
+				if Bool(usePaletteColorCacheU) {
+					t.PaletteColorsY[idx] = t.PaletteCache[i]
+					idx++
+				}
+			}
+
+			if idx < t.PaletteSizeUV {
+				t.PaletteColorsU[idx] = p.L(p.sequenceHeader.ColorConfig.BitDepth)
+				idx++
+			}
+
+			var paletteBits int
+			if idx < t.PaletteSizeUV {
+				minBits := p.sequenceHeader.ColorConfig.BitDepth - 3
+				paletteNumExtraBitsU := p.L(2)
+				paletteBits = minBits + paletteNumExtraBitsU
+			}
+
+			for idx < t.PaletteSizeUV {
+				paletteDeltaU := p.L(paletteBits)
+				t.PaletteColorsU[idx] = Clip1(t.PaletteColorsU[idx-1]+paletteDeltaU, p)
+				rangE := (1 << p.sequenceHeader.ColorConfig.BitDepth) - t.PaletteColorsU[idx] - 1
+				paletteBits = Min(paletteBits, CeilLog2(rangE))
+				idx++
+			}
+			t.PaletteColorsU = Sort(t.PaletteColorsU, 0, t.PaletteSizeUV-1)
+
+			deltaEncodePaletteColorsv := p.L(1)
+
+			if Bool(deltaEncodePaletteColorsv) {
+				minBits := p.sequenceHeader.ColorConfig.BitDepth - 4
+				maxVal := 1 << p.sequenceHeader.ColorConfig.BitDepth
+				paletteNumExtraBitsv := p.L(2)
+				paletteBits = minBits + paletteNumExtraBitsv
+				t.PaletteColorsV[0] = p.L(p.sequenceHeader.ColorConfig.BitDepth)
+
+				for idx := 1; idx < t.PaletteSizeUV; idx++ {
+					paletteDeltaV := p.L(paletteBits)
+					if Bool(paletteDeltaV) {
+						paletteDeltaSignBitV := p.L(1)
+						if Bool(paletteDeltaSignBitV) {
+							paletteDeltaV = -paletteDeltaV
+						}
+					}
+
+					val := t.PaletteColorsV[idx-1] + paletteDeltaV
+					if val < 0 {
+						val += maxVal
+					}
+					if val >= maxVal {
+						val -= maxVal
+					}
+					t.PaletteColorsV[idx] = Clip1(val, p)
+				}
+			} else {
+				for idx := 0; idx < t.PaletteSizeUV; idx++ {
+					t.PaletteColorsV[idx] = p.L(p.sequenceHeader.ColorConfig.BitDepth)
+				}
+			}
+		}
+	}
+}
+
+// get_palette_cache( plane )
+func (t *TileGroup) getPaletteCache(plane int, p *Parser) int {
+	aboveN := 0
+
+	if Bool((p.MiRow * MI_SIZE) % 64) {
+		aboveN = t.PaletteSizes[plane][p.MiRow-1][p.MiCol]
+	}
+
+	leftN := 0
+	if p.AvailL {
+		leftN = t.PaletteSizes[plane][p.MiRow][p.MiCol-1]
+	}
+
+	aboveIdx := 0
+	leftIdx := 0
+	n := 0
+
+	for aboveIdx < aboveN && leftIdx < leftN {
+		aboveC := t.PaletteColors[plane][p.MiRow-1][p.MiCol][aboveIdx]
+		leftC := t.PaletteColors[plane][p.MiRow][p.MiCol-1][leftIdx]
+
+		if leftC < aboveC {
+			if n == 0 || leftC != t.PaletteCache[n-1] {
+				t.PaletteCache[n] = leftC
+				n++
+			}
+			leftIdx++
+		} else {
+			if n == 0 || aboveC != t.PaletteCache[n-1] {
+				t.PaletteCache[n] = aboveC
+				n++
+			}
+			aboveIdx++
+			if leftC == aboveC {
+				leftIdx++
+			}
+		}
+	}
+
+	for aboveIdx < aboveN {
+		val := t.PaletteColors[plane][p.MiRow-1][p.MiCol][aboveIdx]
+		aboveIdx++
+		if n == 0 || val != t.PaletteCache[n-1] {
+			t.PaletteCache[n] = val
+			n++
+		}
+	}
+	return n
 }
 
 // intra_angle_info_uv()

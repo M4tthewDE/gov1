@@ -45,6 +45,9 @@ var Segmentation_Feature_Bits = []int{8, 6, 6, 6, 6, 3, 0, 0}
 var Segmentation_Feature_Signed = []int{1, 1, 1, 1, 1, 0, 0, 0}
 var Segmentation_Feature_Max = []int{255, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, 7, 0, 0}
 
+var Mi_Width_Log2 = []int{0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 0, 2, 1, 3, 2, 4}
+var Mi_Height_Log2 = []int{0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 2, 0, 3, 1, 4, 2}
+
 type UncompressedHeader struct {
 	ShowExistingFrame          bool
 	ShowableFrame              bool
@@ -105,6 +108,7 @@ type UncompressedHeader struct {
 	LosslessArray              []bool
 	GmParams                   [][]int
 	ForceIntegerMv             bool
+	AllowScreenContentTools    int
 }
 
 func NewUncompressedHeader(p *Parser) UncompressedHeader {
@@ -205,14 +209,13 @@ func (u *UncompressedHeader) Build(p *Parser) {
 
 	disableCdfUpdate := p.f(1) != 0
 
-	var allowScreenContentTools bool
 	if p.sequenceHeader.SeqForceScreenContentTools == 2 {
-		allowScreenContentTools = p.f(1) != 0
+		u.AllowScreenContentTools = p.f(1)
 	} else {
-		allowScreenContentTools = true
+		u.AllowScreenContentTools = 1
 	}
 
-	if allowScreenContentTools {
+	if Bool(u.AllowScreenContentTools) {
 		if p.sequenceHeader.SeqForceIntegerMv == 2 {
 			u.ForceIntegerMv = p.f(1) != 0
 		} else {
@@ -303,7 +306,7 @@ func (u *UncompressedHeader) Build(p *Parser) {
 		u.frameSize(p)
 		u.renderSize(p)
 
-		if allowScreenContentTools && u.UpscaledWidth == u.FrameWidth {
+		if Bool(u.AllowScreenContentTools) && u.UpscaledWidth == u.FrameWidth {
 			u.AllowIntraBc = p.f(1) != 0
 		}
 	} else {
@@ -341,7 +344,7 @@ func (u *UncompressedHeader) Build(p *Parser) {
 			u.renderSize(p)
 
 		}
-		if forceIntegerMv {
+		if u.ForceIntegerMv {
 			u.AllowHighPrecisionMv = false
 		} else {
 
@@ -448,7 +451,7 @@ func (u *UncompressedHeader) Build(p *Parser) {
 
 	u.ReducedTxSet = p.f(1) != 0
 
-	p.globalMotionParams()
+	u.globalMotionParams(p)
 	p.filmGrainParams()
 }
 
