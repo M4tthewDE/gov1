@@ -190,6 +190,29 @@ const MAX_ANGLE_DELTA = 3
 const CFL_SIGN_ZERO = 0
 const CFL_SIGN_NEG = 2
 
+const INTRABC_DELAY_PIXELS = 256
+
+const MV_INTRABC_CONTEXT = 1
+
+const MV_JOINT_ZERO = 0
+const MV_JOINT_HNZVZ = 1
+const MV_JOINT_HZVNZ = 2
+const MV_JOINT_HNZVNZ = 3
+
+const CLASS0_SIZE = 2
+
+const MV_CLASS_0 = 0
+const MV_CLASS_1 = 1
+const MV_CLASS_2 = 2
+const MV_CLASS_3 = 3
+const MV_CLASS_4 = 4
+const MV_CLASS_5 = 5
+const MV_CLASS_6 = 6
+const MV_CLASS_7 = 7
+const MV_CLASS_8 = 8
+const MV_CLASS_9 = 9
+const MV_CLASS_10 = 10
+
 type TileGroup struct {
 	LrType         [][][]int
 	RefLrWiener    [][][]int
@@ -214,6 +237,7 @@ type TileGroup struct {
 	Block_Width    []int
 	Block_Height   []int
 	IsInters       [][]int
+	Mv             [][]int
 	Mvs            [][][][]int
 	FoundMatch     int
 	RefStackMv     [][][]int
@@ -221,6 +245,10 @@ type TileGroup struct {
 	AngleDeltaY    int
 	CflAlphaU      int
 	CflAlphaV      int
+	useIntrabc     int
+	PredMv         [][]int
+	RefMvIdx       int
+	MvCtx          int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -429,15 +457,14 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 	p.RefFrame[0] = INTRA_FRAME
 	p.RefFrame[0] = NONE
 
-	var useIntrabc int
 	if p.uncompressedHeader.AllowIntraBc {
-		useIntrabc = p.S()
+		t.useIntrabc = p.S()
 	} else {
-		useIntrabc = 0
+		t.useIntrabc = 0
 	}
 
 	var isInter int
-	if Bool(useIntrabc) {
+	if Bool(t.useIntrabc) {
 		isInter = -1
 		t.YMode = DC_PRED
 		t.UVMode = DC_PRED
@@ -447,9 +474,7 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		t.PalletteSizeUV = 0
 		t.InterpFilter[0] = BILINEAR
 		t.InterpFilter[1] = BILINEAR
-
 		t.findMvStack(0, p)
-		// NEXT
 		t.assignMv(0, p)
 	} else {
 		isInter = 0
@@ -468,6 +493,177 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		}
 	}
 
+}
+
+// assign_mv( isCompound )
+func (t *TileGroup) assignMv(isCompound int, p *Parser) {
+	for i := 0; i < 1+isCompound; i++ {
+		var compMode int
+		if Bool(t.useIntrabc) {
+			compMode = NEWMV
+		} else {
+			compMode = t.getMode(i)
+		}
+
+		if Bool(t.useIntrabc) {
+			t.PredMv[0] = t.RefStackMv[0][0]
+			if t.PredMv[0][0] == 0 && t.PredMv[0][1] == 0 {
+				t.PredMv[0] = t.RefStackMv[1][0]
+			}
+			if t.PredMv[0][0] == 0 && t.PredMv[0][1] == 0 {
+				var sbSize int
+				if p.sequenceHeader.Use128x128SuperBlock {
+					sbSize = BLOCK_128x128
+				} else {
+					sbSize = BLOCK_64x64
+				}
+				sbSize4 := p.Num4x4BlocksHigh[sbSize]
+
+				if p.MiRow-sbSize4 < p.MiRowStart {
+					t.PredMv[0][0] = 0
+					t.PredMv[0][1] = -(sbSize4*MI_SIZE + INTRABC_DELAY_PIXELS) * 8
+				} else {
+					t.PredMv[0][0] = -(sbSize4 * MI_SIZE * 8)
+					t.PredMv[0][0] = 1
+				}
+			}
+
+		} else if compMode == GLOBALMV {
+			t.PredMv[i] = t.GlobalMvs[i]
+		} else {
+			var pos int
+			if compMode == NEARESTMV {
+				pos = 0
+			} else {
+				pos = t.RefMvIdx
+			}
+
+			if compMode == NEWMV && t.NumMvFound <= 1 {
+				pos = 0
+			}
+
+			t.PredMv[i] = t.RefStackMv[pos][i]
+		}
+
+		if compMode == NEWMV {
+			t.readMv(i, p)
+		} else {
+			t.Mv[i] = t.PredMv[i]
+		}
+	}
+}
+
+// read_mv( ref )
+func (t *TileGroup) readMv(ref int, p *Parser) {
+	var diffMv []int
+	diffMv[0] = 0
+	diffMv[1] = 0
+
+	if Bool(t.useIntrabc) {
+		t.MvCtx = MV_INTRABC_CONTEXT
+	} else {
+		t.MvCtx = 0
+	}
+
+	mvJoint := p.S()
+
+	if mvJoint == MV_JOINT_HZVNZ || mvJoint == MV_JOINT_HNZVNZ {
+		diffMv[0] = t.readMvComponent(0, p)
+	}
+
+	if mvJoint == MV_JOINT_HNZVZ || mvJoint == MV_JOINT_HNZVNZ {
+		diffMv[1] = t.readMvComponent(1, p)
+	}
+
+	t.Mv[ref][0] = t.PredMv[ref][0] + diffMv[0]
+	t.Mv[ref][1] = t.PredMv[ref][1] + diffMv[1]
+}
+
+// read_mv_component( comp )
+func (t *TileGroup) readMvComponent(comp int, p *Parser) int {
+	mvSign := p.S()
+	mvClass := p.S()
+
+	var mag int
+	if mvClass == MV_CLASS_0 {
+		mvClass0Bit := p.S()
+
+		var mvClass0Fr int
+		if p.uncompressedHeader.ForceIntegerMv {
+			mvClass0Fr = 3
+		} else {
+			mvClass0Fr = p.S()
+		}
+
+		var mvClass0Hp int
+		if p.uncompressedHeader.AllowHighPrecisionMv {
+			mvClass0Hp = p.S()
+		} else {
+			mvClass0Hp = 1
+		}
+
+		mag = ((mvClass0Bit << 3) | (mvClass0Fr << 1) | mvClass0Hp) + 1
+	} else {
+		d := 0
+		for i := 0; i < mvClass; i++ {
+			mvBit := p.S()
+			d |= mvBit << 1
+		}
+
+		mag = CLASS0_SIZE << (mvClass + 2)
+
+		var mvFr int
+		var mvHp int
+		if p.uncompressedHeader.ForceIntegerMv {
+			mvFr = 3
+		} else {
+			mvFr = p.S()
+		}
+
+		if p.uncompressedHeader.AllowHighPrecisionMv {
+			mvHp = p.S()
+		} else {
+			mvHp = 1
+		}
+
+		mag += ((d << 3) | (mvFr << 1) | mvHp) + 1
+	}
+
+	if Bool(mvSign) {
+		return -mag
+	} else {
+		return mag
+	}
+}
+
+// get_mode( refList )
+func (t *TileGroup) getMode(refList int) int {
+	var compMode int
+	if refList == 0 {
+		if t.YMode < NEAREST_NEARESTMV {
+			compMode = t.YMode
+		} else if t.YMode == NEW_NEWMV || t.YMode == NEW_NEARESTMV || t.YMode == NEW_NEARMV {
+			compMode = NEWMV
+		} else if t.YMode == NEAREST_NEARESTMV || t.YMode == NEAREST_NEWMV {
+			compMode = NEARESTMV
+		} else if t.YMode == NEAR_NEARMV || t.YMode == NEAR_NEWMV {
+			compMode = NEARMV
+		} else {
+			compMode = GLOBALMV
+		}
+	} else {
+		if t.YMode == NEW_NEWMV || t.YMode == NEAREST_NEWMV || t.YMode == NEAR_NEWMV {
+			compMode = NEWMV
+		} else if t.YMode == NEAREST_NEARESTMV || t.YMode == NEW_NEARESTMV {
+			compMode = NEARMV
+		} else if t.YMode == NEAR_NEARMV || t.YMode == NEW_NEARMV {
+			compMode = NEARMV
+		} else {
+			compMode = GLOBALMV
+		}
+	}
+
+	return compMode
 }
 
 // read_cfl_alphas()
