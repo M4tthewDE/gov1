@@ -181,6 +181,15 @@ const NEW_NEWMV = 25
 
 const MAX_REF_MV_STACK_SIZE = 8
 
+const V_PRED = 1
+const D67_PRED = 8
+const UV_CFL_PRED = 13
+
+const MAX_ANGLE_DELTA = 3
+
+const CFL_SIGN_ZERO = 0
+const CFL_SIGN_NEG = 2
+
 type TileGroup struct {
 	LrType         [][][]int
 	RefLrWiener    [][][]int
@@ -209,6 +218,9 @@ type TileGroup struct {
 	FoundMatch     int
 	RefStackMv     [][][]int
 	WeightStack    []int
+	AngleDeltaY    int
+	CflAlphaU      int
+	CflAlphaV      int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -424,8 +436,9 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		useIntrabc = 0
 	}
 
+	var isInter int
 	if Bool(useIntrabc) {
-		isInter := -1
+		isInter = -1
 		t.YMode = DC_PRED
 		t.UVMode = DC_PRED
 		motionMode := SIMPLE
@@ -435,11 +448,72 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		t.InterpFilter[0] = BILINEAR
 		t.InterpFilter[1] = BILINEAR
 
-		// NEXT:
-		// GOOD LUCK
 		t.findMvStack(0, p)
+		// NEXT
+		t.assignMv(0, p)
+	} else {
+		isInter = 0
+		intraFrameYMode := p.S()
+		t.YMode = intraFrameYMode
+		t.intraAngleInfoY(p)
+
+		if t.HasChroma {
+			uvMode := p.S()
+
+			t.UVMode = uvMode
+
+			if t.UVMode == UV_CFL_PRED {
+				t.readCflAlphas(p)
+			}
+		}
 	}
 
+}
+
+// read_cfl_alphas()
+func (t *TileGroup) readCflAlphas(p *Parser) {
+	cflAlphaSigns := p.S()
+	signU := (cflAlphaSigns + 1) / 3
+	signV := (cflAlphaSigns + 1) % 3
+
+	if signU != CFL_SIGN_ZERO {
+		cflAlphaU := p.S()
+		t.CflAlphaU = 1 + cflAlphaU
+		if signU == CFL_SIGN_NEG {
+			t.CflAlphaU = -t.CflAlphaU
+		}
+	} else {
+		t.CflAlphaU = 0
+	}
+
+	if signV != CFL_SIGN_ZERO {
+		cflAlphaV := p.S()
+		t.CflAlphaV = 1 + cflAlphaV
+		if signV == CFL_SIGN_NEG {
+			t.CflAlphaV = -t.CflAlphaV
+		}
+	} else {
+		t.CflAlphaV = 0
+	}
+
+}
+
+// intra_angle_info_y()
+func (t *TileGroup) intraAngleInfoY(p *Parser) {
+	t.AngleDeltaY = 0
+
+	if p.MiSize >= BLOCK_8x8 {
+
+		if t.isDirectionalMode(t.YMode) {
+			angleDeltaY := p.S()
+			t.AngleDeltaY = angleDeltaY - MAX_ANGLE_DELTA
+		}
+	}
+}
+
+// is_directional_mode( mode )
+func (t *TileGroup) isDirectionalMode(mode int) bool {
+	return (mode >= V_PRED) && (mode <= D67_PRED)
 }
 
 // 7.10.2. Find MV stack process
