@@ -214,53 +214,60 @@ const MV_CLASS_9 = 9
 const MV_CLASS_10 = 10
 
 type TileGroup struct {
-	LrType          [][][]int
-	RefLrWiener     [][][]int
-	LrWiener        [][][][][]int
-	LrSgrSet        [][][]int
-	RefSgrXqd       [][]int
-	LrSgrXqd        [][][][]int
-	HasChroma       bool
-	SegmentId       int
-	SegmentIds      [][]int
-	Lossless        bool
-	Skip            int
-	YMode           int
-	UVMode          int
-	YModes          [][]int
-	PaletteSizeY    int
-	PaletteSizeUV   int
-	InterpFilter    []int
-	NumMvFound      int
-	NewMvCount      int
-	GlobalMvs       [][]int
-	Block_Width     []int
-	Block_Height    []int
-	IsInters        [][]int
-	Mv              [][]int
-	Mvs             [][][][]int
-	FoundMatch      int
-	RefStackMv      [][][]int
-	WeightStack     []int
-	AngleDeltaY     int
-	AngleDeltaUV    int
-	CflAlphaU       int
-	CflAlphaV       int
-	useIntrabc      int
-	PredMv          [][]int
-	RefMvIdx        int
-	MvCtx           int
-	PaletteSizes    [][][]int
-	PaletteColors   [][][][]int
-	PaletteCache    []int
-	PaletteColorsY  []int
-	PaletteColorsU  []int
-	PaletteColorsV  []int
-	FilterIntraMode int
-	SkipMode        int
-	IsInter         int
-	MotionMode      int
-	CompoundType    int
+	LrType              [][][]int
+	RefLrWiener         [][][]int
+	LrWiener            [][][][][]int
+	LrSgrSet            [][][]int
+	RefSgrXqd           [][]int
+	LrSgrXqd            [][][][]int
+	HasChroma           bool
+	SegmentId           int
+	SegmentIds          [][]int
+	Lossless            bool
+	Skip                int
+	YMode               int
+	UVMode              int
+	YModes              [][]int
+	PaletteSizeY        int
+	PaletteSizeUV       int
+	InterpFilter        []int
+	NumMvFound          int
+	NewMvCount          int
+	GlobalMvs           [][]int
+	Block_Width         []int
+	Block_Height        []int
+	IsInters            [][]int
+	Mv                  [][]int
+	Mvs                 [][][][]int
+	FoundMatch          int
+	RefStackMv          [][][]int
+	WeightStack         []int
+	AngleDeltaY         int
+	AngleDeltaUV        int
+	CflAlphaU           int
+	CflAlphaV           int
+	useIntrabc          int
+	PredMv              [][]int
+	RefMvIdx            int
+	MvCtx               int
+	PaletteSizes        [][][]int
+	PaletteColors       [][][][]int
+	PaletteCache        []int
+	PaletteColorsY      []int
+	PaletteColorsU      []int
+	PaletteColorsV      []int
+	FilterIntraMode     int
+	SkipMode            int
+	IsInter             int
+	MotionMode          int
+	CompoundType        int
+	LeftRefFrame        []int
+	AboveRefFrame       []int
+	LeftIntra           bool
+	AboveIntra          bool
+	LeftSingle          bool
+	AboveSingle         bool
+	AboveSegPredContext []int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -444,8 +451,151 @@ func (t *TileGroup) modeInfo(p *Parser) {
 	if p.uncompressedHeader.FrameIsIntra {
 		t.intraFrameModeInfo(p)
 	} else {
-		t.interFrameModeInfo()
+		t.interFrameModeInfo(p)
 	}
+}
+
+// inter_frame_mode_info()
+func (t *TileGroup) interFrameModeInfo(p *Parser) {
+	useIntrabc := 0
+
+	if p.AvailL {
+		t.LeftRefFrame[0] = p.RefFrames[p.MiRow][p.MiCol-1][0]
+		t.LeftRefFrame[1] = p.RefFrames[p.MiRow][p.MiCol-1][1]
+	} else {
+		t.LeftRefFrame[0] = INTRA_FRAME
+		t.LeftRefFrame[1] = NONE
+	}
+
+	if p.AvailU {
+		t.AboveRefFrame[0] = p.RefFrames[p.MiRow-1][p.MiCol][0]
+		t.AboveRefFrame[1] = p.RefFrames[p.MiRow-1][p.MiCol][1]
+	} else {
+		t.AboveRefFrame[0] = INTRA_FRAME
+		t.AboveRefFrame[1] = NONE
+	}
+
+	t.LeftIntra = t.LeftRefFrame[0] <= INTRA_FRAME
+	t.AboveIntra = t.AboveRefFrame[0] <= INTRA_FRAME
+	t.LeftSingle = t.LeftRefFrame[1] <= INTRA_FRAME
+	t.AboveSingle = t.AboveRefFrame[1] <= INTRA_FRAME
+
+	t.Skip = 0
+	t.interSegmentId(1, p)
+	t.readSkipMode(p)
+
+	if Bool(t.SkipMode) {
+		t.Skip = 1
+	} else {
+		t.readSkip(p)
+	}
+
+	if !Bool(p.uncompressedHeader.SegIdPreSkip) {
+		t.interSegmentId(0, p)
+	}
+
+	t.Lossless = p.uncompressedHeader.LosslessArray[t.SegmentId]
+	t.readCdef(p)
+	t.readDeltaQIndex(p)
+	t.readDeltaLf(p)
+	p.ReadDeltas = false
+	t.readIsInter(p)
+
+	if Bool(t.IsInter) {
+		t.interBlockModeInfo()
+	} else {
+		t.intraBlockModeInfo()
+	}
+}
+
+// read_is_inter()
+func (t *TileGroup) readIsInter(p *Parser) {
+	if Bool(t.SkipMode) {
+		t.IsInter = 1
+	} else if t.segFeatureActive(SEG_LVL_REF_FRAME, p) {
+		t.IsInter = Int(p.FeatureData[t.SegmentId][SEG_LVL_REF_FRAME] != INTRA_FRAME)
+	} else if t.segFeatureActive(SEG_LVL_GLOBALMV, p) {
+		t.IsInter = 0
+	} else {
+		t.IsInter = p.S()
+	}
+}
+
+// inter_segment_id( preSkip )
+func (t *TileGroup) interSegmentId(preSkip int, p *Parser) {
+	if Bool(p.uncompressedHeader.SegmentationEnabled) {
+		predictedSegmentId := t.getSegmentId(p)
+
+		if Bool(p.uncompressedHeader.SegmentationUpdateMap) {
+			if Bool(preSkip) && !Bool(p.uncompressedHeader.SegIdPreSkip) {
+				t.SegmentId = 0
+				return
+			}
+			if !Bool(preSkip) {
+				if Bool(t.Skip) {
+					segIdPredicted := 0
+
+					for i := 0; i < p.Num4x4BlocksWide[p.MiSize]; i++ {
+						t.AboveSegPredContext[p.MiCol+i] = segIdPredicted
+					}
+					for i := 0; i < p.Num4x4BlocksHigh[p.MiSize]; i++ {
+						t.AboveSegPredContext[p.MiRow+i] = segIdPredicted
+					}
+					t.readSegmentId(p)
+					return
+				}
+			}
+
+			if p.uncompressedHeader.SegmentationTemporalUpdate == 1 {
+				segIdPredicted := p.S()
+				if Bool(segIdPredicted) {
+					t.SegmentId = predictedSegmentId
+				} else {
+					t.readSegmentId(p)
+				}
+
+				for i := 0; i < p.Num4x4BlocksWide[p.MiSize]; i++ {
+					t.AboveSegPredContext[p.MiCol+i] = segIdPredicted
+				}
+				for i := 0; i < p.Num4x4BlocksHigh[p.MiSize]; i++ {
+					t.AboveSegPredContext[p.MiRow+i] = segIdPredicted
+				}
+
+			} else {
+				t.readSegmentId(p)
+			}
+		} else {
+			t.SegmentId = predictedSegmentId
+		}
+	} else {
+		t.SegmentId = 0
+	}
+}
+
+// read_skip_mode()
+func (t *TileGroup) readSkipMode(p *Parser) {
+	if t.segFeatureActive(SEG_LVL_SKIP, p) || t.segFeatureActive(SEG_LVL_REF_FRAME, p) || t.segFeatureActive(SEG_LVL_GLOBALMV, p) || !Bool(p.uncompressedHeader.SkipModePresent) || t.Block_Width[p.MiSize] < 8 || t.Block_Height[p.MiSize] < 8 {
+		t.SkipMode = 0
+	} else {
+		t.SkipMode = p.S()
+	}
+}
+
+// get_segment_id( )
+func (t *TileGroup) getSegmentId(p *Parser) int {
+	bw4 := p.Num4x4BlocksWide[p.MiSize]
+	bh4 := p.Num4x4BlocksHigh[p.MiSize]
+	xMis := Min(p.MiCols-p.MiCol, bw4)
+	yMis := Min(p.MiRows-p.MiRow, bh4)
+	seg := 7
+
+	for y := 0; y < yMis; y++ {
+		for x := 0; x < xMis; x++ {
+			seg = Min(seg, p.PrevSegmentIds[p.MiRow+y][p.MiCol+x])
+		}
+	}
+
+	return seg
 }
 
 // intra_frame_mode_info()

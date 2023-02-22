@@ -53,6 +53,7 @@ type Parser struct {
 	RefFrames            [][][]int
 	GmType               []int
 	PrevGmParams         [][]int
+	PrevSegmentIds       [][]int
 }
 
 func NewParser(data []byte) Parser {

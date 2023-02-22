@@ -10,6 +10,7 @@ const MAX_SEGMENTS = 8
 const SEG_LVL_MAX = 8
 const SEG_LVL_SKIP = 6
 const SEG_LVL_REF_FRAME = 5
+const SEG_LVL_GLOBALMV = 7
 
 const EIGHTTAP = 0
 const EIGHTTAP_SMOOTH = 1
@@ -105,10 +106,17 @@ type UncompressedHeader struct {
 	LastActiveSegId            int
 	SegmentationEnabled        int
 	SegmentationTemporalUpdate int
+	SegmentationUpdateMap      int
+	SegmentationUpdateData     int
 	LosslessArray              []bool
 	GmParams                   [][]int
 	ForceIntegerMv             bool
 	AllowScreenContentTools    int
+	RefOrderHint               []int
+	ref_frame_idx              []int
+	OrderHint                  int
+	SkipModeFrame              []int
+	SkipModePresent            int
 }
 
 func NewUncompressedHeader(p *Parser) UncompressedHeader {
@@ -247,7 +255,7 @@ func (u *UncompressedHeader) Build(p *Parser) {
 	}
 
 	orderHint := p.f(p.sequenceHeader.OrderHintBits)
-	OrderHint := orderHint
+	u.OrderHint = orderHint
 
 	if u.FrameIsIntra || errorResilientMode {
 		u.PrimaryRefFrame = PRIMARY_REF_NONE
@@ -274,7 +282,6 @@ func (u *UncompressedHeader) Build(p *Parser) {
 		}
 	}
 
-	RefOrderHint := []int{}
 	RefValid := []int{}
 	ref_order_hint := []int{}
 
@@ -292,14 +299,13 @@ func (u *UncompressedHeader) Build(p *Parser) {
 			for i := 0; i < NUM_REF_FRAMES; i++ {
 				ref_order_hint = SliceAssign(ref_order_hint, i, p.f(p.sequenceHeader.OrderHintBits))
 
-				if ref_order_hint[i] != RefOrderHint[i] {
+				if ref_order_hint[i] != u.RefOrderHint[i] {
 					RefValid = SliceAssign(RefValid, i, 0)
 				}
 			}
 		}
 	}
 
-	ref_frame_idx := []int{}
 	expectedFrameId := []int{}
 
 	if u.FrameIsIntra {
@@ -325,8 +331,8 @@ func (u *UncompressedHeader) Build(p *Parser) {
 
 		for i := 0; i < REFS_PER_FRAME; i++ {
 			if !frameRefsShortSignaling {
-				ref_frame_idx[i] = p.f(3)
-				ref_frame_idx = SliceAssign(ref_frame_idx, i, p.f(3))
+				u.ref_frame_idx[i] = p.f(3)
+				u.ref_frame_idx = SliceAssign(u.ref_frame_idx, i, p.f(3))
 			}
 
 			if p.sequenceHeader.FrameIdNumbersPresent {
@@ -366,12 +372,12 @@ func (u *UncompressedHeader) Build(p *Parser) {
 
 		for i := 0; i < REFS_PER_FRAME; i++ {
 			refFrame := LAST_FRAME + 1
-			hint := RefOrderHint[ref_frame_idx[i]]
+			hint := u.RefOrderHint[u.ref_frame_idx[i]]
 			OrderHints = SliceAssign(OrderHints, refFrame, hint)
 			if !p.sequenceHeader.EnableOrderHint {
 				RefFrameSignBias = SliceAssign(RefFrameSignBias, refFrame, false)
 			} else {
-				RefFrameSignBias = SliceAssign(RefFrameSignBias, refFrame, u.getRelativeDist(hint, OrderHint, p) > 0)
+				RefFrameSignBias = SliceAssign(RefFrameSignBias, refFrame, u.getRelativeDist(hint, u.OrderHint, p) > 0)
 			}
 		}
 	}
@@ -387,7 +393,7 @@ func (u *UncompressedHeader) Build(p *Parser) {
 		p.initNonCoeffCdfs()
 		p.setupPastIndependence()
 	} else {
-		p.loadCdfs(ref_frame_idx[u.PrimaryRefFrame])
+		p.loadCdfs(u.ref_frame_idx[u.PrimaryRefFrame])
 		p.loadPrevious()
 	}
 
@@ -441,7 +447,7 @@ func (u *UncompressedHeader) Build(p *Parser) {
 	p.lrParams()
 	u.readTxMode(p)
 	u.frameReferenceMode(p)
-	p.skipModeParams()
+	u.skipModeParams(p)
 
 	if u.FrameIsIntra || errorResilientMode || !p.sequenceHeader.EnableWarpedMotion {
 		u.AllowWarpedMotion = false
@@ -648,22 +654,20 @@ func (u *UncompressedHeader) readDeltaQ(p *Parser) int {
 func (u *UncompressedHeader) segmentationParams(p *Parser) {
 	u.SegmentationEnabled = p.f(1)
 	if u.SegmentationEnabled == 1 {
-		var segmentationUpdateMap int
-		var segmentationUpdateData int
 		if u.PrimaryRefFrame == PRIMARY_REF_NONE {
-			segmentationUpdateMap = 1
+			u.SegmentationUpdateMap = 1
 			u.SegmentationTemporalUpdate = 0
-			segmentationUpdateData = 1
+			u.SegmentationUpdateData = 1
 
 		} else {
-			segmentationUpdateMap = p.f(1)
-			if segmentationUpdateMap == 1 {
+			u.SegmentationUpdateMap = p.f(1)
+			if u.SegmentationUpdateMap == 1 {
 				u.SegmentationTemporalUpdate = p.f(1)
 			}
-			segmentationUpdateData = p.f(1)
+			u.SegmentationUpdateData = p.f(1)
 		}
 
-		if segmentationUpdateData == 1 {
+		if u.SegmentationUpdateData == 1 {
 			for i := 0; i < MAX_SEGMENTS; i++ {
 				for j := 0; j < SEG_LVL_MAX; i++ {
 					featureValue := 0
@@ -795,8 +799,67 @@ func (u *UncompressedHeader) frameReferenceMode(p *Parser) {
 
 }
 
-func (p *Parser) skipModeParams() {
-	panic("not implemented")
+// skip_mode_params()
+func (u *UncompressedHeader) skipModeParams(p *Parser) {
+	var skipModeAllowed = 0
+	var forwardHint int
+	var backwardHint int
+	if u.FrameIsIntra || u.ReferenceSelect || u.EnableOrderHint {
+		skipModeAllowed = 0
+	} else {
+		forwardIdx := -1
+		backwardIdx := -1
+
+		for i := 0; i < REFS_PER_FRAME; i++ {
+			refHint := u.RefOrderHint[u.ref_frame_idx[i]]
+
+			if u.getRelativeDist(refHint, u.OrderHint, p) < 0 {
+				if forwardIdx < 0 || u.getRelativeDist(refHint, forwardHint, p) > 0 {
+					forwardIdx = i
+					forwardHint = refHint
+				}
+			} else if u.getRelativeDist(refHint, u.OrderHint, p) > 0 {
+				if backwardIdx < 0 || u.getRelativeDist(refHint, backwardHint, p) > 0 {
+					backwardIdx = i
+					backwardHint = refHint
+				}
+			}
+		}
+
+		if forwardIdx < 0 {
+			skipModeAllowed = 0
+		} else if backwardIdx >= 0 {
+			skipModeAllowed = 1
+			u.SkipModeFrame[0] = LAST_FRAME + Min(forwardIdx, backwardIdx)
+			u.SkipModeFrame[1] = LAST_FRAME + Max(forwardIdx, backwardIdx)
+		} else {
+			secondForwardIdx := -1
+			var secondForwardHint int
+			for i := 0; i < REFS_PER_FRAME; i++ {
+				refHint := u.RefOrderHint[u.ref_frame_idx[i]]
+				if u.getRelativeDist(refHint, forwardHint, p) < 0 {
+					if secondForwardIdx < 0 || u.getRelativeDist(refHint, secondForwardHint, p) > 0 {
+						secondForwardIdx = i
+						secondForwardHint = refHint
+					}
+				}
+			}
+
+			if secondForwardIdx < 0 {
+				skipModeAllowed = 0
+			} else {
+				skipModeAllowed = 1
+				u.SkipModeFrame[0] = LAST_FRAME + Min(forwardIdx, secondForwardIdx)
+				u.SkipModeFrame[1] = LAST_FRAME + Max(forwardIdx, secondForwardIdx)
+			}
+		}
+	}
+
+	if Bool(skipModeAllowed) {
+		u.SkipModePresent = p.f(1)
+	} else {
+		u.SkipModePresent = 0
+	}
 }
 
 func (u *UncompressedHeader) globalMotionParams(p *Parser) {
