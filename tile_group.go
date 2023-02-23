@@ -37,6 +37,20 @@ const DELTA_LF_SMALL = 3
 const INTRA_FRAME = 0
 const NONE = -1
 
+const SINGLE_REFERENCE = 0
+const COMPOUND_REFERENCE = 1
+
+const UNIDIR_COMP_REFERENCE = 0
+const BIDIR_COMP_REFERENCE = 1
+
+const LAST_FRAME = 1
+const LAST2_FRAME = 2
+const LAST3_FRAME = 3
+const GOLDEN_FRAME = 4
+const BWDREF_FRAME = 5
+const ALTREF2_FRAME = 6
+const ALTREF_FRAME = 7
+
 var Partition_Subsize = [][]int{
 	{
 		BLOCK_4x4,
@@ -163,6 +177,7 @@ const SGRPROJ_PRJ_SUBEXP_K = 4
 const DC_PRED = 0
 
 const SIMPLE = 0
+const OBMC = 1
 
 const COMPUND_AVERAGE = 2
 
@@ -212,6 +227,10 @@ const MV_CLASS_7 = 7
 const MV_CLASS_8 = 8
 const MV_CLASS_9 = 9
 const MV_CLASS_10 = 10
+
+const LEAST_SQUARES_SAMPLES_MAX = 8
+
+const REF_SCALE_SHIFT = 14
 
 type TileGroup struct {
 	LrType              [][][]int
@@ -268,6 +287,19 @@ type TileGroup struct {
 	LeftSingle          bool
 	AboveSingle         bool
 	AboveSegPredContext []int
+
+	InterIntra     int
+	InterIntraMode int
+	UseFilterIntra int
+	WedgeIndex     int
+	WedgeSign      int
+
+	NumSamples        int
+	NumSamplesScanned int
+	CandList          [][]int
+
+	RefUpscaledWidth  []int
+	RefUpscaledHeight []int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -502,9 +534,398 @@ func (t *TileGroup) interFrameModeInfo(p *Parser) {
 	t.readIsInter(p)
 
 	if Bool(t.IsInter) {
-		t.interBlockModeInfo()
+		t.interBlockModeInfo(p)
 	} else {
 		t.intraBlockModeInfo()
+	}
+}
+
+// inter_block_mode_inf()
+func (t *TileGroup) interBlockModeInfo(p *Parser) {
+	t.PaletteSizeY = 0
+	t.PaletteSizeUV = 0
+	t.readRefFrames(p)
+
+	isCompound := p.RefFrame[1] > INTRA_FRAME
+	t.findMvStack(Int(isCompound), p)
+
+	if Bool(t.SkipMode) {
+		t.YMode = NEAREST_NEARESTMV
+	} else if t.segFeatureActive(SEG_LVL_SKIP, p) || t.segFeatureActive(SEG_LVL_GLOBALMV, p) {
+		t.YMode = GLOBALMV
+	} else if isCompound {
+		compoundMode := p.S()
+		t.YMode = NEAREST_NEARESTMV + compoundMode
+	} else {
+		newMv := p.S()
+		if newMv == 0 {
+			t.YMode = NEWMV
+		} else {
+			zeroMv := p.S()
+			if zeroMv == 0 {
+				t.YMode = GLOBALMV
+			} else {
+				refMv := p.S()
+				if refMv == 0 {
+					t.YMode = NEARESTMV
+				} else {
+					t.YMode = NEARMV
+				}
+			}
+		}
+	}
+
+	t.RefMvIdx = 0
+	if t.YMode == NEWMV || t.YMode == NEW_NEWMV {
+		for idx := 0; idx < 2; idx++ {
+			if t.NumMvFound > idx+1 {
+				drlMode := p.S()
+				if drlMode == 0 {
+					t.RefMvIdx = idx
+					break
+				}
+				t.RefMvIdx = idx + 1
+			}
+		}
+	} else if t.hasNearmv() {
+		t.RefMvIdx = 1
+		for idx := 1; idx < 3; idx++ {
+			if t.NumMvFound > idx+1 {
+				drlMode := p.S()
+				if drlMode == 0 {
+					t.RefMvIdx = idx
+					break
+				}
+				t.RefMvIdx = idx + 1
+			}
+		}
+	}
+
+	t.assignMv(Int(isCompound), p)
+	t.readInterIntraMode(isCompound, p)
+	t.readMotionMode(isCompound, p)
+}
+
+// read_motion_mode( isCompound )
+func (t *TileGroup) readMotionMode(isCompound bool, p *Parser) {
+	if Bool(t.SkipMode) {
+		t.MotionMode = SIMPLE
+		return
+	}
+
+	if !p.uncompressedHeader.IsMotionModeSwitchable {
+		t.MotionMode = SIMPLE
+		return
+	}
+
+	if Min(t.Block_Width[p.MiSize], t.Block_Height[p.MiSize]) < 8 {
+		t.MotionMode = SIMPLE
+		return
+	}
+
+	if !p.uncompressedHeader.ForceIntegerMv && (t.YMode == GLOBALMV || t.YMode == GLOBAL_GLOBALMV) {
+		if p.GmType[p.RefFrame[0]] > TRANSLATION {
+			t.MotionMode = SIMPLE
+			return
+		}
+	}
+
+	t.findWarpSamples(p)
+	if p.uncompressedHeader.ForceIntegerMv || t.NumSamples == 0 || !p.uncompressedHeader.AllowWarpedMotion || t.isScaled(p.RefFrame[0], p) {
+		useObmc := p.S()
+		if Bool(useObmc) {
+			t.MotionMode = OBMC
+
+		} else {
+			t.MotionMode = SIMPLE
+		}
+	} else {
+		t.MotionMode = p.S()
+	}
+}
+
+// is_scaled( refFrame )
+func (t *TileGroup) isScaled(refFrame int, p *Parser) bool {
+	refIdx := p.uncompressedHeader.ref_frame_idx[refFrame-LAST_FRAME]
+	xScale := ((t.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameWidth / 2)) / p.uncompressedHeader.FrameWidth
+	yScale := ((t.RefUpscaledHeight[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameHeight / 2)) / p.uncompressedHeader.FrameHeight
+	noScale := 1 << REF_SCALE_SHIFT
+
+	return xScale != noScale || yScale != noScale
+}
+
+// find_warp_samples() 7.10.4.
+func (t *TileGroup) findWarpSamples(p *Parser) {
+	t.NumSamples = 0
+	t.NumSamplesScanned = 0
+
+	w4 := p.Num4x4BlocksWide[p.MiSize]
+	h4 := p.Num4x4BlocksHigh[p.MiSize]
+
+	doTopLeft := 1
+	doTopRight := 1
+
+	if p.AvailU {
+		srcSize := p.MiSizes[p.MiRow-1][p.MiCol]
+		srcW := p.Num4x4BlocksWide[srcSize]
+
+		if w4 <= srcW {
+			colOffset := -(p.MiCol & (srcW - 1))
+			if colOffset < 0 {
+				doTopLeft = 0
+			}
+			if colOffset+srcW > w4 {
+				doTopRight = 0
+			}
+			t.addSample(-1, 0, p)
+		} else {
+			var miStep int
+			for i := 0; i < Min(w4, p.MiCols-p.MiCol); i += miStep {
+				srcSize = p.MiSizes[p.MiRow-1][p.MiCol+i]
+				srcW = p.Num4x4BlocksWide[srcSize]
+				miStep = Min(w4, srcW)
+				t.addSample(-1, i, p)
+			}
+		}
+	}
+	if p.AvailL {
+		srcSize := p.MiSizes[p.MiRow][p.MiCol-1]
+		srcH := p.Num4x4BlocksHigh[srcSize]
+
+		if h4 <= srcH {
+			rowOffset := -(p.MiRow & (srcH - 1))
+			if rowOffset < 0 {
+				doTopLeft = 0
+			}
+			t.addSample(0, -1, p)
+		} else {
+			var miStep int
+			for i := 0; i < Min(h4, p.MiRows-p.MiRow); i += miStep {
+				srcSize = p.MiSizes[p.MiRow+i][p.MiCol-1]
+				srcH = p.Num4x4BlocksHigh[srcSize]
+				miStep = Min(h4, srcH)
+				t.addSample(i, -1, p)
+			}
+		}
+	}
+
+	if Bool(doTopLeft) {
+		t.addSample(-1, -1, p)
+	}
+
+	if Bool(doTopRight) {
+		if Max(w4, h4) <= 16 {
+			t.addSample(-1, w4, p)
+		}
+	}
+
+	if t.NumSamples == 0 && t.NumSamplesScanned > 0 {
+		t.NumSamples = 1
+	}
+
+}
+
+// add_sample 7.10.4.2.
+func (t *TileGroup) addSample(deltaRow int, deltaCol int, p *Parser) {
+	if t.NumSamplesScanned >= LEAST_SQUARES_SAMPLES_MAX {
+		return
+	}
+
+	mvRow := p.MiRow + deltaRow
+	mvCol := p.MiCol + deltaCol
+
+	if !p.isInside(mvRow, mvCol) {
+		return
+	}
+
+	// TODO: how do we know if something has not been writte to?
+	if p.RefFrames[mvRow][mvCol][0] == 0 {
+		return
+	}
+
+	if p.RefFrames[mvRow][mvCol][0] != p.RefFrame[0] {
+		return
+	}
+
+	if p.RefFrames[mvRow][mvCol][1] != NONE {
+		return
+	}
+
+	candSz := p.MiSizes[mvRow][mvCol]
+	candW4 := p.Num4x4BlocksWide[candSz]
+	candH4 := p.Num4x4BlocksHigh[candSz]
+	candRow := mvRow & ^(candH4 - 1)
+	candCol := mvCol & ^(candW4 - 1)
+	midY := candRow*4 + candH4*2 - 1
+	midX := candCol*4 + candW4*2 - 1
+	threshold := Clip3(16, 112, Max(t.Block_Width[p.MiSize], t.Block_Height[p.MiSize]))
+	mvDiffRow := Abs(t.Mvs[candRow][candCol][0][0] - t.Mv[0][0])
+	mvDiffCol := Abs(t.Mvs[candRow][candCol][0][1] - t.Mv[0][1])
+	valid := (mvDiffRow + mvDiffCol) <= threshold
+
+	var cand []int
+	cand[0] = midY * 8
+	cand[1] = midX * 8
+	cand[2] = midY*8 + t.Mvs[candRow][candCol][0][0]
+	cand[3] = midX*8 + t.Mvs[candRow][candCol][0][1]
+
+	t.NumSamplesScanned++
+	if valid && t.NumSamplesScanned > 1 {
+		return
+	}
+
+	for j := 0; j < 4; j++ {
+		t.CandList[t.NumSamples][j] = cand[j]
+	}
+
+	if valid {
+		t.NumSamples++
+	}
+}
+
+// read_interintra_mode( isCompound )
+func (t *TileGroup) readInterIntraMode(isCompound bool, p *Parser) {
+	if Bool(t.SkipMode) && p.sequenceHeader.EnableInterIntraCompound && !isCompound && p.MiSize > +BLOCK_8x8 && p.MiSize <= BLOCK_32x32 {
+		t.InterIntra = p.S()
+
+		if Bool(t.InterIntra) {
+			t.InterIntraMode = p.S()
+			p.RefFrame[1] = INTRA_FRAME
+			t.AngleDeltaY = 0
+			t.AngleDeltaUV = 0
+			t.UseFilterIntra = 0
+			wedgeInterIntra := p.S()
+			if Bool(wedgeInterIntra) {
+				t.WedgeIndex = p.S()
+				t.WedgeSign = 0
+			}
+		}
+	} else {
+		t.InterIntra = 0
+	}
+}
+
+// has_nearmv()
+func (t *TileGroup) hasNearmv() bool {
+	return t.YMode == NEARMV || t.YMode == NEAR_NEARMV || t.YMode == NEAR_NEWMV || t.YMode == NEW_NEARMV
+}
+
+// read_ref_frames()
+func (t *TileGroup) readRefFrames(p *Parser) {
+	if Bool(t.SkipMode) {
+		p.RefFrame[0] = p.uncompressedHeader.SkipModeFrame[0]
+		p.RefFrame[1] = p.uncompressedHeader.SkipModeFrame[1]
+	} else if t.segFeatureActive(SEG_LVL_REF_FRAME, p) {
+		p.RefFrame[0] = p.FeatureData[t.SegmentId][SEG_LVL_REF_FRAME]
+		p.RefFrame[1] = NONE
+	} else {
+		bw4 := p.Num4x4BlocksWide[p.MiSize]
+		bh4 := p.Num4x4BlocksHigh[p.MiSize]
+
+		var compMode int
+		if p.uncompressedHeader.ReferenceSelect && Min(bw4, bh4) >= 2 {
+			compMode = p.S()
+		} else {
+			compMode = SINGLE_REFERENCE
+		}
+
+		if compMode == COMPOUND_REFERENCE {
+			compRefType := p.S()
+			if compRefType == UNIDIR_COMP_REFERENCE {
+				uniCompRef := p.S()
+				if Bool(uniCompRef) {
+					p.RefFrame[0] = BWDREF_FRAME
+					p.RefFrame[1] = ALTREF_FRAME
+				} else {
+					uniCompRefP1 := p.S()
+					if Bool(uniCompRefP1) {
+						uniCompRefP2 := p.S()
+
+						if Bool(uniCompRefP2) {
+							p.RefFrame[0] = LAST_FRAME
+							p.RefFrame[1] = GOLDEN_FRAME
+						} else {
+							p.RefFrame[0] = LAST_FRAME
+							p.RefFrame[1] = LAST3_FRAME
+						}
+					} else {
+						p.RefFrame[0] = LAST_FRAME
+						p.RefFrame[1] = LAST2_FRAME
+
+					}
+				}
+			} else {
+				compRef := p.S()
+				if compRef == 0 {
+					compRefP1 := p.S()
+
+					if Bool(compRefP1) {
+						p.RefFrame[0] = LAST2_FRAME
+					} else {
+						p.RefFrame[0] = LAST_FRAME
+
+					}
+				} else {
+					compRefP2 := p.S()
+
+					if Bool(compRefP2) {
+						p.RefFrame[0] = GOLDEN_FRAME
+					} else {
+						p.RefFrame[0] = LAST3_FRAME
+
+					}
+
+				}
+
+				compBwdref := p.S()
+				if compBwdref == 0 {
+					compBwdrefP1 := p.S()
+
+					if Bool(compBwdrefP1) {
+						p.RefFrame[1] = ALTREF2_FRAME
+					} else {
+						p.RefFrame[1] = BWDREF_FRAME
+
+					}
+				} else {
+					p.RefFrame[1] = ALTREF_FRAME
+				}
+			}
+		} else {
+			singleRefP1 := p.S()
+			if Bool(singleRefP1) {
+				singleRefP2 := p.S()
+				if singleRefP2 == 0 {
+					singleRefP6 := p.S()
+					if Bool(singleRefP6) {
+						p.RefFrame[0] = ALTREF2_FRAME
+					} else {
+						p.RefFrame[0] = BWDREF_FRAME
+
+					}
+				} else {
+					p.RefFrame[0] = ALTREF_FRAME
+				}
+			} else {
+				singleRefP3 := p.S()
+				if Bool(singleRefP3) {
+					singleRefP5 := p.S()
+					if Bool(singleRefP5) {
+						p.RefFrame[0] = GOLDEN_FRAME
+					} else {
+						p.RefFrame[0] = LAST3_FRAME
+					}
+				} else {
+					singleRefP4 := p.S()
+					if Bool(singleRefP4) {
+						p.RefFrame[0] = LAST2_FRAME
+					} else {
+						p.RefFrame[0] = LAST_FRAME
+					}
+				}
+			}
+			p.RefFrame[1] = NONE
+		}
 	}
 }
 

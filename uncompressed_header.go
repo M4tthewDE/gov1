@@ -3,8 +3,6 @@ package main
 const NUM_REF_FRAMES = 8
 const REFS_PER_FRAME = 7
 const KEY_FRAME = 0
-const LAST_FRAME = 1
-const ALTREF_FRAME = 7
 const PRIMARY_REF_NONE = 7
 const MAX_SEGMENTS = 8
 const SEG_LVL_MAX = 8
