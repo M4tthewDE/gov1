@@ -323,11 +323,13 @@ type TileGroup struct {
 	Lossless            bool
 	Skip                int
 	YMode               int
-	UVMode              int
 	YModes              [][]int
+	UVMode              int
+	UVModes             [][]int
 	PaletteSizeY        int
 	PaletteSizeUV       int
 	InterpFilter        []int
+	InterpFilters       [][][]int
 	NumMvFound          int
 	NewMvCount          int
 	GlobalMvs           [][]int
@@ -393,6 +395,11 @@ type TileGroup struct {
 	AboveDcContext    [][]int
 	LeftLevelContext  [][]int
 	LeftDcContext     [][]int
+
+	CompGroupIdxs [][]int
+	CompoundIdxs  [][]int
+	CompGroupIdx  int
+	CompoundIdx   int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -574,6 +581,35 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
 
 	if Bool(t.Skip) {
 		t.resetBlockContext(bw4, bh4, p)
+	}
+
+	isCompound := p.RefFrame[1] > INTRA_FRAME
+
+	for y := 0; y < bh4; y++ {
+		for x := 0; x < bw4; x++ {
+			t.YModes[r+y][c+x] = t.YMode
+
+			if p.RefFrame[0] == INTRA_FRAME && t.HasChroma {
+				t.UVModes[r+y][c+x] = t.UVMode
+			}
+
+			for refList := 0; refList < 2; refList++ {
+				p.RefFrames[r+y][c+x][refList] = p.RefFrame[refList]
+			}
+
+			if Bool(t.IsInter) {
+				if !Bool(t.useIntrabc) {
+					t.CompGroupIdxs[r+y][c+x] = t.CompGroupIdx
+					t.CompoundIdxs[r+y][c+x] = t.CompoundIdx
+				}
+				for dir := 0; dir < 2; dir++ {
+					t.InterpFilters[r+y][c+x][dir] = t.InterpFilter[dir]
+				}
+				for refList := 0; refList < 1+Int(isCompound); refList++ {
+					t.Mvs[r+y][c+x][refList] = t.Mv[refList]
+				}
+			}
+		}
 	}
 }
 
@@ -1002,8 +1038,8 @@ func (t *TileGroup) needsInterpFilter(p *Parser) bool {
 
 // read_compound_type( isCompound )
 func (t *TileGroup) readCompoundType(isCompound bool, p *Parser) {
-	compGroupIdx := 0
-	compoundIdx := 1
+	t.CompGroupIdx = 0
+	t.CompoundIdx = 1
 	if Bool(t.SkipMode) {
 		t.CompoundType = COMPOUND_AVERAGE
 		return
@@ -1012,13 +1048,13 @@ func (t *TileGroup) readCompoundType(isCompound bool, p *Parser) {
 	if isCompound {
 		n := Wedge_Bits[p.MiSize]
 		if p.sequenceHeader.EnableMaskedCompound {
-			compGroupIdx = p.S()
+			t.CompGroupIdx = p.S()
 		}
 
-		if compGroupIdx == 0 {
+		if t.CompGroupIdx == 0 {
 			if p.sequenceHeader.EnableJntComp {
-				compoundIdx = p.S()
-				if Bool(compoundIdx) {
+				t.CompoundIdx = p.S()
+				if Bool(t.CompoundIdx) {
 					t.CompoundType = COMPOUND_AVERAGE
 
 				} else {
