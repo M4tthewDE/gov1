@@ -547,8 +547,39 @@ func (t *TileGroup) interFrameModeInfo(p *Parser) {
 	if Bool(t.IsInter) {
 		t.interBlockModeInfo(p)
 	} else {
-		t.intraBlockModeInfo()
+		t.intraBlockModeInfo(p)
 	}
+}
+
+// intra_block_mode_info()
+func (t *TileGroup) intraBlockModeInfo(p *Parser) {
+	p.RefFrame[0] = INTRA_FRAME
+	p.RefFrame[1] = NONE
+	yMode := p.S()
+	t.YMode = yMode
+	t.intraAngleInfoY(p)
+
+	if t.HasChroma {
+		uvMode := p.S()
+		t.UVMode = uvMode
+
+		if t.UVMode == UV_CFL_PRED {
+			t.readCflAlphas(p)
+		}
+
+		t.intraAngleInfoUv(p)
+	}
+
+	t.PaletteSizeY = 0
+	t.PaletteSizeUV = 0
+	if p.MiSize >= BLOCK_8x8 &&
+		t.Block_Width[p.MiSize] <= 64 &&
+		t.Block_Height[p.MiSize] <= 64 &&
+		Bool(p.uncompressedHeader.AllowScreenContentTools) {
+		t.paletteModeInfo(p)
+	}
+
+	t.filterIntraModeInfo(p)
 }
 
 // inter_block_mode_info()
