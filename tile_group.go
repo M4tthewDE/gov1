@@ -31,6 +31,9 @@ const PARTITION_HORZ = 1
 const PARTITION_VERT = 2
 const PARTITION_SPLIT = 3
 
+const PALETTE_COLORS = 8
+const PALETTE_NUM_NEIGHBORS = 3
+
 const DELTA_Q_SMALL = 3
 const DELTA_LF_SMALL = 3
 
@@ -58,6 +61,7 @@ const ALTREF2_FRAME = 6
 const ALTREF_FRAME = 7
 
 var Wedge_Bits = []int{0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0}
+var Palette_Color_Hash_Multipliers = []int{1, 2, 2}
 
 var Partition_Subsize = [][]int{
 	{
@@ -311,6 +315,11 @@ type TileGroup struct {
 	RefUpscaledWidth  []int
 	RefUpscaledHeight []int
 	MaskType          int
+
+	ColorMapY        [][]int
+	ColorMapUV       [][]int
+	ColorOrder       []int
+	ColorContextHash int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -487,6 +496,124 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
 	}
 
 	t.modeInfo(p)
+	t.paletteTokens(p)
+}
+
+// palette_tokens()
+func (t *TileGroup) paletteTokens(p *Parser) {
+	blockHeight := t.Block_Height[p.MiSize]
+	blockWidth := t.Block_Width[p.MiSize]
+	onscreenHeight := Min(blockHeight, (p.MiRows-p.MiRow)*MI_SIZE)
+	onscreenWidth := Min(blockWidth, (p.MiCols-p.MiCol)*MI_SIZE)
+
+	if Bool(t.PaletteSizeY) {
+		colorIndexMapY := p.NS(t.PaletteSizeY)
+		t.ColorMapY[0][0] = colorIndexMapY
+
+		for i := 1; i < onscreenHeight+onscreenWidth-1; i++ {
+			for j := Min(i, onscreenWidth-1); j >= Max(0, i-onscreenHeight+1); j-- {
+				t.getPaletteColorContext(t.ColorMapY, (i - j), j, t.PaletteSizeY, p)
+				paletteColorIdxY := p.S()
+				t.ColorMapY[i-j][j] = t.ColorOrder[paletteColorIdxY]
+			}
+		}
+		for i := 0; i < onscreenHeight; i++ {
+			for j := onscreenWidth; j < blockWidth; j++ {
+				t.ColorMapY[i][j] = t.ColorMapY[i][onscreenWidth-1]
+			}
+		}
+		for i := onscreenHeight; i < blockHeight; i++ {
+			for j := 0; j < blockWidth; j++ {
+				t.ColorMapY[i][j] = t.ColorMapY[onscreenHeight-1][j]
+			}
+		}
+	}
+
+	if Bool(t.PaletteSizeUV) {
+		colorIndexMapUv := p.NS(t.PaletteSizeUV)
+		t.ColorMapUV[0][0] = colorIndexMapUv
+		blockHeight = blockHeight >> Int(p.sequenceHeader.ColorConfig.SubsamplingY)
+		blockWidth = blockWidth >> Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+		onscreenHeight = onscreenHeight >> Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+		onscreenWidth = onscreenWidth >> Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+
+		if blockWidth < 4 {
+			blockWidth += 2
+			onscreenWidth += 2
+		}
+
+		if blockHeight < 4 {
+			blockHeight += 2
+			onscreenHeight += 2
+		}
+		for i := 1; i < onscreenHeight+onscreenWidth-1; i++ {
+			for j := Min(i, onscreenWidth-1); j >= Max(0, i-onscreenHeight+1); j-- {
+				t.getPaletteColorContext(t.ColorMapUV, (i - j), j, t.PaletteSizeUV, p)
+				paletteColorIdxUv := p.S()
+				t.ColorMapUV[i-j][j] = t.ColorOrder[paletteColorIdxUv]
+			}
+		}
+		for i := 0; i < onscreenHeight; i++ {
+			for j := onscreenWidth; j < blockWidth; j++ {
+				t.ColorMapUV[i][j] = t.ColorMapUV[i][onscreenWidth-1]
+			}
+		}
+		for i := onscreenHeight; i < blockHeight; i++ {
+			for j := 0; j < blockWidth; j++ {
+				t.ColorMapUV[i][j] = t.ColorMapUV[onscreenHeight-1][j]
+			}
+		}
+	}
+}
+
+// get_palette_color_context( colorMap, r, c, n )
+func (t *TileGroup) getPaletteColorContext(colorMap [][]int, r int, c int, n int, p *Parser) {
+	var scores []int
+	for i := 0; i < PALETTE_COLORS; i++ {
+		scores[i] = 0
+		t.ColorOrder[i] = i
+	}
+
+	var neighbor int
+	if c > 0 {
+		neighbor = colorMap[r][c-1]
+		scores[neighbor] += 2
+	}
+
+	if r > 0 && c > 0 {
+		neighbor = colorMap[r-1][c-1]
+		scores[neighbor] += 1
+	}
+	if r > 0 {
+		neighbor = colorMap[r-1][c]
+		scores[neighbor] += 1
+	}
+
+	for i := 0; i < PALETTE_NUM_NEIGHBORS; i++ {
+		maxScore := scores[i]
+		maIdx := i
+		for j := i + 1; j < n; j++ {
+			if scores[j] > maxScore {
+				maxScore = scores[j]
+				maIdx = j
+			}
+		}
+		if maIdx != i {
+			maxScore = scores[maIdx]
+			maxColorOrder := t.ColorOrder[maIdx]
+			for k := maIdx; k > i; k-- {
+				scores[k] = scores[k-1]
+				t.ColorOrder[k] = t.ColorOrder[k-1]
+			}
+			scores[i] = maxScore
+			t.ColorOrder[i] = maxColorOrder
+		}
+	}
+
+	t.ColorContextHash = 0
+	for i := 0; i < PALETTE_NUM_NEIGHBORS; i++ {
+		t.ColorContextHash += scores[i] * Palette_Color_Hash_Multipliers[i]
+	}
 }
 
 // mode_info()
@@ -500,7 +627,7 @@ func (t *TileGroup) modeInfo(p *Parser) {
 
 // inter_frame_mode_info()
 func (t *TileGroup) interFrameModeInfo(p *Parser) {
-	useIntrabc := 0
+	t.useIntrabc = 0
 
 	if p.AvailL {
 		t.LeftRefFrame[0] = p.RefFrames[p.MiRow][p.MiCol-1][0]
