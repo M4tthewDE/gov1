@@ -40,6 +40,12 @@ const NONE = -1
 const SINGLE_REFERENCE = 0
 const COMPOUND_REFERENCE = 1
 
+const COMPOUND_WEDGE = 0
+const COMPOUND_DIFFWTD = 1
+const COMPOUND_AVERAGE = 2
+const COMPOUND_INTRA = 3
+const COMPOUND_DISTANCE = 4
+
 const UNIDIR_COMP_REFERENCE = 0
 const BIDIR_COMP_REFERENCE = 1
 
@@ -50,6 +56,8 @@ const GOLDEN_FRAME = 4
 const BWDREF_FRAME = 5
 const ALTREF2_FRAME = 6
 const ALTREF_FRAME = 7
+
+var Wedge_Bits = []int{0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0}
 
 var Partition_Subsize = [][]int{
 	{
@@ -178,6 +186,7 @@ const DC_PRED = 0
 
 const SIMPLE = 0
 const OBMC = 1
+const LOCALWARP = 2
 
 const COMPUND_AVERAGE = 2
 
@@ -288,11 +297,12 @@ type TileGroup struct {
 	AboveSingle         bool
 	AboveSegPredContext []int
 
-	InterIntra     int
-	InterIntraMode int
-	UseFilterIntra int
-	WedgeIndex     int
-	WedgeSign      int
+	InterIntra      int
+	InterIntraMode  int
+	UseFilterIntra  int
+	WedgeIndex      int
+	WedgeSign       int
+	WedgeInterIntra int
 
 	NumSamples        int
 	NumSamplesScanned int
@@ -300,6 +310,7 @@ type TileGroup struct {
 
 	RefUpscaledWidth  []int
 	RefUpscaledHeight []int
+	MaskType          int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -540,7 +551,7 @@ func (t *TileGroup) interFrameModeInfo(p *Parser) {
 	}
 }
 
-// inter_block_mode_inf()
+// inter_block_mode_info()
 func (t *TileGroup) interBlockModeInfo(p *Parser) {
 	t.PaletteSizeY = 0
 	t.PaletteSizeUV = 0
@@ -604,6 +615,99 @@ func (t *TileGroup) interBlockModeInfo(p *Parser) {
 	t.assignMv(Int(isCompound), p)
 	t.readInterIntraMode(isCompound, p)
 	t.readMotionMode(isCompound, p)
+	t.readCompoundType(isCompound, p)
+
+	if p.uncompressedHeader.InterpolationFilter == SWITCHABLE {
+		x := 1
+		if p.sequenceHeader.EnableDualFilter {
+			x = 2
+		}
+		for dir := 0; dir < x; dir++ {
+			if t.needsInterpFilter(p) {
+				t.InterpFilter[dir] = p.S()
+			} else {
+				t.InterpFilter[dir] = EIGHTTAP
+			}
+		}
+
+		if !p.sequenceHeader.EnableDualFilter {
+			t.InterpFilter[1] = t.InterpFilter[0]
+		}
+	} else {
+		for dir := 0; dir < 2; dir++ {
+			t.InterpFilter[dir] = p.uncompressedHeader.InterpolationFilter
+		}
+	}
+}
+
+// needs_interp_filter()
+func (t *TileGroup) needsInterpFilter(p *Parser) bool {
+	large := Min(t.Block_Width[p.MiSize], t.Block_Height[p.MiSize]) >= 8
+
+	if Bool(t.SkipMode) || t.MotionMode == LOCALWARP {
+		return false
+	} else if large && t.YMode == GLOBALMV {
+		return p.GmType[p.RefFrame[0]] == TRANSLATION
+	} else if large && t.YMode == GLOBAL_GLOBALMV {
+		return p.GmType[p.RefFrame[0]] == TRANSLATION || p.GmType[1] == TRANSLATION
+	} else {
+		return true
+	}
+}
+
+// read_compound_type( isCompound )
+func (t *TileGroup) readCompoundType(isCompound bool, p *Parser) {
+	compGroupIdx := 0
+	compoundIdx := 1
+	if Bool(t.SkipMode) {
+		t.CompoundType = COMPOUND_AVERAGE
+		return
+	}
+
+	if isCompound {
+		n := Wedge_Bits[p.MiSize]
+		if p.sequenceHeader.EnableMaskedCompound {
+			compGroupIdx = p.S()
+		}
+
+		if compGroupIdx == 0 {
+			if p.sequenceHeader.EnableJntComp {
+				compoundIdx = p.S()
+				if Bool(compoundIdx) {
+					t.CompoundType = COMPOUND_AVERAGE
+
+				} else {
+					t.CompoundType = COMPOUND_DISTANCE
+				}
+			} else {
+				t.CompoundType = COMPOUND_AVERAGE
+			}
+		} else {
+			if n == 0 {
+				t.CompoundType = COMPOUND_DIFFWTD
+			} else {
+				t.CompoundType = p.S()
+			}
+		}
+
+		if t.CompoundType == COMPOUND_WEDGE {
+			t.WedgeIndex = p.S()
+			t.WedgeIndex = p.L(1)
+		} else if t.CompoundType == COMPOUND_DIFFWTD {
+			t.MaskType = p.L(1)
+		}
+	} else {
+		if Bool(t.InterIntra) {
+			if Bool(t.WedgeInterIntra) {
+				t.CompoundType = COMPOUND_WEDGE
+			} else {
+				t.CompoundType = COMPOUND_INTRA
+			}
+		} else {
+			t.CompoundType = COMPOUND_AVERAGE
+		}
+	}
+
 }
 
 // read_motion_mode( isCompound )
@@ -794,8 +898,8 @@ func (t *TileGroup) readInterIntraMode(isCompound bool, p *Parser) {
 			t.AngleDeltaY = 0
 			t.AngleDeltaUV = 0
 			t.UseFilterIntra = 0
-			wedgeInterIntra := p.S()
-			if Bool(wedgeInterIntra) {
+			t.WedgeInterIntra = p.S()
+			if Bool(t.WedgeInterIntra) {
 				t.WedgeIndex = p.S()
 				t.WedgeSign = 0
 			}
