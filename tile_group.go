@@ -63,6 +63,71 @@ const ALTREF_FRAME = 7
 var Wedge_Bits = []int{0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0}
 var Palette_Color_Hash_Multipliers = []int{1, 2, 2}
 
+const MAX_VARTX_DEPTH = 2
+
+const TX_4X4 = 0
+const TX_8X8 = 1
+const TX_16X16 = 2
+const TX_32X32 = 3
+const TX_64X64 = 4
+const TX_4X8 = 5
+const TX_8X4 = 6
+const TX_8X16 = 7
+const TX_16X8 = 8
+const TX_16X32 = 9
+const TX_32X16 = 10
+const TX_32X64 = 11
+const TX_64X32 = 12
+const TX_4X16 = 13
+const TX_16X4 = 14
+const TX_8X32 = 15
+const TX_32X8 = 16
+const TX_16X64 = 17
+const TX_64X16 = 18
+
+var Max_Tx_Size_Rect = []int{
+	TX_4X4, TX_4X8, TX_8X4, TX_8X8,
+	TX_8X16, TX_16X8, TX_16X16, TX_16X32,
+	TX_32X16, TX_32X32, TX_32X64, TX_64X32,
+	TX_64X64, TX_64X64, TX_64X64, TX_64X64,
+	TX_4X16, TX_16X4, TX_8X32, TX_32X8,
+	TX_16X64, TX_64X16,
+}
+
+var Max_Tx_Depth = []int{
+	0, 1, 1, 1,
+	2, 2, 2, 3,
+	3, 3, 4, 4,
+	4, 4, 4, 4,
+	2, 2, 3, 3,
+	4, 4,
+}
+
+var Split_Tx_Size = []int{
+	TX_4X4,
+	TX_4X4,
+	TX_8X8,
+	TX_16X16,
+	TX_32X32,
+	TX_4X4,
+	TX_4X4,
+	TX_8X8,
+	TX_8X8,
+	TX_16X16,
+	TX_16X16,
+	TX_32X32,
+	TX_32X32,
+	TX_4X8,
+	TX_8X4,
+	TX_8X16,
+	TX_16X8,
+	TX_16X32,
+	TX_32X16,
+}
+
+var Tx_Width = []int{4, 8, 16, 32, 64, 4, 8, 8, 16, 16, 32, 32, 64, 4, 16, 8, 32, 16, 64}
+var Tx_Height = []int{4, 8, 16, 32, 64, 8, 4, 16, 8, 32, 16, 64, 32, 16, 4, 32, 8, 64, 16}
+
 var Partition_Subsize = [][]int{
 	{
 		BLOCK_4x4,
@@ -320,6 +385,9 @@ type TileGroup struct {
 	ColorMapUV       [][]int
 	ColorOrder       []int
 	ColorContextHash int
+
+	InterTxSizes [][]int
+	TxSize       int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -497,6 +565,93 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
 
 	t.modeInfo(p)
 	t.paletteTokens(p)
+	t.readBlockTxSize(p)
+}
+
+// read_block_tx_size()
+func (t *TileGroup) readBlockTxSize(p *Parser) {
+	bw4 := p.Num4x4BlocksWide[p.MiSize]
+	bh4 := p.Num4x4BlocksHigh[p.MiSize]
+
+	if p.uncompressedHeader.TxMode == TX_MODE_SELECT &&
+		p.MiSize > BLOCK_4x4 &&
+		Bool(t.IsInter) &&
+		!Bool(t.Skip) &&
+		!t.Lossless {
+		maxTxSz := Max_Tx_Size_Rect[p.MiSize]
+		txW4 := Tx_Width[maxTxSz] / MI_SIZE
+		txH4 := Tx_Height[maxTxSz] / MI_SIZE
+
+		for row := p.MiRow; row < p.MiRow+bh4; row += txH4 {
+			for col := p.MiCol; col < p.MiCol+bw4; col += txW4 {
+				t.readVarTxSize(row, col, maxTxSz, 0, p)
+			}
+		}
+	} else {
+		t.readTxSize(!Bool(t.Skip) || Bool(t.IsInter), p)
+		for row := p.MiRow; row < p.MiRow+bh4; row++ {
+			for col := p.MiCol; col < p.MiCol+bw4; col++ {
+				t.InterTxSizes[row][col] = t.TxSize
+			}
+		}
+	}
+
+}
+
+// read_tx_size( allowSelect )
+func (t *TileGroup) readTxSize(allowSelect bool, p *Parser) {
+	if t.Lossless {
+		t.TxSize = TX_4X4
+		return
+	}
+
+	maxRectTxSize := Max_Tx_Size_Rect[p.MiSize]
+	// TODO: what is this for?
+	//maxTxDepth := Max_Tx_Depth[p.MiSize]
+	t.TxSize = maxRectTxSize
+
+	if p.MiSize > BLOCK_4x4 && allowSelect && p.uncompressedHeader.TxMode == TX_MODE_SELECT {
+		txDepth := p.S()
+		for i := 0; i < txDepth; i++ {
+			t.TxSize = Split_Tx_Size[t.TxSize]
+		}
+	}
+}
+
+// read_var_tx_size( row, col, txSz, depth )
+func (t *TileGroup) readVarTxSize(row int, col int, txSz int, depth int, p *Parser) {
+	if row >= p.MiRows || col >= p.MiCols {
+		return
+	}
+
+	var txfmSplit int
+	if txSz == TX_4X4 || depth == MAX_VARTX_DEPTH {
+		txfmSplit = 0
+	} else {
+		txfmSplit = p.S()
+	}
+
+	w4 := Tx_Width[txSz] / MI_SIZE
+	h4 := Tx_Height[txSz] / MI_SIZE
+
+	if Bool(txfmSplit) {
+		subTxSz := Split_Tx_Size[txSz]
+		stepW := Tx_Width[subTxSz] / MI_SIZE
+		stepH := Tx_Height[subTxSz] / MI_SIZE
+
+		for i := 0; i < h4; i += stepH {
+			for j := 0; j < w4; j += stepW {
+				t.readVarTxSize(row+i, col+j, subTxSz, depth+1, p)
+			}
+		}
+	} else {
+		for i := 0; i < h4; i++ {
+			for j := 0; j < w4; j++ {
+				t.InterTxSizes[row+i][col+i] = txSz
+			}
+		}
+		t.TxSize = txSz
+	}
 }
 
 // palette_tokens()
