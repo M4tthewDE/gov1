@@ -388,6 +388,11 @@ type TileGroup struct {
 
 	InterTxSizes [][]int
 	TxSize       int
+
+	AboveLevelContext [][]int
+	AboveDcContext    [][]int
+	LeftLevelContext  [][]int
+	LeftDcContext     [][]int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -566,6 +571,33 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
 	t.modeInfo(p)
 	t.paletteTokens(p)
 	t.readBlockTxSize(p)
+
+	if Bool(t.Skip) {
+		t.resetBlockContext(bw4, bh4, p)
+	}
+}
+
+// reset_block_context( bw4, bh4 )
+func (t *TileGroup) resetBlockContext(bw4 int, bh4 int, p *Parser) {
+	for plane := 0; plane < 1+2*Int(t.HasChroma); plane++ {
+		subX := 0
+		subY := 0
+		if plane > 0 {
+			subX = Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+			subY = Int(p.sequenceHeader.ColorConfig.SubsamplingY)
+		}
+
+		for i := p.MiCol >> subX; i < ((p.MiCol + bw4) >> subX); i++ {
+			t.AboveLevelContext[plane][i] = 0
+			t.AboveDcContext[plane][i] = 0
+		}
+
+		for i := p.MiRow >> subY; i < ((p.MiRow + bh4) >> subY); i++ {
+			t.LeftLevelContext[plane][i] = 0
+			t.LeftDcContext[plane][i] = 0
+		}
+	}
+
 }
 
 // read_block_tx_size()
