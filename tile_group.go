@@ -4,6 +4,7 @@ const FRAME_LF_COUNT = 4
 const WIENER_COEFFS = 3
 
 const BLOCK_INVALID = 3
+const BLOCK_SIZES = 22
 const BLOCK_4X4 = 0
 const BLOCK_4X8 = 1
 const BLOCK_8X4 = 2
@@ -158,7 +159,6 @@ const BWDREF_FRAME = 5
 const ALTREF2_FRAME = 6
 const ALTREF_FRAME = 7
 
-var Wedge_Bits = []int{0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0}
 var Palette_Color_Hash_Multipliers = []int{1, 2, 2}
 
 const MAX_VARTX_DEPTH = 2
@@ -741,6 +741,7 @@ type TileGroup struct {
 	LocalWarpParams []int
 
 	FrameStore [][][][]int
+	Mask       [][]int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -1099,7 +1100,77 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 	}
 
 	if useWarp == 0 {
+		preds[refList] = t.blockInterPredictionProcess(plane, refIdx, startX, startY, stepX, stepY, w, h, candRow, candCol, p)
+	}
 
+	if isCompound {
+		refList = 1
+
+		refFrame := p.RefFrames[candRow][candCol][refList]
+
+		var globalValid bool
+		if t.YMode == GLOBALMV || t.YMode == GLOBAL_GLOBALMV && p.GmType[refFrame] > TRANSLATION {
+			globalValid, _, _, _, _ = t.setupShearProcess(p.uncompressedHeader.GmParams[refFrame])
+		}
+
+		useWarp := 0
+		if w < 8 || h < 8 {
+			useWarp = 0
+		} else if p.uncompressedHeader.ForceIntegerMv {
+			useWarp = 0
+		} else if t.MotionMode == LOCALWARP && t.LocalValid {
+			useWarp = 1
+		} else if (t.YMode == GLOBALMV || t.YMode == GLOBAL_GLOBALMV) && p.GmType[refFrame] > TRANSLATION && !t.isScaled(refFrame, p) && globalValid {
+			useWarp = 2
+		}
+
+		mv := t.Mvs[candRow][candCol][refList]
+
+		var refIdx int
+		if !Bool(t.useIntrabc) {
+			refIdx = p.uncompressedHeader.ref_frame_idx[refFrame-LAST_FRAME]
+		} else {
+			refIdx = -1
+			p.RefFrameWidth[len(p.RefFrameWidth)-1] = p.uncompressedHeader.FrameWidth
+			p.RefFrameHeight[len(p.RefFrameHeight)-1] = p.uncompressedHeader.FrameHeight
+			t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = p.uncompressedHeader.UpscaledWidth
+		}
+
+		startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, x, y, mv, p)
+
+		if Bool(t.useIntrabc) {
+			p.RefFrameWidth[len(p.RefFrameWidth)-1] = p.MiCols * MI_SIZE
+			p.RefFrameHeight[len(p.RefFrameHeight)-1] = p.MiRows * MI_SIZE
+			t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = p.MiCols * MI_SIZE
+		}
+
+		var preds [][][]int
+		if useWarp != 0 {
+			for i8 := 0; i8 <= ((h - 1) >> 3); i8++ {
+				for j8 := 0; j8 <= ((w - 1) >> 3); j8++ {
+					// TODO: what exactly is supposed to happen here
+					preds[refList] = t.blockWarpProcess(useWarp, plane, refList, x, y, i8, j8, w, h, p)
+				}
+			}
+		}
+
+		if useWarp == 0 {
+			preds[refList] = t.blockInterPredictionProcess(plane, refIdx, startX, startY, stepX, stepY, w, h, candRow, candCol, p)
+		}
+	}
+
+	if t.CompoundType == COMPOUND_WEDGE && plane == 0 {
+		t.wedgeMaskProcess(w, h, p)
+	}
+}
+
+// 7.11.3.11 Wedge mask process
+func (t *TileGroup) wedgeMaskProcess(w int, h int, p *Parser) {
+	t.InitialiseWedgeMaskTable(p)
+	for i := 0; i < h; i++ {
+		for j := 0; j < w; j++ {
+			t.Mask[i][j] = WedgeMasks[p.MiSize][t.WedgeSign][t.WedgeIndex][i][j]
+		}
 	}
 }
 
