@@ -47,6 +47,8 @@ type Parser struct {
 	LoopRestorationSize  []int
 	AvailU               bool
 	AvailL               bool
+	AvailUChroma         bool
+	AvailLChroma         bool
 	FeatureEnabled       [][]int
 	FeatureData          [][]int
 	RefFrame             []int
@@ -54,6 +56,7 @@ type Parser struct {
 	GmType               []int
 	PrevGmParams         [][]int
 	PrevSegmentIds       [][]int
+	CurrFrame            [][][]int
 }
 
 func NewParser(data []byte) Parser {

@@ -44,6 +44,8 @@ var Segmentation_Feature_Bits = []int{8, 6, 6, 6, 6, 3, 0, 0}
 var Segmentation_Feature_Signed = []int{1, 1, 1, 1, 1, 0, 0, 0}
 var Segmentation_Feature_Max = []int{255, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, 7, 0, 0}
 
+const MI_SIZE_LOG2 = 2
+
 var Mi_Width_Log2 = []int{0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 0, 2, 1, 3, 2, 4}
 var Mi_Height_Log2 = []int{0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 2, 0, 3, 1, 4, 2}
 

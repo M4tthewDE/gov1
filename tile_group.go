@@ -4,32 +4,64 @@ const FRAME_LF_COUNT = 4
 const WIENER_COEFFS = 3
 
 const BLOCK_INVALID = 3
-const BLOCK_4x4 = 0
-const BLOCK_4x8 = 1
-const BLOCK_8x4 = 2
-const BLOCK_8x8 = 3
-const BLOCK_8x16 = 4
-const BLOCK_16x8 = 5
-const BLOCK_16x16 = 6
-const BLOCK_16x32 = 7
-const BLOCK_32x16 = 8
-const BLOCK_32x32 = 9
-const BLOCK_32x64 = 10
-const BLOCK_64x32 = 11
-const BLOCK_64x64 = 12
-const BLOCK_64x128 = 13
-const BLOCK_128x64 = 14
-const BLOCK_128x128 = 15
-const BLOCK_4x16 = 16
-const BLOCK_16x4 = 17
-const BLOCK_8x32 = 18
-const BLOCK_32x8 = 19
-const BLOCK_16x64 = 20
-const BLOCK_64x16 = 21
+const BLOCK_4X4 = 0
+const BLOCK_4X8 = 1
+const BLOCK_8X4 = 2
+const BLOCK_8X8 = 3
+const BLOCK_8X16 = 4
+const BLOCK_16X8 = 5
+const BLOCK_16X16 = 6
+const BLOCK_16X32 = 7
+const BLOCK_32X16 = 8
+const BLOCK_32X32 = 9
+const BLOCK_32X64 = 10
+const BLOCK_64X32 = 11
+const BLOCK_64X64 = 12
+const BLOCK_64X128 = 13
+const BLOCK_128X64 = 14
+const BLOCK_128X128 = 15
+const BLOCK_4X16 = 16
+const BLOCK_16X4 = 17
+const BLOCK_8X32 = 18
+const BLOCK_32X8 = 19
+const BLOCK_16X64 = 20
+const BLOCK_64X16 = 21
 const PARTITION_NONE = 0
 const PARTITION_HORZ = 1
 const PARTITION_VERT = 2
 const PARTITION_SPLIT = 3
+
+const INTRA_EDGE_TAPS = 5
+
+var Intra_Edge_Kernel = [][]int{
+	{0, 4, 8, 4, 0},
+	{0, 5, 6, 5, 0},
+	{2, 4, 4, 4, 2},
+}
+
+var Dr_Intra_Derivative = []int{
+	0, 0, 0, 1023, 0, 0, 547, 0, 0, 372, 0, 0, 0, 0,
+	273, 0, 0, 215, 0, 0, 178, 0, 0, 151, 0, 0, 132, 0, 0,
+	116, 0, 0, 102, 0, 0, 0, 90, 0, 0, 80, 0, 0, 71, 0, 0,
+	64, 0, 0, 57, 0, 0, 51, 0, 0, 45, 0, 0, 0, 40, 0, 0,
+	35, 0, 0, 31, 0, 0, 27, 0, 0, 23, 0, 0, 19, 0, 0,
+	15, 0, 0, 0, 0, 11, 0, 0, 7, 0, 0, 3, 0, 0,
+}
+
+var Sm_Weights_Tx_4x4 = []int{255, 149, 85, 64}
+var Sm_Weights_Tx_8x8 = []int{255, 197, 146, 105, 73, 50, 37, 32}
+var Sm_Weights_Tx_16x16 = []int{255, 225, 196, 170, 145, 123, 102, 84, 68, 54, 43, 33, 26, 20, 17, 16}
+var Sm_Weights_Tx_32x32 = []int{255, 240, 225, 210, 196, 182, 169, 157, 145, 133, 122, 111, 101, 92,
+	83, 74,
+	66, 59, 52, 45, 39, 34, 29, 25, 21, 17, 14, 12, 10, 9,
+	8, 8}
+var Sm_Weights_Tx_64x64 = []int{255, 248, 240, 233, 225, 218, 210, 203, 196, 189, 182, 176, 169, 163,
+	156,
+	150, 144, 138, 133, 127, 121, 116, 111, 106, 101, 96, 91, 86, 82, 77,
+	73, 69,
+	65, 61, 57, 54, 50, 47, 44, 41, 38, 35, 32, 29, 27, 25, 22, 20, 18, 16,
+	15,
+	13, 12, 10, 9, 8, 7, 6, 6, 5, 5, 4, 4, 4}
 
 const PALETTE_COLORS = 8
 const PALETTE_NUM_NEIGHBORS = 3
@@ -130,105 +162,130 @@ var Tx_Height = []int{4, 8, 16, 32, 64, 8, 4, 16, 8, 32, 16, 64, 32, 16, 4, 32, 
 
 var Partition_Subsize = [][]int{
 	{
-		BLOCK_4x4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128x128,
+		BLOCK_4X4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X128,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	},
 	{
 		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X64,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	},
 	{
 		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x128,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X128,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	},
 	{
 		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X64,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	},
 	{
 		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X64,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	},
 	{
 		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X64,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	},
 	{
 		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x128,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X128,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	},
 	{
 		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x128,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32x8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X128,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	},
 	{
 		BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4x16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8x32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16x64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X4,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X8,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X16,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
 	},
+	{
+		BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X16,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X32,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X64,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+	},
+}
+
+var Subsampled_Size = [][][]int{
+	{{BLOCK_4X4, BLOCK_4X4}, {BLOCK_4X4, BLOCK_4X4}},
+	{{BLOCK_4X8, BLOCK_4X4}, {BLOCK_INVALID, BLOCK_4X4}},
+	{{BLOCK_8X4, BLOCK_INVALID}, {BLOCK_4X4, BLOCK_4X4}},
+	{{BLOCK_8X8, BLOCK_8X4}, {BLOCK_4X8, BLOCK_4X4}},
+	{{BLOCK_8X16, BLOCK_8X8}, {BLOCK_INVALID, BLOCK_4X8}},
+	{{BLOCK_16X8, BLOCK_INVALID}, {BLOCK_8X8, BLOCK_8X4}},
+	{{BLOCK_16X16, BLOCK_16X8}, {BLOCK_8X16, BLOCK_8X8}},
+	{{BLOCK_16X32, BLOCK_16X16}, {BLOCK_INVALID, BLOCK_8X16}},
+	{{BLOCK_32X16, BLOCK_INVALID}, {BLOCK_16X16, BLOCK_16X8}},
+	{{BLOCK_32X32, BLOCK_32X16}, {BLOCK_16X32, BLOCK_16X16}},
+	{{BLOCK_32X64, BLOCK_32X32}, {BLOCK_INVALID, BLOCK_16X32}},
+	{{BLOCK_64X32, BLOCK_INVALID}, {BLOCK_32X32, BLOCK_32X16}},
+	{{BLOCK_64X64, BLOCK_64X32}, {BLOCK_32X64, BLOCK_32X32}},
+	{{BLOCK_64X128, BLOCK_64X64}, {BLOCK_INVALID, BLOCK_32X64}},
+	{{BLOCK_128X64, BLOCK_INVALID}, {BLOCK_64X64, BLOCK_64X32}},
+	{{BLOCK_128X128, BLOCK_128X64}, {BLOCK_64X128, BLOCK_64X64}},
+	{{BLOCK_4X16, BLOCK_4X8}, {BLOCK_INVALID, BLOCK_4X8}},
+	{{BLOCK_16X4, BLOCK_INVALID}, {BLOCK_8X4, BLOCK_8X4}},
+	{{BLOCK_8X32, BLOCK_8X16}, {BLOCK_INVALID, BLOCK_4X16}},
+	{{BLOCK_32X8, BLOCK_INVALID}, {BLOCK_16X8, BLOCK_16X4}},
+	{{BLOCK_16X64, BLOCK_16X32}, {BLOCK_INVALID, BLOCK_8X32}},
+	{{BLOCK_64X16, BLOCK_INVALID}, {BLOCK_32X16, BLOCK_32X8}},
 }
 
 var Sgrproj_Xqd_Mid = []int{-32, 31}
@@ -239,6 +296,63 @@ var Wiener_Taps_Min = []int{-5, -23, -17}
 var Wiener_Taps_Max = []int{10, 8, 46}
 var Wiener_Taps_K = []int{1, 2, 3}
 var SgrParams = [][]int{}
+
+var Intra_Filter_Taps = [][][]int{
+	{
+		{-6, 10, 0, 0, 0, 12, 0},
+		{-5, 2, 10, 0, 0, 9, 0},
+		{-3, 1, 1, 10, 0, 7, 0},
+		{-3, 1, 1, 2, 10, 5, 0},
+		{-4, 6, 0, 0, 0, 2, 12},
+		{-3, 2, 6, 0, 0, 2, 9},
+		{-3, 2, 2, 6, 0, 2, 7},
+		{-3, 1, 2, 2, 6, 3, 5},
+	},
+	{
+		{-10, 16, 0, 0, 0, 10, 0},
+		{-6, 0, 16, 0, 0, 6, 0},
+		{-4, 0, 0, 16, 0, 4, 0},
+		{-2, 0, 0, 0, 16, 2, 0},
+		{-10, 16, 0, 0, 0, 0, 10},
+		{-6, 0, 16, 0, 0, 0, 6},
+		{-4, 0, 0, 16, 0, 0, 4},
+		{-2, 0, 0, 0, 16, 0, 2},
+	},
+	{
+		{-8, 8, 0, 0, 0, 16, 0},
+		{-8, 0, 8, 0, 0, 16, 0},
+		{-8, 0, 0, 8, 0, 16, 0},
+		{-8, 0, 0, 0, 8, 16, 0},
+		{-4, 4, 0, 0, 0, 0, 16},
+		{-4, 0, 4, 0, 0, 0, 16},
+		{-4, 0, 0, 4, 0, 0, 16},
+		{-4, 0, 0, 0, 4, 0, 16},
+	},
+	{
+		{-2, 8, 0, 0, 0, 10, 0},
+		{-1, 3, 8, 0, 0, 6, 0},
+		{-1, 2, 3, 8, 0, 4, 0},
+		{0, 1, 2, 3, 8, 2, 0},
+		{-1, 4, 0, 0, 0, 3, 10},
+		{-1, 3, 4, 0, 0, 4, 6},
+		{-1, 2, 3, 4, 0, 4, 4},
+		{-1, 2, 2, 3, 4, 3, 3},
+	},
+	{
+		{-12, 14, 0, 0, 0, 14, 0},
+		{-10, 0, 14, 0, 0, 12, 0},
+		{-9, 0, 0, 14, 0, 11, 0},
+		{-8, 0, 0, 0, 14, 10, 0},
+		{-10, 12, 0, 0, 0, 0, 14},
+		{-9, 1, 12, 0, 0, 0, 12},
+		{-8, 0, 0, 12, 0, 1, 11},
+		{-7, 0, 0, 1, 12, 1, 9},
+	},
+}
+
+var Mode_To_Angle = []int{0, 90, 180, 45, 135, 113, 157, 203, 67, 0, 0, 0, 0}
+
+const ANGLE_STEP = 3
 
 const RESTORE_NONE = 0
 const RESTORE_WIENER = 1
@@ -252,6 +366,10 @@ const SGRPROJ_BITS = 7
 const SGRPROJ_PRJ_SUBEXP_K = 4
 
 const DC_PRED = 0
+const II_DC_PRED = 0
+const II_V_PRED = 1
+const II_H_PRED = 2
+const II_SMOOTH_PRED = 3
 
 const SIMPLE = 0
 const OBMC = 1
@@ -275,6 +393,11 @@ const NEW_NEWMV = 25
 const MAX_REF_MV_STACK_SIZE = 8
 
 const V_PRED = 1
+const H_PRED = 2
+const SMOOTH_PRED = 9
+const SMOOTH_V_PRED = 10
+const SMOOTH_H_PRED = 11
+
 const D67_PRED = 8
 const UV_CFL_PRED = 13
 
@@ -309,6 +432,8 @@ const MV_CLASS_10 = 10
 const LEAST_SQUARES_SAMPLES_MAX = 8
 
 const REF_SCALE_SHIFT = 14
+
+const INTRA_FILTER_SCALE_BITS = 4
 
 type TileGroup struct {
 	LrType              [][][]int
@@ -400,6 +525,11 @@ type TileGroup struct {
 	CompoundIdxs  [][]int
 	CompGroupIdx  int
 	CompoundIdx   int
+
+	IsInterIntra bool
+
+	AboveRow []int
+	LeftCol  []int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -477,9 +607,9 @@ func (t *TileGroup) decodeTile(p *Parser) {
 		}
 
 	}
-	sbSize := BLOCK_64x64
+	sbSize := BLOCK_64X64
 	if p.sequenceHeader.Use128x128SuperBlock {
-		sbSize = BLOCK_128x128
+		sbSize = BLOCK_128X128
 	}
 
 	sbSize4 := p.Num4x4BlocksWide[sbSize]
@@ -512,7 +642,7 @@ func (t *TileGroup) decodePartition(r int, c int, bSize int, p *Parser) {
 	hasCols := (c + halfBlock4x4) < p.MiCols
 
 	var partition int
-	if bSize < BLOCK_8x8 {
+	if bSize < BLOCK_8X8 {
 		partition = PARTITION_NONE
 	} else if hasRows && hasCols {
 		partition = p.S()
@@ -611,6 +741,690 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
 			}
 		}
 	}
+
+	t.computePrediction(p)
+}
+
+// compoute_prediction()
+func (t *TileGroup) computePrediction(p *Parser) {
+	sbMask := 15
+	if p.sequenceHeader.Use128x128SuperBlock {
+		sbMask = 31
+	}
+
+	subBlockMiRow := p.MiRow & sbMask
+	subBlockMiCol := p.MiCol & sbMask
+
+	for plane := 0; plane < 1+Int(t.HasChroma)*2; plane++ {
+		planeSz := t.getPlaneResidualSize(p.MiSize, plane, p)
+		num4x4W := p.Num4x4BlocksWide[planeSz]
+		num4x4H := p.Num4x4BlocksHigh[planeSz]
+		log2W := MI_SIZE_LOG2 + Mi_Width_Log2[planeSz]
+		log2H := MI_SIZE_LOG2 + Mi_Height_Log2[planeSz]
+		subX := 0
+		subY := 0
+		if plane > 0 {
+			subX = Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+			subY = Int(p.sequenceHeader.ColorConfig.SubsamplingY)
+		}
+		baseX := (p.MiCol >> subX) * MI_SIZE
+		baseY := (p.MiRow >> subY) * MI_SIZE
+		candRow := (p.MiRow >> subY) << subY
+		candCol := (p.MiCol >> subX) << subX
+
+		t.IsInterIntra = (Bool(t.IsInter) && p.RefFrame[1] == INTRA_FRAME)
+
+		if t.IsInterIntra {
+			var mode int
+			if t.InterIntraMode == II_DC_PRED {
+				mode = DC_PRED
+			} else if t.InterIntraMode == II_V_PRED {
+				mode = V_PRED
+			} else if t.InterIntraMode == II_H_PRED {
+				mode = H_PRED
+			} else {
+				mode = SMOOTH_PRED
+			}
+			haveLeft := p.AvailLChroma
+			haveAbove := p.AvailUChroma
+			if plane == 0 {
+				haveLeft := p.AvailL
+				haveAbove := p.AvailU
+			}
+			t.predictIntra(plane, baseX, baseY, haveLeft, haveAbove, p.BlockDecoded[plane][(subBlockMiRow>>subY)-1][(subBlockMiCol>>subX)+num4x4W], p.BlockDecoded[plane][(subBlockMiRow>>subY)+num4x4H][(subBlockMiCol>>subX)-1], mode, log2W, log2H, p)
+		}
+	}
+}
+
+// 7.11.2 Intra prediction process
+// predict_intra( plane, x, y, haveLeft, haveAbove, haveAboveRight, haveBelowLeft, mode, log2W, log2H )
+func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbove bool, haveAboveRight int, haveBelowLeft int, mode int, log2W int, log2H int, p *Parser) {
+	w := 1 << log2W
+	h := 1 << log2H
+	maxX := (p.MiCols * MI_SIZE) - 1
+	maxY := (p.MiRows * MI_SIZE) - 1
+
+	if plane > 0 {
+		maxX = ((p.MiCols * MI_SIZE) >> Int(p.sequenceHeader.ColorConfig.SubsamplingX)) - 1
+		maxY = ((p.MiRows * MI_SIZE) >> Int(p.sequenceHeader.ColorConfig.SubsamplingY)) - 1
+	}
+
+	for i := 0; i < w+h-1; i++ {
+		if Int(haveAbove) == 0 && Int(haveLeft) == 1 {
+			t.AboveRow[i] = p.CurrFrame[plane][y][x-1]
+		} else if Int(haveAbove) == 0 && Int(haveLeft) == 0 {
+			t.AboveRow[i] = (1 << (p.sequenceHeader.ColorConfig.BitDepth - 1)) - 1
+
+		} else {
+			aboveLimit := Min(maxX, x+w-1)
+			if Bool(haveAboveRight) {
+				aboveLimit = Min(maxX, x+2*w-1)
+			}
+			t.AboveRow[i] = p.CurrFrame[plane][y-1][Min(aboveLimit, x+i)]
+		}
+	}
+
+	for i := 0; i < w+h-1; i++ {
+		if Int(haveLeft) == 0 && Int(haveAbove) == 1 {
+			t.LeftCol[i] = p.CurrFrame[plane][y-1][x]
+		} else if Int(haveLeft) == 0 && Int(haveAbove) == 0 {
+			t.AboveRow[i] = (1 << (p.sequenceHeader.ColorConfig.BitDepth - 1)) + 1
+
+		} else {
+			leftLimit := Min(maxY, y+h-1)
+			if Bool(haveBelowLeft) {
+				leftLimit = Min(maxY, y+2*h-1)
+			}
+			t.AboveRow[i] = p.CurrFrame[plane][Min(leftLimit, y+i)][x-1]
+		}
+	}
+
+	if Int(haveAbove) == 1 && Int(haveLeft) == 1 {
+		t.AboveRow[len(t.AboveRow)-1] = p.CurrFrame[plane][y-1][x-1]
+	} else if Int(haveAbove) == 1 {
+		t.AboveRow[len(t.AboveRow)-1] = p.CurrFrame[plane][y-1][x]
+	} else if Int(haveLeft) == 1 {
+		t.AboveRow[len(t.AboveRow)-1] = p.CurrFrame[plane][y][x-1]
+	} else {
+		t.AboveRow[len(t.AboveRow)-1] = 1 << (p.sequenceHeader.ColorConfig.BitDepth - 1)
+	}
+
+	t.LeftCol[len(t.LeftCol)-1] = t.AboveRow[len(t.AboveRow)-1]
+
+	var pred [][]int
+	if plane == 0 && Bool(t.UseFilterIntra) {
+		pred = t.recursiveIntraPredictionProcess(w, h, p)
+	} else if t.isDirectionalMode(mode) {
+		pred = t.directionalIntraPredictionProcess(plane, x, y, Int(haveLeft), Int(haveAbove), mode, w, h, maxX, maxY, p)
+	} else if mode == SMOOTH_PRED || mode == SMOOTH_V_PRED || mode == SMOOTH_H_PRED {
+		pred = t.smoothIntraPredictionProcess(mode, log2W, log2H, w, h)
+	} else if mode == DC_PRED {
+		pred = t.dcIntraPredictionProcess(haveLeft, haveAbove, log2W, log2H, w, h, p)
+	} else {
+		pred = t.basicIntraPredictionProcess(w, h)
+	}
+
+	for i := 0; i < h; i++ {
+		for j := 0; j < w; j++ {
+			p.CurrFrame[plane][y+i][x+j] = pred[i][j]
+		}
+	}
+}
+
+// 7.11.2.2 Basic intra prediction process
+func (t *TileGroup) basicIntraPredictionProcess(w int, h int) [][]int {
+	var pred [][]int
+
+	for i := 0; i < h; i++ {
+		for j := 0; j < w; j++ {
+			base := t.AboveRow[j] + t.LeftCol[i] - t.AboveRow[len(t.AboveRow)-1]
+			pLeft := Abs(base - t.LeftCol[i])
+			pTop := Abs(base - t.AboveRow[j])
+			pTopLeft := Abs(base - t.AboveRow[len(t.AboveRow)-1])
+
+			if pLeft <= pTop && pLeft <= pTopLeft {
+				pred[i][j] = t.LeftCol[i]
+			} else if pTop <= pTopLeft {
+				pred[i][j] = t.AboveRow[j]
+			} else {
+				pred[i][j] = t.AboveRow[len(t.AboveRow)-1]
+			}
+		}
+	}
+
+	return pred
+}
+
+// 7.11.2.5 DC intra prediction process
+func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2W int, log2H int, w int, h int, p *Parser) [][]int {
+	var pred [][]int
+	if haveLeft && haveAbove {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				sum := 0
+				for k := 0; k < h; k++ {
+					sum += t.LeftCol[k]
+				}
+				for k := 0; k < w; k++ {
+					sum += t.AboveRow[k]
+				}
+				sum += (w + h) >> 1
+				avg := sum / (w + h)
+				pred[i][j] = avg
+			}
+		}
+	} else if haveLeft && !haveAbove {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				sum := 0
+				for k := 0; k < h; k++ {
+					sum += t.LeftCol[k]
+				}
+				leftAvg := Clip1((sum+(h>>1))>>log2H, p)
+				pred[i][j] = leftAvg
+			}
+		}
+
+	} else if !haveLeft && !haveAbove {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				pred[i][j] = 1 << (p.sequenceHeader.ColorConfig.BitDepth - 1)
+			}
+		}
+
+	}
+
+	return pred
+}
+
+// 7.11.2.6 Smooth intra prediction process
+func (t *TileGroup) smoothIntraPredictionProcess(mode int, log2W int, log2H int, w int, h int) [][]int {
+	var pred [][]int
+	if mode == SMOOTH_PRED {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				var smWeightsX []int
+				switch log2W {
+				case 2:
+					smWeightsX = Sm_Weights_Tx_4x4
+				case 3:
+					smWeightsX = Sm_Weights_Tx_8x8
+				case 4:
+					smWeightsX = Sm_Weights_Tx_16x16
+				case 5:
+					smWeightsX = Sm_Weights_Tx_32x32
+				case 6:
+					smWeightsX = Sm_Weights_Tx_64x64
+				}
+
+				var smWeightsY []int
+				switch log2H {
+				case 2:
+					smWeightsY = Sm_Weights_Tx_4x4
+				case 3:
+					smWeightsY = Sm_Weights_Tx_8x8
+				case 4:
+					smWeightsY = Sm_Weights_Tx_16x16
+				case 5:
+					smWeightsY = Sm_Weights_Tx_32x32
+				case 6:
+					smWeightsY = Sm_Weights_Tx_64x64
+				}
+
+				smoothPred := smWeightsY[i]*t.AboveRow[j] + (256-smWeightsY[i])*t.LeftCol[h-1] + smWeightsX[j]*t.LeftCol[i] + (256-smWeightsX[j])*t.AboveRow[w-1]
+				pred[i][j] = Round2(smoothPred, 9)
+			}
+		}
+	} else if mode == SMOOTH_V_PRED {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				var smWeights []int
+				switch log2H {
+				case 2:
+					smWeights = Sm_Weights_Tx_4x4
+				case 3:
+					smWeights = Sm_Weights_Tx_8x8
+				case 4:
+					smWeights = Sm_Weights_Tx_16x16
+				case 5:
+					smWeights = Sm_Weights_Tx_32x32
+				case 6:
+					smWeights = Sm_Weights_Tx_64x64
+				}
+
+				smoothPred := smWeights[i]*t.AboveRow[j] + (256-smWeights[i])*t.LeftCol[h-1]
+				pred[i][j] = Round2(smoothPred, 8)
+			}
+		}
+	} else if mode == SMOOTH_H_PRED {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				var smWeights []int
+				switch log2W {
+				case 2:
+					smWeights = Sm_Weights_Tx_4x4
+				case 3:
+					smWeights = Sm_Weights_Tx_8x8
+				case 4:
+					smWeights = Sm_Weights_Tx_16x16
+				case 5:
+					smWeights = Sm_Weights_Tx_32x32
+				case 6:
+					smWeights = Sm_Weights_Tx_64x64
+				}
+
+				smoothPred := smWeights[j]*t.LeftCol[i] + (256-smWeights[j])*t.AboveRow[w-1]
+				pred[i][j] = Round2(smoothPred, 8)
+			}
+		}
+	}
+
+	return pred
+}
+
+// 7.11.2.4. Directional intra prediction process
+func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, haveLeft int, haveAbove int, mode int, w int, h int, maxX int, maxY int, p *Parser) [][]int {
+	var pred [][]int
+
+	angleDelta := t.AngleDeltaUV
+	if plane == 0 {
+		angleDelta = t.AngleDeltaY
+	}
+
+	pAngle := Mode_To_Angle[mode] + angleDelta*ANGLE_STEP
+	upsampleAbove := false
+	upsampleLeft := false
+
+	if Int(p.sequenceHeader.EnableIntraEdgeFilter) == 1 {
+		var filterType int
+		if pAngle != 90 && pAngle != 180 {
+			if pAngle > 90 && pAngle < 180 && (w+h) >= 24 {
+				t.LeftCol[len(t.LeftCol)] = t.filterCornerProcess()
+				t.AboveRow[len(t.AboveRow)] = t.filterCornerProcess()
+			}
+			filterType = Int(t.getFilterType(plane, p))
+
+			if haveAbove == 1 {
+				strength := t.intraEdgeFilterStrengthSelectionProcess(w, h, filterType, pAngle-90)
+				sumPart := 0
+				if pAngle < 90 {
+					sumPart = h
+				}
+				numPx := Min(w, (maxX-x+1)) + sumPart
+				t.intraEdgeFilterProcess(numPx, strength, 0)
+			}
+
+			if haveLeft == 1 {
+				strength := t.intraEdgeFilterStrengthSelectionProcess(w, h, filterType, pAngle-180)
+				sumPart := 0
+				if pAngle > 180 {
+					sumPart = w
+				}
+				numPx := Min(h, (maxY-y+1)) + sumPart
+				t.intraEdgeFilterProcess(numPx, strength, 1)
+			}
+		}
+
+		upsampleAbove = t.intraEdgeUpsampleSelectionProcess(w, h, filterType, pAngle-90)
+
+		sumPart := 0
+		if pAngle < 90 {
+			sumPart = h
+		}
+		numPx := w + sumPart
+
+		if upsampleAbove {
+			t.intraEdgeUpsampleProcess(numPx, false, p)
+		}
+
+		upsampleLeft = t.intraEdgeUpsampleSelectionProcess(w, h, filterType, pAngle-180)
+
+		sumPart = 0
+		if pAngle > 180 {
+			sumPart = w
+		}
+		numPx = h + sumPart
+
+		if upsampleLeft {
+			t.intraEdgeUpsampleProcess(numPx, true, p)
+		}
+
+	}
+
+	var dx int
+	if pAngle < 90 {
+		dx = Dr_Intra_Derivative[pAngle]
+	} else if pAngle > 90 && pAngle < 180 {
+		dx = Dr_Intra_Derivative[180-pAngle]
+	}
+
+	var dy int
+	if pAngle > 90 && pAngle < 180 {
+		dy = Dr_Intra_Derivative[pAngle-90]
+	} else if pAngle > 180 {
+		dy = Dr_Intra_Derivative[270-pAngle]
+	}
+
+	if pAngle < 90 {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				idx := (i + i) * dx
+				base := (idx >> (6 - Int(upsampleAbove))) + (j << Int(upsampleAbove))
+				shift := ((idx << Int(upsampleAbove)) >> 1) & 0x1F
+				maxBaseX := (w + h - 1) << Int(upsampleAbove)
+
+				if base < maxBaseX {
+					pred[i][j] = Round2(t.AboveRow[base]*(32-shift)+t.AboveRow[base+1]*shift, 5)
+				} else {
+					pred[i][j] = t.AboveRow[maxBaseX]
+				}
+			}
+
+		}
+	} else if pAngle > 90 && pAngle < 180 {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				idx := (j << 6) - (i+1)*dx
+				base := (idx >> (6 - Int(upsampleAbove)))
+
+				if base >= -(1 << Int(upsampleAbove)) {
+					shift := ((idx << Int(upsampleAbove)) >> 1) & 0x1F
+					pred[i][j] = Round2(t.AboveRow[base]*(32-shift)+t.AboveRow[base+1]*shift, 5)
+				} else {
+					idx = (i << 6) - (j+1)*dy
+					base = idx >> (6 - Int(upsampleLeft))
+					shift := ((idx << Int(upsampleLeft)) >> 1) & 0x1F
+					pred[i][j] = Round2(t.LeftCol[base]*(32-shift)+t.LeftCol[base+1]*shift, 5)
+				}
+			}
+		}
+
+	} else if pAngle > 180 {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				idx := (j + 1) * dy
+				base := (idx >> (6 >> Int(upsampleLeft))) + (i << Int(upsampleLeft))
+				shift := ((idx << Int(upsampleLeft)) >> 1) & 0x1F
+				pred[i][j] = Round2(t.LeftCol[base]*(32-shift)+t.LeftCol[base+1]*shift, 5)
+			}
+		}
+
+	} else if pAngle == 90 {
+		for j := 0; j < w; j++ {
+			for i := 0; i < h; i++ {
+				pred[i][j] = t.AboveRow[j]
+			}
+		}
+	} else if pAngle == 180 {
+		for j := 0; j < w; j++ {
+			for i := 0; i < h; i++ {
+				pred[i][j] = t.LeftCol[j]
+			}
+		}
+	}
+
+	return pred
+}
+
+// 7.11.2.11 Intra edge upsample process
+func (t *TileGroup) intraEdgeUpsampleProcess(numPx int, dir bool, p *Parser) {
+	// does this actually modify those arrays?
+	var buf []int
+	if !dir {
+		buf = t.AboveRow
+	} else {
+		buf = t.LeftCol
+	}
+
+	var dup []int
+	dup[0] = buf[len(buf)-1]
+	for i := -1; i < numPx; i++ {
+		dup[i+2] = buf[i]
+	}
+	dup[numPx+2] = buf[numPx-1]
+
+	buf[len(buf)-2] = dup[0]
+	for i := 0; i < numPx; i++ {
+		s := -dup[i] + (9 * dup[i+1]) + (9 * dup[i+2]) - dup[i+3]
+		s = Clip1(Round2(s, 4), p)
+		buf[2*i-1] = s
+		buf[2*i] = dup[i+2]
+	}
+}
+
+// 7.11.2.10 Intra edge upsample selection process
+func (t *TileGroup) intraEdgeUpsampleSelectionProcess(w int, h int, filterType int, delta int) bool {
+	d := Abs(delta)
+	blkWh := w + h
+	var useUpsample bool
+
+	if d <= 0 || d >= 40 {
+		useUpsample = false
+	} else if filterType == 0 {
+		useUpsample = blkWh <= 16
+	} else {
+		useUpsample = blkWh <= 8
+	}
+
+	return useUpsample
+}
+
+// 7.11.2.12 Intra edge filter process
+func (t *TileGroup) intraEdgeFilterProcess(sz int, strength int, left int) {
+	if strength == 0 {
+		return
+	}
+
+	var edge []int
+	for i := 0; i < sz; i++ {
+		if Bool(left) {
+			edge[i] = t.LeftCol[i-1]
+		} else {
+			edge[i] = t.AboveRow[i-1]
+		}
+	}
+
+	for i := 0; i < sz; i++ {
+		s := 0
+		for j := 0; j < INTRA_EDGE_TAPS; j++ {
+			k := Clip3(0, sz-12, i-2+j)
+			s += Intra_Edge_Kernel[strength-1][j] * edge[k]
+			if left == 1 {
+				t.LeftCol[i-1] = (s + 8) >> 4
+			}
+			if left == 0 {
+				t.AboveRow[i-1] = (s + 8) >> 4
+			}
+		}
+	}
+}
+
+// 7.11.2.9. Intra edge filter strength selection process
+func (t *TileGroup) intraEdgeFilterStrengthSelectionProcess(w int, h int, filterType int, delta int) int {
+	d := Abs(delta)
+	blkWh := w + h
+
+	strength := 0
+	if filterType == 0 {
+		if blkWh <= 8 {
+			if d >= 56 {
+				strength = 1
+			}
+		} else if blkWh <= 12 {
+			if d >= 40 {
+				strength = 1
+			}
+		} else if blkWh <= 16 {
+			if d >= 8 {
+				strength = 1
+			}
+			if d >= 16 {
+				strength = 2
+			}
+			if d >= 32 {
+				strength = 3
+			}
+		} else if blkWh <= 32 {
+			strength = 1
+			if d >= 4 {
+				strength = 2
+			}
+			if d >= 4 {
+				strength = 3
+			}
+		}
+	} else {
+		if blkWh <= 8 {
+			if d >= 40 {
+				strength = 1
+			}
+			if d >= 64 {
+				strength = 2
+			}
+		} else if blkWh <= 16 {
+			if d >= 20 {
+				strength = 1
+			}
+			if d >= 48 {
+				strength = 2
+			}
+		} else if blkWh <= 24 {
+			if d >= 4 {
+				strength = 3
+			}
+		} else {
+			strength = 3
+		}
+	}
+
+	return strength
+}
+
+// 7.11.2.8. Intra filter type process
+func (t *TileGroup) getFilterType(plane int, p *Parser) bool {
+	aboveSmooth := false
+	leftSmooth := false
+
+	condition := p.AvailUChroma
+	if plane == 0 {
+		condition = p.AvailU
+	}
+
+	if condition {
+		r := p.MiRow - 1
+		c := p.MiCol
+
+		if plane > 0 {
+			if p.sequenceHeader.ColorConfig.SubsamplingX && Bool(p.MiCol&1) {
+				c++
+			}
+			if p.sequenceHeader.ColorConfig.SubsamplingY && Bool(p.MiRow&1) {
+				r--
+			}
+		}
+		aboveSmooth = t.isSmooth(r, c, plane, p)
+	}
+
+	condition = p.AvailLChroma
+	if plane == 0 {
+		condition = p.AvailL
+	}
+
+	if condition {
+		r := p.MiRow
+		c := p.MiCol - 1
+
+		if plane > 0 {
+			if p.sequenceHeader.ColorConfig.SubsamplingX && Bool(p.MiCol&1) {
+				c--
+			}
+			if p.sequenceHeader.ColorConfig.SubsamplingY && Bool(p.MiRow&1) {
+				r++
+			}
+		}
+		aboveSmooth = t.isSmooth(r, c, plane, p)
+	}
+
+	return aboveSmooth || leftSmooth
+}
+
+// is_smooth( row, col, plane )
+func (t *TileGroup) isSmooth(row int, col int, plane int, p *Parser) bool {
+	var mode int
+	if plane == 0 {
+		mode = t.YModes[row][col]
+	} else {
+		if p.RefFrames[row][col][0] > INTRA_FRAME {
+			return false
+		}
+		mode = t.UVModes[row][col]
+	}
+
+	return mode == SMOOTH_PRED || mode == SMOOTH_V_PRED || mode == SMOOTH_H_PRED
+}
+
+// 7.11.2.7. Filter corner process
+func (t *TileGroup) filterCornerProcess() int {
+	s := t.LeftCol[0]*5 + t.AboveRow[len(t.AboveRow)-1]*6 + t.AboveRow[0]*5
+	return Round2(s, 4)
+}
+
+// 7.11.2.3. Recursive intra prediction process
+func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int, parser *Parser) [][]int {
+	w4 := w >> 2
+	h2 := h >> 1
+
+	var pred [][]int
+	for i2 := 0; i2 <= h2-1; i2++ {
+		for j4 := 0; j4 <= w4-1; j4++ {
+			var p []int
+			for i := 0; i <= 6; i++ {
+				if i < 5 {
+					if i2 == 0 {
+						p[i] = t.AboveRow[(j4<<2)+i-1]
+					} else if j4 == 0 && i == 0 {
+						p[i] = t.LeftCol[(i2<<1)-1]
+					} else {
+						p[i] = pred[(i2<<1)-1][(j4<<2)+i-1]
+					}
+				} else {
+					if j4 == 0 {
+						p[i] = t.LeftCol[(i2<<1)+i-5]
+					} else {
+						p[i] = pred[(i2<<1)+i-5][(j4<<2)-1]
+
+					}
+				}
+			}
+
+			var pr int
+			for i1 := 0; i1 <= 1; i1++ {
+				for j1 := 0; j1 <= 3; j1++ {
+					pr = 0
+					for i := 0; i <= 6; i++ {
+						pr += Intra_Filter_Taps[t.FilterIntraMode][(i1<<2)+j1][i] * p[i]
+					}
+					pred[(i2<<1)+i1][(j4<<2)+j1] = Clip1(Round2Signed(pr, INTRA_FILTER_SCALE_BITS), parser)
+				}
+
+			}
+		}
+	}
+
+	return pred
+}
+
+// get_plane_residual_size( subsize, plane)
+func (t *TileGroup) getPlaneResidualSize(subsize int, plane int, p *Parser) int {
+	subx := 0
+	suby := 0
+
+	if plane > 0 {
+		subx = Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+		suby = Int(p.sequenceHeader.ColorConfig.SubsamplingY)
+	}
+
+	return Subsampled_Size[subsize][subx][suby]
 }
 
 // reset_block_context( bw4, bh4 )
@@ -642,7 +1456,7 @@ func (t *TileGroup) readBlockTxSize(p *Parser) {
 	bh4 := p.Num4x4BlocksHigh[p.MiSize]
 
 	if p.uncompressedHeader.TxMode == TX_MODE_SELECT &&
-		p.MiSize > BLOCK_4x4 &&
+		p.MiSize > BLOCK_4X4 &&
 		Bool(t.IsInter) &&
 		!Bool(t.Skip) &&
 		!t.Lossless {
@@ -678,7 +1492,7 @@ func (t *TileGroup) readTxSize(allowSelect bool, p *Parser) {
 	//maxTxDepth := Max_Tx_Depth[p.MiSize]
 	t.TxSize = maxRectTxSize
 
-	if p.MiSize > BLOCK_4x4 && allowSelect && p.uncompressedHeader.TxMode == TX_MODE_SELECT {
+	if p.MiSize > BLOCK_4X4 && allowSelect && p.uncompressedHeader.TxMode == TX_MODE_SELECT {
 		txDepth := p.S()
 		for i := 0; i < txDepth; i++ {
 			t.TxSize = Split_Tx_Size[t.TxSize]
@@ -922,7 +1736,7 @@ func (t *TileGroup) intraBlockModeInfo(p *Parser) {
 
 	t.PaletteSizeY = 0
 	t.PaletteSizeUV = 0
-	if p.MiSize >= BLOCK_8x8 &&
+	if p.MiSize >= BLOCK_8X8 &&
 		t.Block_Width[p.MiSize] <= 64 &&
 		t.Block_Height[p.MiSize] <= 64 &&
 		Bool(p.uncompressedHeader.AllowScreenContentTools) {
@@ -1270,7 +2084,7 @@ func (t *TileGroup) addSample(deltaRow int, deltaCol int, p *Parser) {
 
 // read_interintra_mode( isCompound )
 func (t *TileGroup) readInterIntraMode(isCompound bool, p *Parser) {
-	if Bool(t.SkipMode) && p.sequenceHeader.EnableInterIntraCompound && !isCompound && p.MiSize > +BLOCK_8x8 && p.MiSize <= BLOCK_32x32 {
+	if Bool(t.SkipMode) && p.sequenceHeader.EnableInterIntraCompound && !isCompound && p.MiSize > +BLOCK_8X8 && p.MiSize <= BLOCK_32X32 {
 		t.InterIntra = p.S()
 
 		if Bool(t.InterIntra) {
@@ -1564,7 +2378,7 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 		t.PaletteSizeY = 0
 		t.PaletteSizeUV = 0
 
-		if p.MiSize >= BLOCK_8x8 && t.Block_Width[p.MiSize] <= 64 && t.Block_Height[p.MiSize] <= 64 && Bool(p.uncompressedHeader.AllowScreenContentTools) {
+		if p.MiSize >= BLOCK_8X8 && t.Block_Width[p.MiSize] <= 64 && t.Block_Height[p.MiSize] <= 64 && Bool(p.uncompressedHeader.AllowScreenContentTools) {
 			t.paletteModeInfo(p)
 		}
 		t.filterIntraModeInfo(p)
@@ -1757,7 +2571,7 @@ func (t *TileGroup) getPaletteCache(plane int, p *Parser) int {
 // intra_angle_info_uv()
 func (t *TileGroup) intraAngleInfoUv(p *Parser) {
 	t.AngleDeltaUV = 0
-	if p.MiSize >= BLOCK_8x8 {
+	if p.MiSize >= BLOCK_8X8 {
 		if t.isDirectionalMode(t.UVMode) {
 			angleDeltaUv := p.S()
 			t.AngleDeltaUV = angleDeltaUv - MAX_ANGLE_DELTA
@@ -1783,9 +2597,9 @@ func (t *TileGroup) assignMv(isCompound int, p *Parser) {
 			if t.PredMv[0][0] == 0 && t.PredMv[0][1] == 0 {
 				var sbSize int
 				if p.sequenceHeader.Use128x128SuperBlock {
-					sbSize = BLOCK_128x128
+					sbSize = BLOCK_128X128
 				} else {
-					sbSize = BLOCK_64x64
+					sbSize = BLOCK_64X64
 				}
 				sbSize4 := p.Num4x4BlocksHigh[sbSize]
 
@@ -1968,7 +2782,7 @@ func (t *TileGroup) readCflAlphas(p *Parser) {
 func (t *TileGroup) intraAngleInfoY(p *Parser) {
 	t.AngleDeltaY = 0
 
-	if p.MiSize >= BLOCK_8x8 {
+	if p.MiSize >= BLOCK_8X8 {
 
 		if t.isDirectionalMode(t.YMode) {
 			angleDeltaY := p.S()
@@ -2175,9 +2989,9 @@ func (t *TileGroup) lowerPrecisionProcess(candMv []int, p *Parser) []int {
 func (t *TileGroup) readDeltaLf(p *Parser) {
 	var sbSize int
 	if p.sequenceHeader.Use128x128SuperBlock {
-		sbSize = BLOCK_128x128
+		sbSize = BLOCK_128X128
 	} else {
-		sbSize = BLOCK_64x64
+		sbSize = BLOCK_64X64
 	}
 
 	if p.MiSize == sbSize && Bool(t.Skip) {
@@ -2228,9 +3042,9 @@ func (t *TileGroup) readDeltaLf(p *Parser) {
 func (t *TileGroup) readDeltaQIndex(p *Parser) {
 	var sbSize int
 	if p.sequenceHeader.Use128x128SuperBlock {
-		sbSize = BLOCK_128x128
+		sbSize = BLOCK_128X128
 	} else {
-		sbSize = BLOCK_64x64
+		sbSize = BLOCK_64X64
 	}
 
 	if p.MiSize == sbSize && Bool(t.Skip) {
@@ -2267,7 +3081,7 @@ func (t *TileGroup) readCdef(p *Parser) {
 		return
 	}
 
-	cdefSize4 := p.Num4x4BlocksWide[BLOCK_64x64]
+	cdefSize4 := p.Num4x4BlocksWide[BLOCK_64X64]
 	cdefMask4 := ^(cdefSize4 - 1)
 	r := p.MiRow & cdefMask4
 	c := p.MiCol & cdefMask4
