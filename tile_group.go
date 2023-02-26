@@ -1175,8 +1175,26 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 		t.wedgeMaskProcess(w, h, p)
 	} else if t.CompoundType == COMPOUND_INTRA {
 		t.intraModeVariantMaskProcess(w, h)
+	} else if t.CompoundType == COMPOUND_DIFFWTD {
+		t.differenceWeightMaskProcess(preds, w, h, p)
 	}
 
+}
+
+// 7.11.3.12 Difference weight mask process
+func (t *TileGroup) differenceWeightMaskProcess(preds [][][]int, w int, h int, p *Parser) {
+	for i := 0; i < h; i++ {
+		for j := 0; j < w; j++ {
+			diff := Abs(preds[0][i][j] - preds[1][i][j])
+			diff = Round2(diff, (p.sequenceHeader.ColorConfig.BitDepth-8)+t.InterPostRound)
+			m := Clip3(0, 64, 38+diff/16)
+			if Bool(t.MaskType) {
+				t.Mask[i][j] = 64 - m
+			} else {
+				t.Mask[i][j] = m
+			}
+		}
+	}
 }
 
 // 7.11.3.13 Intra mode variant mask proces
