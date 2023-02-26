@@ -32,6 +32,8 @@ const PARTITION_HORZ = 1
 const PARTITION_VERT = 2
 const PARTITION_SPLIT = 3
 
+const MAX_SB_SIZE = 128
+
 const INTRA_EDGE_TAPS = 5
 const SUBPEL_BITS = 4
 const SCALE_SUBPEL_BITS = 10
@@ -113,6 +115,16 @@ var Dr_Intra_Derivative = []int{
 	64, 0, 0, 57, 0, 0, 51, 0, 0, 45, 0, 0, 0, 40, 0, 0,
 	35, 0, 0, 31, 0, 0, 27, 0, 0, 23, 0, 0, 19, 0, 0,
 	15, 0, 0, 0, 0, 11, 0, 0, 7, 0, 0, 3, 0, 0,
+}
+
+var Ii_Weights_1d = []int{
+	60, 58, 56, 54, 52, 50, 48, 47, 45, 44, 42, 41, 39, 38, 37, 35, 34, 33, 32,
+	31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 22, 21, 20, 19, 19, 18, 18, 17, 16,
+	16, 15, 15, 14, 14, 13, 13, 12, 12, 12, 11, 11, 10, 10, 10, 9, 9, 9, 8,
+	8, 8, 8, 7, 7, 7, 7, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 4, 4,
+	4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2,
+	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 }
 
 var Sm_Weights_Tx_4x4 = []int{255, 149, 85, 64}
@@ -1161,6 +1173,27 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 
 	if t.CompoundType == COMPOUND_WEDGE && plane == 0 {
 		t.wedgeMaskProcess(w, h, p)
+	} else if t.CompoundType == COMPOUND_INTRA {
+		t.intraModeVariantMaskProcess(w, h)
+	}
+
+}
+
+// 7.11.3.13 Intra mode variant mask proces
+func (t *TileGroup) intraModeVariantMaskProcess(w int, h int) {
+	sizeScale := MAX_SB_SIZE / Max(h, w)
+	for i := 0; i < h; i++ {
+		for j := 0; j < w; j++ {
+			if t.InterIntraMode == II_V_PRED {
+				t.Mask[i][j] = Ii_Weights_1d[i*sizeScale]
+			} else if t.InterIntraMode == II_H_PRED {
+				t.Mask[i][j] = Ii_Weights_1d[j*sizeScale]
+			} else if t.InterIntraMode == II_SMOOTH_PRED {
+				t.Mask[i][j] = Ii_Weights_1d[Min(i, j)*sizeScale]
+			} else {
+				t.Mask[i][j] = 32
+			}
+		}
 	}
 }
 
