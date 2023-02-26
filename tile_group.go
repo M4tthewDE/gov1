@@ -34,6 +34,70 @@ const PARTITION_SPLIT = 3
 const INTRA_EDGE_TAPS = 5
 const SUBPEL_BITS = 4
 const SCALE_SUBPEL_BITS = 10
+const SUBPEL_MASK = 15
+
+var Subpel_Filters = [][][]int{
+	{
+		{0, 0, 0, 128, 0, 0, 0, 0}, {0, 2, -6, 126, 8, -2, 0, 0},
+		{0, 2, -10, 122, 18, -4, 0, 0}, {0, 2, -12, 116, 28, -8, 2, 0},
+		{0, 2, -14, 110, 38, -10, 2, 0}, {0, 2, -14, 102, 48, -12, 2, 0},
+		{0, 2, -16, 94, 58, -12, 2, 0}, {0, 2, -14, 84, 66, -12, 2, 0},
+		{0, 2, -14, 76, 76, -14, 2, 0}, {0, 2, -12, 66, 84, -14, 2, 0},
+		{0, 2, -12, 58, 94, -16, 2, 0}, {0, 2, -12, 48, 102, -14, 2, 0},
+		{0, 2, -10, 38, 110, -14, 2, 0}, {0, 2, -8, 28, 116, -12, 2, 0},
+		{0, 0, -4, 18, 122, -10, 2, 0}, {0, 0, -2, 8, 126, -6, 2, 0},
+	},
+	{
+		{0, 0, 0, 128, 0, 0, 0, 0}, {0, 2, 28, 62, 34, 2, 0, 0},
+		{0, 0, 26, 62, 36, 4, 0, 0}, {0, 0, 22, 62, 40, 4, 0, 0},
+		{0, 0, 20, 60, 42, 6, 0, 0}, {0, 0, 18, 58, 44, 8, 0, 0},
+		{0, 0, 16, 56, 46, 10, 0, 0}, {0, -2, 16, 54, 48, 12, 0, 0},
+		{0, -2, 14, 52, 52, 14, -2, 0}, {0, 0, 12, 48, 54, 16, -2, 0},
+		{0, 0, 10, 46, 56, 16, 0, 0}, {0, 0, 8, 44, 58, 18, 0, 0},
+		{0, 0, 6, 42, 60, 20, 0, 0}, {0, 0, 4, 40, 62, 22, 0, 0},
+		{0, 0, 4, 36, 62, 26, 0, 0}, {0, 0, 2, 34, 62, 28, 2, 0},
+	},
+	{
+		{0, 0, 0, 128, 0, 0, 0, 0}, {-2, 2, -6, 126, 8, -2, 2, 0},
+		{-2, 6, -12, 124, 16, -6, 4, -2}, {-2, 8, -18, 120, 26, -10, 6, -2},
+		{-4, 10, -22, 116, 38, -14, 6, -2}, {-4, 10, -22, 108, 48, -18, 8, -2},
+		{-4, 10, -24, 100, 60, -20, 8, -2}, {-4, 10, -24, 90, 70, -22, 10, -2},
+		{-4, 12, -24, 80, 80, -24, 12, -4}, {-2, 10, -22, 70, 90, -24, 10, -4},
+		{-2, 8, -20, 60, 100, -24, 10, -4}, {-2, 8, -18, 48, 108, -22, 10, -4},
+		{-2, 6, -14, 38, 116, -22, 10, -4}, {-2, 6, -10, 26, 120, -18, 8, -2},
+		{-2, 4, -6, 16, 124, -12, 6, -2}, {0, 2, -2, 8, 126, -6, 2, -2},
+	},
+	{
+		{0, 0, 0, 128, 0, 0, 0, 0}, {0, 0, 0, 120, 8, 0, 0, 0},
+		{0, 0, 0, 112, 16, 0, 0, 0}, {0, 0, 0, 104, 24, 0, 0, 0},
+		{0, 0, 0, 96, 32, 0, 0, 0}, {0, 0, 0, 88, 40, 0, 0, 0},
+		{0, 0, 0, 80, 48, 0, 0, 0}, {0, 0, 0, 72, 56, 0, 0, 0},
+		{0, 0, 0, 64, 64, 0, 0, 0}, {0, 0, 0, 56, 72, 0, 0, 0},
+		{0, 0, 0, 48, 80, 0, 0, 0}, {0, 0, 0, 40, 88, 0, 0, 0},
+		{0, 0, 0, 32, 96, 0, 0, 0}, {0, 0, 0, 24, 104, 0, 0, 0},
+		{0, 0, 0, 16, 112, 0, 0, 0}, {0, 0, 0, 8, 120, 0, 0, 0},
+	},
+	{
+		{0, 0, 0, 128, 0, 0, 0, 0}, {0, 0, -4, 126, 8, -2, 0, 0},
+		{0, 0, -8, 122, 18, -4, 0, 0}, {0, 0, -10, 116, 28, -6, 0, 0},
+		{0, 0, -12, 110, 38, -8, 0, 0}, {0, 0, -12, 102, 48, -10, 0, 0},
+		{0, 0, -14, 94, 58, -10, 0, 0}, {0, 0, -12, 84, 66, -10, 0, 0},
+		{0, 0, -12, 76, 76, -12, 0, 0}, {0, 0, -10, 66, 84, -12, 0, 0},
+		{0, 0, -10, 58, 94, -14, 0, 0}, {0, 0, -10, 48, 102, -12, 0, 0},
+		{0, 0, -8, 38, 110, -12, 0, 0}, {0, 0, -6, 28, 116, -10, 0, 0},
+		{0, 0, -4, 18, 122, -8, 0, 0}, {0, 0, -2, 8, 126, -4, 0, 0},
+	},
+	{
+		{0, 0, 0, 128, 0, 0, 0, 0}, {0, 0, 30, 62, 34, 2, 0, 0},
+		{0, 0, 26, 62, 36, 4, 0, 0}, {0, 0, 22, 62, 40, 4, 0, 0},
+		{0, 0, 20, 60, 42, 6, 0, 0}, {0, 0, 18, 58, 44, 8, 0, 0},
+		{0, 0, 16, 56, 46, 10, 0, 0}, {0, 0, 14, 54, 48, 12, 0, 0},
+		{0, 0, 12, 52, 52, 12, 0, 0}, {0, 0, 12, 48, 54, 14, 0, 0},
+		{0, 0, 10, 46, 56, 16, 0, 0}, {0, 0, 8, 44, 58, 18, 0, 0},
+		{0, 0, 6, 42, 60, 20, 0, 0}, {0, 0, 4, 40, 62, 22, 0, 0},
+		{0, 0, 4, 36, 62, 26, 0, 0}, {0, 0, 2, 34, 62, 30, 0, 0},
+	},
+}
 
 var Intra_Edge_Kernel = [][]int{
 	{0, 4, 8, 4, 0},
@@ -1016,7 +1080,7 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 		t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = p.uncompressedHeader.UpscaledWidth
 	}
 
-	startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, x, y, mv)
+	startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, x, y, mv, p)
 
 	if Bool(t.useIntrabc) {
 		p.RefFrameWidth[len(p.RefFrameWidth)-1] = p.MiCols * MI_SIZE
@@ -1024,15 +1088,85 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 		t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = p.MiCols * MI_SIZE
 	}
 
-	var preds [][]int
+	var preds [][][]int
 	if useWarp != 0 {
 		for i8 := 0; i8 <= ((h - 1) >> 3); i8++ {
 			for j8 := 0; j8 <= ((w - 1) >> 3); j8++ {
-				// TODO: what is supposed to happen here
-				t.blockWarpProcess(useWarp, plane, refList, x, y, i8, j8, w, h, p)
+				// TODO: what exactly is supposed to happen here
+				preds[refList] = t.blockWarpProcess(useWarp, plane, refList, x, y, i8, j8, w, h, p)
 			}
 		}
 	}
+
+	if useWarp == 0 {
+
+	}
+}
+
+// 7.11.3.4 Block inter prediction process
+func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y int, xStep int, yStep int, w int, h int, candRow int, candCol int, p *Parser) [][]int {
+	var ref [][][]int
+	if refIdx == -1 {
+		ref = p.CurrFrame
+	} else {
+		ref = t.FrameStore[refIdx]
+	}
+
+	subX := 0
+	subY := 0
+	if plane != 0 {
+		subX = Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+		subY = Int(p.sequenceHeader.ColorConfig.SubsamplingY)
+	}
+
+	lastX := ((t.RefUpscaledWidth[refIdx] + subX) >> subX) - 1
+	lastY := ((p.RefFrameHeight[refIdx] + subY) >> subY) - 1
+
+	intermediateHeight := (((h-1)*yStep + (1 << SCALE_SUBPEL_BITS) - 1) >> SCALE_SUBPEL_BITS) + 8
+
+	interpFilter := t.InterpFilters[candRow][candCol][1]
+	if w <= 4 {
+		if interpFilter == EIGHTTAP || interpFilter == EIGHTTAP_SHARP {
+			interpFilter = 4
+		} else if interpFilter == EIGHTTAP_SMOOTH {
+			interpFilter = 5
+		}
+	}
+
+	var intermediate [][]int
+	for r := 0; r < intermediateHeight; r++ {
+		for c := 0; c < w; c++ {
+			s := 0
+			p := x + xStep*c
+			for t := 0; t < 8; t++ {
+				s += Subpel_Filters[interpFilter][(p>>6)*SUBPEL_MASK][t] * ref[plane][Clip3(0, lastY, (y>>10)+r-3)][Clip3(0, lastX, (p>>10)+t-3)]
+			}
+			intermediate[r][c] = Round2(s, t.InterRound0)
+		}
+	}
+
+	interpFilter = t.InterpFilters[candRow][candCol][0]
+	if h <= 4 {
+		if interpFilter == EIGHTTAP || interpFilter == EIGHTTAP_SHARP {
+			interpFilter = 4
+		} else if interpFilter == EIGHTTAP_SMOOTH {
+			interpFilter = 5
+		}
+	}
+
+	var pred [][]int
+	for r := 0; r < h; r++ {
+		for c := 0; c < w; c++ {
+			s := 0
+			p := (y & 1023) + yStep*r
+			for t := 0; t < 8; t++ {
+				s += Subpel_Filters[interpFilter][(p>>6)*SUBPEL_MASK][t] * intermediate[(p>>10)+t][c]
+			}
+			pred[r][c] = Round2(s, t.InterRound1)
+		}
+	}
+
+	return pred
 }
 
 // 7.11.3.5 Block warp process
