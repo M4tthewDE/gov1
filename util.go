@@ -191,3 +191,7 @@ func Int(x bool) int {
 func HasNewmv(mode int) bool {
 	return mode == NEWMV || mode == NEW_NEWMV || mode == NEAR_NEWMV || mode == NEW_NEARMV || mode == NEAREST_NEWMV || mode == NEW_NEARESTMV
 }
+
+func LsProduct(a int, b int) int {
+	return ((a * b) >> 2) + (a + b)
+}

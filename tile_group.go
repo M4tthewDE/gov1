@@ -352,6 +352,33 @@ var Intra_Filter_Taps = [][][]int{
 
 var Mode_To_Angle = []int{0, 90, 180, 45, 135, 113, 157, 203, 67, 0, 0, 0, 0}
 
+var Div_Lut = []int{
+	16384, 16320, 16257, 16194, 16132, 16070, 16009, 15948, 15888, 15828, 15768,
+	15709, 15650, 15592, 15534, 15477, 15420, 15364, 15308, 15252, 15197, 15142,
+	15087, 15033, 14980, 14926, 14873, 14821, 14769, 14717, 14665, 14614, 14564,
+	14513, 14463, 14413, 14364, 14315, 14266, 14218, 14170, 14122, 14075, 14028,
+	13981, 13935, 13888, 13843, 13797, 13752, 13707, 13662, 13618, 13574, 13530,
+	13487, 13443, 13400, 13358, 13315, 13273, 13231, 13190, 13148, 13107, 13066,
+	13026, 12985, 12945, 12906, 12866, 12827, 12788, 12749, 12710, 12672, 12633,
+	12596, 12558, 12520, 12483, 12446, 12409, 12373, 12336, 12300, 12264, 12228,
+	12193, 12157, 12122, 12087, 12053, 12018, 11984, 11950, 11916, 11882, 11848,
+	11815, 11782, 11749, 11716, 11683, 11651, 11619, 11586, 11555, 11523, 11491,
+	11460, 11429, 11398, 11367, 11336, 11305, 11275, 11245, 11215, 11185, 11155,
+	11125, 11096, 11067, 11038, 11009, 10980, 10951, 10923, 10894, 10866, 10838,
+	10810, 10782, 10755, 10727, 10700, 10673, 10645, 10618, 10592, 10565, 10538,
+	10512, 10486, 10460, 10434, 10408, 10382, 10356, 10331, 10305, 10280, 10255,
+	10230, 10205, 10180, 10156, 10131, 10107, 10082, 10058, 10034, 10010, 99869,
+	9963, 9939, 9916, 9892, 9869, 9846, 9823, 9800, 9777, 9754, 9732,
+	9709, 9687, 9664, 9642, 9620, 9598, 9576, 9554, 9533, 9511, 9489,
+	9468, 9447, 9425, 9404, 9383, 9362, 9341, 9321, 9300, 9279, 9259,
+	9239, 9218, 9198, 9178, 9158, 9138, 9118, 9098, 9079, 9059, 9039,
+	9020, 9001, 8981, 8962, 8943, 8924, 8905, 8886, 8867, 8849, 8830,
+	8812, 8793, 8775, 8756, 8738, 8720, 8702, 8684, 8666, 8648, 8630,
+	8613, 8595, 8577, 8560, 8542, 8525, 8508, 8490, 8473, 8456, 8439,
+	8422, 8405, 8389, 8372, 8355, 8339, 8322, 8306, 8289, 8273, 8257,
+	8240, 8224, 8208, 8192,
+}
+
 const ANGLE_STEP = 3
 
 const RESTORE_NONE = 0
@@ -434,6 +461,10 @@ const LEAST_SQUARES_SAMPLES_MAX = 8
 const REF_SCALE_SHIFT = 14
 
 const INTRA_FILTER_SCALE_BITS = 4
+
+const LS_MV_MAX = 256
+const DIV_LUT_PREC_BITS = 13
+const DIV_LUT_BITS = 8
 
 type TileGroup struct {
 	LrType              [][][]int
@@ -530,6 +561,13 @@ type TileGroup struct {
 
 	AboveRow []int
 	LeftCol  []int
+
+	InterRound0    int
+	InterRound1    int
+	InterPostRound int
+
+	LocalValid      bool
+	LocalWarpParams []int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -793,7 +831,172 @@ func (t *TileGroup) computePrediction(p *Parser) {
 			}
 			t.predictIntra(plane, baseX, baseY, haveLeft, haveAbove, p.BlockDecoded[plane][(subBlockMiRow>>subY)-1][(subBlockMiCol>>subX)+num4x4W], p.BlockDecoded[plane][(subBlockMiRow>>subY)+num4x4H][(subBlockMiCol>>subX)-1], mode, log2W, log2H, p)
 		}
+
+		if Bool(t.IsInter) {
+			predW := t.Block_Width[p.MiSize] >> subX
+			predH := t.Block_Height[p.MiSize] >> subY
+			someUseIntra := false
+
+			for r := 0; r < (num4x4H << subY); r++ {
+				for c := 0; c < (num4x4W << subX); c++ {
+					if p.RefFrames[candRow+r][candCol+c][0] == INTRA_FRAME {
+						someUseIntra = true
+					}
+				}
+			}
+
+			if someUseIntra {
+				predW = num4x4W * 4
+				predH = num4x4H * 4
+				candRow = p.MiRow
+				candCol = p.MiCol
+			}
+			r := 0
+			for y := 0; y < num4x4H; y += predH {
+				c := 0
+				for x := 0; x < num4x4W; x += predW {
+					t.predictInter(plane, baseX+x, baseY+y, predW, predH, candRow+r, candCol+c, p)
+				}
+			}
+		}
 	}
+}
+
+// 7.11.3 Inter prediction process
+func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow int, candCol int, p *Parser) {
+	isCompound := p.RefFrames[candRow][candCol][1] > INTRA_FRAME
+
+	t.roundVariablesDerivationProcess(isCompound, p)
+
+	if plane == 0 && t.MotionMode == LOCALWARP {
+		t.warpEstimationProcess(p)
+	}
+}
+
+// 7.11.3.2 Warp estimation process
+func (t *TileGroup) warpEstimationProcess(p *Parser) {
+	var A [][]int
+	var Bx []int
+	var By []int
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 2; j++ {
+			A[i][j] = 0
+		}
+
+		Bx[i] = 0
+		By[i] = 0
+	}
+
+	// TODO: matrix is symmetrical, so an entry is omitted!
+	w4 := p.Num4x4BlocksWide[p.MiSize]
+	h4 := p.Num4x4BlocksHigh[p.MiSize]
+	midY := p.MiRow*4 + h4*2 - 1
+	midX := p.MiCol*4 + w4*2 - 1
+	suy := midY * 8
+	sux := midX * 8
+	duy := suy + t.Mv[0][0]
+	dux := sux + t.Mv[0][1]
+
+	for i := 0; i < t.NumSamples; i++ {
+		sy := t.CandList[i][0] - suy
+		sx := t.CandList[i][1] - sux
+		dy := t.CandList[i][2] - duy
+		dx := t.CandList[i][3] - dux
+
+		if Abs(sx-dx) < LS_MV_MAX && Abs(sy-dy) < LS_MV_MAX {
+			A[0][0] += LsProduct(sx, sx) + 8
+			A[0][1] += LsProduct(sx, sy) + 4
+			A[1][1] += LsProduct(sy, sx) + 8
+			Bx[0] += LsProduct(sx, dx) + 8
+			Bx[1] += LsProduct(sy, dx) + 4
+			Bx[0] += LsProduct(sx, dy) + 4
+			Bx[1] += LsProduct(sy, dy) + 8
+		}
+	}
+
+	det := A[0][0]*A[1][1] - A[0][1]*A[0][1]
+
+	if det == 0 {
+		t.LocalValid = false
+		return
+	} else {
+		t.LocalValid = true
+	}
+
+	divShift, divFactor := t.resolveDivisorProcess(det)
+
+	divShift -= WARPEDMODEL_PREC_BITS
+
+	if divShift < 0 {
+		divFactor = divFactor << (divShift)
+		divShift = 0
+	}
+
+	t.LocalWarpParams[2] = t.diag(A[1][1]*Bx[0]-A[0][1]*Bx[1], divFactor, divShift)
+	t.LocalWarpParams[3] = t.nondiag(-A[1][1]*Bx[0]+A[0][0]*Bx[1], divFactor, divShift)
+	t.LocalWarpParams[4] = t.nondiag(A[1][1]*By[0]-A[0][1]*By[1], divFactor, divShift)
+	t.LocalWarpParams[5] = t.diag(-A[1][1]*By[0]+A[0][0]*By[1], divFactor, divShift)
+
+	mvx := t.Mv[0][1]
+	mvy := t.Mv[0][0]
+	vx := mvx*(1<<(WARPEDMODEL_PREC_BITS-3)) - (midX*(t.LocalWarpParams[2]-(1<<WARPEDMODEL_PREC_BITS)) + midY*t.LocalWarpParams[3])
+	vy := mvy*(1<<(WARPEDMODEL_PREC_BITS-3)) - (midX * (t.LocalWarpParams[4] + midY + (t.LocalWarpParams[5]) - (1 << WARPEDMODEL_PREC_BITS)))
+
+	t.LocalWarpParams[0] = Clip3(-WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP-1, vx)
+	t.LocalWarpParams[1] = Clip3(-WARPEDMODEL_TRANS_CLAMP, WARPEDMODEL_TRANS_CLAMP-1, vy)
+}
+
+// nondiag(v)
+func (t *TileGroup) nondiag(v int, divFactor int, divShift int) int {
+	return Clip3(-WARPEDMODEL_NONDIAGAFFINE_CLAMP+1, WARPEDMODEL_NONDIAGAFFINE_CLAMP-1, Round2Signed(v*divFactor, divShift))
+}
+
+// diag(v)
+func (t *TileGroup) diag(v int, divFactor int, divShift int) int {
+	return Clip3((1<<WARPEDMODEL_PREC_BITS)-WARPEDMODEL_NONDIAGAFFINE_CLAMP+1, (1<<WARPEDMODEL_PREC_BITS)+WARPEDMODEL_NONDIAGAFFINE_CLAMP-1, Round2Signed(v*divFactor, divShift))
+}
+
+// 7.11.3.7 Resolve divisor process
+func (t *TileGroup) resolveDivisorProcess(d int) (int, int) {
+	n := FloorLog2(Abs(d))
+	e := Abs(d) - (1 << n)
+
+	var f int
+	if n > DIV_LUT_BITS {
+		f = Round2(e, n-DIV_LUT_BITS)
+	} else {
+		f = e << (DIV_LUT_BITS - n)
+	}
+
+	divShift := n + DIV_LUT_PREC_BITS
+	var divFactor int
+	if d < 0 {
+		divFactor = -Div_Lut[f]
+	} else {
+		divFactor = Div_Lut[f]
+	}
+
+	return divShift, divFactor
+}
+
+// 7.11.3.2 Rounding variables derivation process
+func (t *TileGroup) roundVariablesDerivationProcess(isCompound bool, p *Parser) {
+	t.InterRound0 = 3
+	t.InterRound1 = 3
+	if isCompound {
+		t.InterRound1 = 7
+	} else {
+		t.InterRound1 = 11
+	}
+
+	if p.sequenceHeader.ColorConfig.BitDepth == 12 {
+		t.InterRound0 = t.InterRound0 + 2
+	}
+
+	if p.sequenceHeader.ColorConfig.BitDepth == 12 && !isCompound {
+		t.InterRound1 = t.InterRound1 - 2
+	}
+
 }
 
 // 7.11.2 Intra prediction process
