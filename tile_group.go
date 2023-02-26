@@ -32,6 +32,8 @@ const PARTITION_VERT = 2
 const PARTITION_SPLIT = 3
 
 const INTRA_EDGE_TAPS = 5
+const SUBPEL_BITS = 4
+const SCALE_SUBPEL_BITS = 10
 
 var Intra_Edge_Kernel = [][]int{
 	{0, 4, 8, 4, 0},
@@ -379,6 +381,111 @@ var Div_Lut = []int{
 	8240, 8224, 8208, 8192,
 }
 
+var Warped_Filters = [][]int{
+	{0, 0, 127, 1, 0, 0, 0, 0}, {0, -1, 127, 2, 0, 0, 0, 0},
+	{1, -3, 127, 4, -1, 0, 0, 0}, {1, -4, 126, 6, -2, 1, 0, 0},
+	{1, -5, 126, 8, -3, 1, 0, 0}, {1, -6, 125, 11, -4, 1, 0, 0},
+	{1, -7, 124, 13, -4, 1, 0, 0}, {2, -8, 123, 15, -5, 1, 0, 0},
+	{2, -9, 122, 18, -6, 1, 0, 0}, {2, -10, 121, 20, -6, 1, 0, 0},
+	{2, -11, 120, 22, -7, 2, 0, 0}, {2, -12, 119, 25, -8, 2, 0, 0},
+	{3, -13, 117, 27, -8, 2, 0, 0}, {3, -13, 116, 29, -9, 2, 0, 0},
+	{3, -14, 114, 32, -10, 3, 0, 0}, {3, -15, 113, 35, -10, 2, 0, 0},
+	{3, -15, 111, 37, -11, 3, 0, 0}, {3, -16, 109, 40, -11, 3, 0, 0},
+	{3, -16, 108, 42, -12, 3, 0, 0}, {4, -17, 106, 45, -13, 3, 0, 0},
+	{4, -17, 104, 47, -13, 3, 0, 0}, {4, -17, 102, 50, -14, 3, 0, 0},
+	{4, -17, 100, 52, -14, 3, 0, 0}, {4, -18, 98, 55, -15, 4, 0, 0},
+	{4, -18, 96, 58, -15, 3, 0, 0}, {4, -18, 94, 60, -16, 4, 0, 0},
+	{4, -18, 91, 63, -16, 4, 0, 0}, {4, -18, 89, 65, -16, 4, 0, 0},
+	{4, -18, 87, 68, -17, 4, 0, 0}, {4, -18, 85, 70, -17, 4, 0, 0},
+	{4, -18, 82, 73, -17, 4, 0, 0}, {4, -18, 80, 75, -17, 4, 0, 0},
+	{4, -18, 78, 78, -18, 4, 0, 0}, {4, -17, 75, 80, -18, 4, 0, 0},
+	{4, -17, 73, 82, -18, 4, 0, 0}, {4, -17, 70, 85, -18, 4, 0, 0},
+	{4, -17, 68, 87, -18, 4, 0, 0}, {4, -16, 65, 89, -18, 4, 0, 0},
+	{4, -16, 63, 91, -18, 4, 0, 0}, {4, -16, 60, 94, -18, 4, 0, 0},
+	{3, -15, 58, 96, -18, 4, 0, 0}, {4, -15, 55, 98, -18, 4, 0, 0},
+	{3, -14, 52, 100, -17, 4, 0, 0}, {3, -14, 50, 102, -17, 4, 0, 0},
+	{3, -13, 47, 104, -17, 4, 0, 0}, {3, -13, 45, 106, -17, 4, 0, 0},
+	{3, -12, 42, 108, -16, 3, 0, 0}, {3, -11, 40, 109, -16, 3, 0, 0},
+	{3, -11, 37, 111, -15, 3, 0, 0}, {2, -10, 35, 113, -15, 3, 0, 0},
+	{3, -10, 32, 114, -14, 3, 0, 0}, {2, -9, 29, 116, -13, 3, 0, 0},
+	{2, -8, 27, 117, -13, 3, 0, 0}, {2, -8, 25, 119, -12, 2, 0, 0},
+	{2, -7, 22, 120, -11, 2, 0, 0}, {1, -6, 20, 121, -10, 2, 0, 0},
+	{1, -6, 18, 122, -9, 2, 0, 0}, {1, -5, 15, 123, -8, 2, 0, 0},
+	{1, -4, 13, 124, -7, 1, 0, 0}, {1, -4, 11, 125, -6, 1, 0, 0},
+	{1, -3, 8, 126, -5, 1, 0, 0}, {1, -2, 6, 126, -4, 1, 0, 0},
+	{0, -1, 4, 127, -3, 1, 0, 0}, {0, 0, 2, 127, -1, 0, 0, 0},
+
+	// [0, 1)
+	{0, 0, 0, 127, 1, 0, 0, 0}, {0, 0, -1, 127, 2, 0, 0, 0},
+	{0, 1, -3, 127, 4, -2, 1, 0}, {0, 1, -5, 127, 6, -2, 1, 0},
+	{0, 2, -6, 126, 8, -3, 1, 0}, {-1, 2, -7, 126, 11, -4, 2, -1},
+	{-1, 3, -8, 125, 13, -5, 2, -1}, {-1, 3, -10, 124, 16, -6, 3, -1},
+	{-1, 4, -11, 123, 18, -7, 3, -1}, {-1, 4, -12, 122, 20, -7, 3, -1},
+	{-1, 4, -13, 121, 23, -8, 3, -1}, {-2, 5, -14, 120, 25, -9, 4, -1},
+	{-1, 5, -15, 119, 27, -10, 4, -1}, {-1, 5, -16, 118, 30, -11, 4, -1},
+	{-2, 6, -17, 116, 33, -12, 5, -1}, {-2, 6, -17, 114, 35, -12, 5, -1},
+	{-2, 6, -18, 113, 38, -13, 5, -1}, {-2, 7, -19, 111, 41, -14, 6, -2},
+	{-2, 7, -19, 110, 43, -15, 6, -2}, {-2, 7, -20, 108, 46, -15, 6, -2},
+	{-2, 7, -20, 106, 49, -16, 6, -2}, {-2, 7, -21, 104, 51, -16, 7, -2},
+	{-2, 7, -21, 102, 54, -17, 7, -2}, {-2, 8, -21, 100, 56, -18, 7, -2},
+	{-2, 8, -22, 98, 59, -18, 7, -2}, {-2, 8, -22, 96, 62, -19, 7, -2},
+	{-2, 8, -22, 94, 64, -19, 7, -2}, {-2, 8, -22, 91, 67, -20, 8, -2},
+	{-2, 8, -22, 89, 69, -20, 8, -2}, {-2, 8, -22, 87, 72, -21, 8, -2},
+	{-2, 8, -21, 84, 74, -21, 8, -2}, {-2, 8, -22, 82, 77, -21, 8, -2},
+	{-2, 8, -21, 79, 79, -21, 8, -2}, {-2, 8, -21, 77, 82, -22, 8, -2},
+	{-2, 8, -21, 74, 84, -21, 8, -2}, {-2, 8, -21, 72, 87, -22, 8, -2},
+	{-2, 8, -20, 69, 89, -22, 8, -2}, {-2, 8, -20, 67, 91, -22, 8, -2},
+	{-2, 7, -19, 64, 94, -22, 8, -2}, {-2, 7, -19, 62, 96, -22, 8, -2},
+	{-2, 7, -18, 59, 98, -22, 8, -2}, {-2, 7, -18, 56, 100, -21, 8, -2},
+	{-2, 7, -17, 54, 102, -21, 7, -2}, {-2, 7, -16, 51, 104, -21, 7, -2},
+	{-2, 6, -16, 49, 106, -20, 7, -2}, {-2, 6, -15, 46, 108, -20, 7, -2},
+	{-2, 6, -15, 43, 110, -19, 7, -2}, {-2, 6, -14, 41, 111, -19, 7, -2},
+	{-1, 5, -13, 38, 113, -18, 6, -2}, {-1, 5, -12, 35, 114, -17, 6, -2},
+	{-1, 5, -12, 33, 116, -17, 6, -2}, {-1, 4, -11, 30, 118, -16, 5, -1},
+	{-1, 4, -10, 27, 119, -15, 5, -1}, {-1, 4, -9, 25, 120, -14, 5, -2},
+	{-1, 3, -8, 23, 121, -13, 4, -1}, {-1, 3, -7, 20, 122, -12, 4, -1},
+	{-1, 3, -7, 18, 123, -11, 4, -1}, {-1, 3, -6, 16, 124, -10, 3, -1},
+	{-1, 2, -5, 13, 125, -8, 3, -1}, {-1, 2, -4, 11, 126, -7, 2, -1},
+	{0, 1, -3, 8, 126, -6, 2, 0}, {0, 1, -2, 6, 127, -5, 1, 0},
+	{0, 1, -2, 4, 127, -3, 1, 0}, {0, 0, 0, 2, 127, -1, 0, 0},
+
+	// [1, 2)
+	{0, 0, 0, 1, 127, 0, 0, 0}, {0, 0, 0, -1, 127, 2, 0, 0},
+	{0, 0, 1, -3, 127, 4, -1, 0}, {0, 0, 1, -4, 126, 6, -2, 1},
+	{0, 0, 1, -5, 126, 8, -3, 1}, {0, 0, 1, -6, 125, 11, -4, 1},
+	{0, 0, 1, -7, 124, 13, -4, 1}, {0, 0, 2, -8, 123, 15, -5, 1},
+	{0, 0, 2, -9, 122, 18, -6, 1}, {0, 0, 2, -10, 121, 20, -6, 1},
+	{0, 0, 2, -11, 120, 22, -7, 2}, {0, 0, 2, -12, 119, 25, -8, 2},
+	{0, 0, 3, -13, 117, 27, -8, 2}, {0, 0, 3, -13, 116, 29, -9, 2},
+	{0, 0, 3, -14, 114, 32, -10, 3}, {0, 0, 3, -15, 113, 35, -10, 2},
+	{0, 0, 3, -15, 111, 37, -11, 3}, {0, 0, 3, -16, 109, 40, -11, 3},
+	{0, 0, 3, -16, 108, 42, -12, 3}, {0, 0, 4, -17, 106, 45, -13, 3},
+	{0, 0, 4, -17, 104, 47, -13, 3}, {0, 0, 4, -17, 102, 50, -14, 3},
+	{0, 0, 4, -17, 100, 52, -14, 3}, {0, 0, 4, -18, 98, 55, -15, 4},
+	{0, 0, 4, -18, 96, 58, -15, 3}, {0, 0, 4, -18, 94, 60, -16, 4},
+	{0, 0, 4, -18, 91, 63, -16, 4}, {0, 0, 4, -18, 89, 65, -16, 4},
+	{0, 0, 4, -18, 87, 68, -17, 4}, {0, 0, 4, -18, 85, 70, -17, 4},
+	{0, 0, 4, -18, 82, 73, -17, 4}, {0, 0, 4, -18, 80, 75, -17, 4},
+	{0, 0, 4, -18, 78, 78, -18, 4}, {0, 0, 4, -17, 75, 80, -18, 4},
+	{0, 0, 4, -17, 73, 82, -18, 4}, {0, 0, 4, -17, 70, 85, -18, 4},
+	{0, 0, 4, -17, 68, 87, -18, 4}, {0, 0, 4, -16, 65, 89, -18, 4},
+	{0, 0, 4, -16, 63, 91, -18, 4}, {0, 0, 4, -16, 60, 94, -18, 4},
+	{0, 0, 3, -15, 58, 96, -18, 4}, {0, 0, 4, -15, 55, 98, -18, 4},
+	{0, 0, 3, -14, 52, 100, -17, 4}, {0, 0, 3, -14, 50, 102, -17, 4},
+	{0, 0, 3, -13, 47, 104, -17, 4}, {0, 0, 3, -13, 45, 106, -17, 4},
+	{0, 0, 3, -12, 42, 108, -16, 3}, {0, 0, 3, -11, 40, 109, -16, 3},
+	{0, 0, 3, -11, 37, 111, -15, 3}, {0, 0, 2, -10, 35, 113, -15, 3},
+	{0, 0, 3, -10, 32, 114, -14, 3}, {0, 0, 2, -9, 29, 116, -13, 3},
+	{0, 0, 2, -8, 27, 117, -13, 3}, {0, 0, 2, -8, 25, 119, -12, 2},
+	{0, 0, 2, -7, 22, 120, -11, 2}, {0, 0, 1, -6, 20, 121, -10, 2},
+	{0, 0, 1, -6, 18, 122, -9, 2}, {0, 0, 1, -5, 15, 123, -8, 2},
+	{0, 0, 1, -4, 13, 124, -7, 1}, {0, 0, 1, -4, 11, 125, -6, 1},
+	{0, 0, 1, -3, 8, 126, -5, 1}, {0, 0, 1, -2, 6, 126, -4, 1},
+	{0, 0, 0, -1, 4, 127, -3, 1}, {0, 0, 0, 0, 2, 127, -1, 0},
+	// dummy (replicate row index 191)
+	{0, 0, 0, 0, 2, 127, -1, 0},
+}
+
 const ANGLE_STEP = 3
 
 const RESTORE_NONE = 0
@@ -568,6 +675,8 @@ type TileGroup struct {
 
 	LocalValid      bool
 	LocalWarpParams []int
+
+	FrameStore [][][][]int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -871,9 +980,191 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 	if plane == 0 && t.MotionMode == LOCALWARP {
 		t.warpEstimationProcess(p)
 	}
+
+	if plane == 0 && t.MotionMode == LOCALWARP && t.LocalValid {
+		t.LocalValid, _, _, _, _ = t.setupShearProcess(t.LocalWarpParams)
+	}
+
+	refList := 0
+	refFrame := p.RefFrames[candRow][candCol][refList]
+
+	var globalValid bool
+	if t.YMode == GLOBALMV || t.YMode == GLOBAL_GLOBALMV && p.GmType[refFrame] > TRANSLATION {
+		globalValid, _, _, _, _ = t.setupShearProcess(p.uncompressedHeader.GmParams[refFrame])
+	}
+
+	useWarp := 0
+	if w < 8 || h < 8 {
+		useWarp = 0
+	} else if p.uncompressedHeader.ForceIntegerMv {
+		useWarp = 0
+	} else if t.MotionMode == LOCALWARP && t.LocalValid {
+		useWarp = 1
+	} else if (t.YMode == GLOBALMV || t.YMode == GLOBAL_GLOBALMV) && p.GmType[refFrame] > TRANSLATION && !t.isScaled(refFrame, p) && globalValid {
+		useWarp = 2
+	}
+
+	mv := t.Mvs[candRow][candCol][refList]
+
+	var refIdx int
+	if !Bool(t.useIntrabc) {
+		refIdx = p.uncompressedHeader.ref_frame_idx[refFrame-LAST_FRAME]
+	} else {
+		refIdx = -1
+		p.RefFrameWidth[len(p.RefFrameWidth)-1] = p.uncompressedHeader.FrameWidth
+		p.RefFrameHeight[len(p.RefFrameHeight)-1] = p.uncompressedHeader.FrameHeight
+		t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = p.uncompressedHeader.UpscaledWidth
+	}
+
+	startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, x, y, mv)
+
+	if Bool(t.useIntrabc) {
+		p.RefFrameWidth[len(p.RefFrameWidth)-1] = p.MiCols * MI_SIZE
+		p.RefFrameHeight[len(p.RefFrameHeight)-1] = p.MiRows * MI_SIZE
+		t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = p.MiCols * MI_SIZE
+	}
+
+	var preds [][]int
+	if useWarp != 0 {
+		for i8 := 0; i8 <= ((h - 1) >> 3); i8++ {
+			for j8 := 0; j8 <= ((w - 1) >> 3); j8++ {
+				// TODO: what is supposed to happen here
+				t.blockWarpProcess(useWarp, plane, refList, x, y, i8, j8, w, h, p)
+			}
+		}
+	}
 }
 
-// 7.11.3.2 Warp estimation process
+// 7.11.3.5 Block warp process
+func (t *TileGroup) blockWarpProcess(useWarp int, plane int, refList int, x int, y int, i8 int, j8 int, w int, h int, p *Parser) [][]int {
+	var pred [][]int
+
+	refIdx := p.uncompressedHeader.ref_frame_idx[p.RefFrame[refList]-LAST_FRAME]
+	ref := t.FrameStore[refIdx]
+
+	subX := 0
+	subY := 0
+	if plane != 0 {
+		subX = Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+		subY = Int(p.sequenceHeader.ColorConfig.SubsamplingY)
+	}
+
+	lastX := ((t.RefUpscaledWidth[refIdx] + subX) >> subX) - 1
+	lastY := ((p.RefFrameHeight[refIdx] + subY) >> subY) - 1
+
+	srcX := (x + j8*8 + 4) << subX
+	srcY := (y + i8*8 + 4) << subY
+
+	var warpParams []int
+	if useWarp == 1 {
+		warpParams = t.LocalWarpParams
+	} else {
+		warpParams = p.uncompressedHeader.GmParams[p.RefFrame[refList]]
+	}
+
+	dstX := warpParams[2]*srcX + warpParams[3]*srcY + warpParams[0]
+	dstY := warpParams[4]*srcX + warpParams[5]*srcY + warpParams[1]
+
+	_, alpha, beta, gamma, delta := t.setupShearProcess(warpParams)
+
+	x4 := dstX >> subX
+	y4 := dstY >> subY
+	ix4 := x4 >> WARPEDMODEL_PREC_BITS
+	sx4 := x4 & ((1 << WARPEDMODEL_PREC_BITS) - 1)
+	iy4 := y4 >> WARPEDMODEL_PREC_BITS
+	sy4 := y4 & ((1 << WARPEDMODEL_PREC_BITS) - 1)
+
+	var intermediate [][]int
+	for i1 := -7; i1 < 8; i1++ {
+		for i2 := -4; i2 < 4; i2++ {
+			sx := sx4 + alpha*i2 + beta*i1
+			offs := Round2(sx, WARPEDDIFF_PREC_BITS) + WARPEDPIXEL_PREC_SHIFTS
+			s := 0
+
+			for i3 := 0; i3 < 8; i3++ {
+				s += Warped_Filters[offs][i3] * ref[plane][Clip3(0, lastY, iy4+i1)][Clip3(0, lastX, ix4+i2-3+i3)]
+			}
+			intermediate[(i1 + 7)][(i2 + 4)] = Round2(s, t.InterRound0)
+		}
+
+	}
+
+	for i1 := -4; i1 < Min(4, h-i8*8-4); i1++ {
+		for i2 := -4; i2 < Min(4, w-j8*8-4); i2++ {
+			sy := sy4 + gamma*i2 + delta*i1
+			offs := Round2(sy, WARPEDDIFF_PREC_BITS) + WARPEDPIXEL_PREC_SHIFTS
+			s := 0
+
+			for i3 := 0; i3 < 8; i3++ {
+				s += Warped_Filters[offs][i3] * intermediate[i1+i3+4][i2+4]
+			}
+			pred[i8*8+i1+4][j8*8+i2+4] = Round2(s, t.InterRound1)
+		}
+	}
+
+	return pred
+}
+
+// 7.11.3.3  Motion vector scaling process
+func (t *TileGroup) motionVectorScalingProcess(plane int, refIdx int, x int, y int, mv []int, p *Parser) (int, int, int, int) {
+	xScale := ((t.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameWidth / 2)) / p.uncompressedHeader.FrameWidth
+	yScale := ((t.RefUpscaledHeight[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameHeight / 2)) / p.uncompressedHeader.FrameHeight
+
+	subX := 0
+	subY := 0
+	if plane != 0 {
+		subX = Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+		subY = Int(p.sequenceHeader.ColorConfig.SubsamplingY)
+	}
+
+	halfSample := (1 << (SUBPEL_BITS - 1))
+	origX := ((x << SUBPEL_BITS) + ((2 * mv[1]) >> subX) + halfSample)
+	origY := ((y << SUBPEL_BITS) + ((2 * mv[0]) >> subY) + halfSample)
+
+	baseX := (origX*xScale - (halfSample << REF_SCALE_SHIFT))
+	baseY := (origY*yScale - (halfSample << REF_SCALE_SHIFT))
+
+	off := ((1 << (SCALE_SUBPEL_BITS - SUBPEL_BITS)) / 2)
+
+	startX := (Round2Signed(baseX, REF_SCALE_SHIFT+SUBPEL_BITS-SCALE_SUBPEL_BITS) + off)
+	startY := (Round2Signed(baseY, REF_SCALE_SHIFT+SUBPEL_BITS-SCALE_SUBPEL_BITS) + off)
+
+	stepX := Round2Signed(xScale, REF_SCALE_SHIFT-SCALE_SUBPEL_BITS)
+	stepY := Round2Signed(yScale, REF_SCALE_SHIFT-SCALE_SUBPEL_BITS)
+
+	return startX, startY, stepX, stepY
+}
+
+// 7.11.3.6 Setup shear process
+func (t *TileGroup) setupShearProcess(warpParams []int) (bool, int, int, int, int) {
+	alpha0 := Clip3(-32768, 32767, warpParams[2]-(1<<WARPEDMODEL_PREC_BITS))
+	beta0 := Clip3(-32768, 32767, warpParams[3])
+
+	divShift, divFactor := t.resolveDivisorProcess(warpParams[2])
+
+	v := warpParams[4] << WARPEDMODEL_PREC_BITS
+	gamma0 := Clip3(-32768, 32767, Round2Signed(v*divFactor, divShift))
+	w := warpParams[3] * warpParams[4]
+	delta0 := Clip3(-32768, 32767, warpParams[5]-Round2Signed(w*divFactor, divShift)-1<<WARPEDMODEL_PREC_BITS)
+
+	alpha := Round2Signed(alpha0, WARP_PARAM_REDUCE_BITS) << WARP_PARAM_REDUCE_BITS
+	beta := Round2Signed(beta0, WARP_PARAM_REDUCE_BITS) << WARP_PARAM_REDUCE_BITS
+	gamma := Round2Signed(gamma0, WARP_PARAM_REDUCE_BITS) << WARP_PARAM_REDUCE_BITS
+	delta := Round2Signed(delta0, WARP_PARAM_REDUCE_BITS) << WARP_PARAM_REDUCE_BITS
+
+	warpValid := true
+	if 4*Abs(alpha)+7*Abs(beta) >= (1 << WARPEDMODEL_PREC_BITS) {
+		warpValid = false
+	}
+
+	if 4*Abs(gamma)+4*Abs(delta) >= (1 << WARPEDMODEL_PREC_BITS) {
+		warpValid = false
+	}
+
+	return warpValid, alpha, beta, gamma, delta
+}
+
+// 7.11.3.8 Warp estimation process
 func (t *TileGroup) warpEstimationProcess(p *Parser) {
 	var A [][]int
 	var Bx []int

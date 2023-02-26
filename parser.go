@@ -53,6 +53,8 @@ type Parser struct {
 	FeatureData          [][]int
 	RefFrame             []int
 	RefFrames            [][][]int
+	RefFrameWidth        []int
+	RefFrameHeight       []int
 	GmType               []int
 	PrevGmParams         [][]int
 	PrevSegmentIds       [][]int
