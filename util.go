@@ -195,3 +195,29 @@ func HasNewmv(mode int) bool {
 func LsProduct(a int, b int) int {
 	return ((a * b) >> 2) + (a + b)
 }
+
+func GetObmcMask(length int) []int {
+	switch length {
+	case 2:
+		return Obmc_Mask_2
+	case 4:
+		return Obmc_Mask_4
+	case 8:
+		return Obmc_Mask_8
+	case 16:
+		return Obmc_Mask_16
+	default:
+		return Obmc_Mask_32
+	}
+}
+
+var Obmc_Mask_2 = []int{45, 64}
+var Obmc_Mask_4 = []int{39, 50, 59, 64}
+var Obmc_Mask_8 = []int{36, 42, 48, 53, 57, 61, 64, 64}
+var Obmc_Mask_16 = []int{34, 37, 40, 43, 46, 49, 52, 54, 56, 58, 60, 61, 64, 64, 64, 64}
+var Obmc_Mask_32 = []int{
+	3, 35, 36, 38, 40, 41, 43, 44,
+	45, 47, 48, 50, 51, 52, 53, 55,
+	56, 57, 58, 59, 60, 60, 61, 62,
+	64, 64, 64, 64, 64, 64, 64, 64,
+}

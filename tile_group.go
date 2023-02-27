@@ -1208,6 +1208,116 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 	} else {
 		t.maskBlendProcess(preds, plane, x, y, w, h, p)
 	}
+
+	if t.MotionMode == OBMC {
+		t.overlappedMotionCompensationProcess(plane, w, h, p)
+	}
+}
+
+// 7.11.3.9 Overlapped motion compensation process
+func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int, p *Parser) {
+	subX := 0
+	subY := 0
+	if plane != 0 {
+		subX = Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+		subY = Int(p.sequenceHeader.ColorConfig.SubsamplingY)
+	}
+
+	if p.AvailU {
+		if t.getPlaneResidualSize(p.MiSize, plane, p) >= BLOCK_8X8 {
+			pass := 0
+			w4 := p.Num4x4BlocksWide[p.MiSize]
+			x4 := p.MiCol
+			y4 := p.MiRow
+			nCount := 0
+			nLimit := Min(4, Mi_Width_Log2[p.MiSize])
+
+			for nCount < nLimit && x4 < Min(p.MiCols, p.MiCol+w4) {
+				candRow := p.MiRow - 1
+				candCol := x4 | 1
+				candSz := p.MiSizes[candRow][candCol]
+				step4 := Clip3(2, 16, p.Num4x4BlocksWide[candSz])
+				if p.RefFrames[candRow][candCol][0] > INTRA_FRAME {
+					nCount += 1
+					predW := Min(w, (step4*MI_SIZE)>>subX)
+					predH := Min(h>>1, 32>>subY)
+					mask := GetObmcMask(predW)
+
+					// predict_overlap( )
+					mv := t.Mvs[candRow][candCol][0]
+					refIdx := p.uncompressedHeader.ref_frame_idx[p.RefFrames[candRow][candCol][0]-LAST_FRAME]
+					predX := (x4 * 4) >> subX
+					predY := (y4 * 4) >> subY
+					startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, predX, predY, mv, p)
+					obmcPred := t.blockInterPredictionProcess(plane, refIdx, startX, startY, stepX, stepY, predW, predH, candRow, candCol, p)
+
+					for i := 0; i < predH; i++ {
+						for j := 0; j < predW; j++ {
+							obmcPred[i][j] = Clip1(obmcPred[i][j], p)
+						}
+					}
+
+					t.overlapBlendingProcess(plane, predX, predY, predW, predH, Bool(pass), obmcPred, mask, p)
+				}
+				x4 += step4
+			}
+		}
+	}
+
+	if p.AvailL {
+		pass := 0
+		h4 := p.Num4x4BlocksHigh[p.MiSize]
+		x4 := p.MiCol
+		y4 := p.MiRow
+		nCount := 0
+		nLimit := Min(4, Mi_Height_Log2[p.MiSize])
+
+		for nCount < nLimit && y4 < Min(p.MiRows, p.MiRow+h4) {
+			candCol := p.MiCol - 1
+			candRow := y4 | 1
+			candSz := p.MiSizes[candRow][candCol]
+			step4 := Clip3(2, 16, p.Num4x4BlocksHigh[candSz])
+			if p.RefFrames[candRow][candCol][0] > INTRA_FRAME {
+				nCount += 1
+				predW := Min(w>>1, 32>>subX)
+				predH := Min(h, (step4*MI_SIZE)>>subY)
+				mask := GetObmcMask(predW)
+
+				// predict_overlap( )
+				mv := t.Mvs[candRow][candCol][0]
+				refIdx := p.uncompressedHeader.ref_frame_idx[p.RefFrames[candRow][candCol][0]-LAST_FRAME]
+				predX := (x4 * 4) >> subX
+				predY := (y4 * 4) >> subY
+				startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, predX, predY, mv, p)
+				obmcPred := t.blockInterPredictionProcess(plane, refIdx, startX, startY, stepX, stepY, predW, predH, candRow, candCol, p)
+
+				for i := 0; i < predH; i++ {
+					for j := 0; j < predW; j++ {
+						obmcPred[i][j] = Clip1(obmcPred[i][j], p)
+					}
+				}
+
+				t.overlapBlendingProcess(plane, predX, predY, predW, predH, Bool(pass), obmcPred, mask, p)
+			}
+			y4 += step4
+		}
+	}
+}
+
+// 7.11.3.10 Overlap blending process
+func (t *TileGroup) overlapBlendingProcess(plane int, predX int, predY int, predW int, predH int, pass bool, obmcPred [][]int, mask []int, p *Parser) {
+	for i := 0; i < predH; i++ {
+		var m int
+		for j := 0; j < predW; j++ {
+			if !pass {
+				m = mask[i]
+			} else {
+				m = mask[j]
+			}
+
+			p.CurrFrame[plane][predY+i][predX+j] = Round2(m*p.CurrFrame[plane][predY+i][predX+j]+(64-m)*obmcPred[i][j], 6)
+		}
+	}
 }
 
 // 7.11.3.14 Mask blend process
