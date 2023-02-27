@@ -120,6 +120,7 @@ type UncompressedHeader struct {
 	RefOrderHint               []int
 	ref_frame_idx              []int
 	OrderHint                  int
+	OrderHints                 []int
 	SkipModeFrame              []int
 	SkipModePresent            int
 }
@@ -372,13 +373,12 @@ func (u *UncompressedHeader) Build(p *Parser) {
 			useRefFrameMvs = p.f(1) != 0
 		}
 
-		OrderHints := []int{}
 		RefFrameSignBias := []bool{}
 
 		for i := 0; i < REFS_PER_FRAME; i++ {
 			refFrame := LAST_FRAME + 1
 			hint := u.RefOrderHint[u.ref_frame_idx[i]]
-			OrderHints = SliceAssign(OrderHints, refFrame, hint)
+			u.OrderHints = SliceAssign(u.OrderHints, refFrame, hint)
 			if !p.sequenceHeader.EnableOrderHint {
 				RefFrameSignBias = SliceAssign(RefFrameSignBias, refFrame, false)
 			} else {

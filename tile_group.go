@@ -33,6 +33,7 @@ const PARTITION_VERT = 2
 const PARTITION_SPLIT = 3
 
 const MAX_SB_SIZE = 128
+const MAX_FRAME_DISTANCE = 31
 
 const INTRA_EDGE_TAPS = 5
 const SUBPEL_BITS = 4
@@ -754,6 +755,9 @@ type TileGroup struct {
 
 	FrameStore [][][][]int
 	Mask       [][]int
+
+	FwdWeight int
+	BckWeight int
 }
 
 func NewTileGroup(p *Parser, sz int) TileGroup {
@@ -1179,6 +1183,52 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 		t.differenceWeightMaskProcess(preds, w, h, p)
 	}
 
+	if t.CompoundType == COMPOUND_DISTANCE {
+		t.distanceWeightsProcess(candRow, candCol, p)
+	}
+}
+
+var Quant_Dist_Weight = [][]int{
+	{2, 3}, {2, 5}, {2, 7}, {1, MAX_FRAME_DISTANCE},
+}
+
+var Quant_Dist_Lookup = [][]int{
+	{9, 7}, {11, 5}, {12, 4}, {13, 3},
+}
+
+// 7.11.3.15 Distance weights process
+func (t *TileGroup) distanceWeightsProcess(candRow int, candCol int, p *Parser) {
+	var dist []int
+	for refList := 0; refList < 2; refList++ {
+		h := p.uncompressedHeader.OrderHints[p.RefFrames[candRow][candCol][refList]]
+		dist[refList] = Clip3(0, MAX_FRAME_DISTANCE, Abs(p.uncompressedHeader.getRelativeDist(h, p.uncompressedHeader.OrderHint, p)))
+	}
+	d0 := dist[1]
+	d1 := dist[0]
+	order := Int(d0 <= d1)
+
+	if d0 == 0 || d1 == 0 {
+		t.FwdWeight = Quant_Dist_Lookup[3][order]
+		t.BckWeight = Quant_Dist_Lookup[3][1-order]
+	} else {
+		var i int
+		for i = 0; i < 3; i++ {
+			c0 := Quant_Dist_Weight[i][order]
+			c1 := Quant_Dist_Weight[i][1-order]
+
+			if Bool(order) {
+				if d0*c0 > d1*c1 {
+					break
+				}
+			} else {
+				if d0*c0 < d1*c1 {
+					break
+				}
+			}
+		}
+		t.FwdWeight = Quant_Dist_Lookup[i][order]
+		t.BckWeight = Quant_Dist_Lookup[i][1-order]
+	}
 }
 
 // 7.11.3.12 Difference weight mask process
