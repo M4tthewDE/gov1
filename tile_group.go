@@ -1186,6 +1186,62 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 	if t.CompoundType == COMPOUND_DISTANCE {
 		t.distanceWeightsProcess(candRow, candCol, p)
 	}
+
+	if !isCompound && !t.IsInterIntra {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				p.CurrFrame[plane][y+i][x+i] = Clip1(preds[0][i][j], p)
+			}
+		}
+	} else if t.CompoundType == COMPOUND_AVERAGE {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				p.CurrFrame[plane][y+i][x+i] = Clip1(Round2(preds[0][i][j]+preds[1][i][j], 1+t.InterPostRound), p)
+			}
+		}
+	} else if t.CompoundType == COMPOUND_DISTANCE {
+		for i := 0; i < h; i++ {
+			for j := 0; j < w; j++ {
+				p.CurrFrame[plane][y+i][x+i] = Clip1(Round2(t.FwdWeight*preds[0][i][j]+t.BckWeight*preds[1][i][j], 4+t.InterPostRound), p)
+			}
+		}
+	} else {
+		t.maskBlendProcess(preds, plane, x, y, w, h, p)
+	}
+}
+
+// 7.11.3.14 Mask blend process
+func (t *TileGroup) maskBlendProcess(preds [][][]int, plane int, dstX int, dstY int, w int, h int, p *Parser) {
+	subX := 0
+	subY := 0
+	if plane != 0 {
+		subX = Int(p.sequenceHeader.ColorConfig.SubsamplingX)
+		subY = Int(p.sequenceHeader.ColorConfig.SubsamplingY)
+	}
+
+	var m int
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			if (!Bool(subX) && !Bool(subY)) || (Bool(t.InterIntra) && !Bool(t.WedgeInterIntra)) {
+				m = t.Mask[y][x]
+			} else if Bool(subX) && !Bool(subY) {
+				m = Round2(t.Mask[y][2*x]+t.Mask[y][2*x+1], 1)
+			} else if !Bool(subX) && Bool(subY) {
+				m = Round2(t.Mask[2*y][x]+t.Mask[2*y+1][x], 1)
+			} else {
+				m = Round2(t.Mask[2*y][2*x]+t.Mask[2*y][2*x+1]+t.Mask[2*y+1][2*x]+t.Mask[2*y+1][2*x+1], 2)
+			}
+			if Bool(t.InterIntra) {
+				pred0 := Clip1(Round2(preds[0][y][x], t.InterPostRound), p)
+				pred1 := p.CurrFrame[plane][y+dstY][x+dstX]
+				p.CurrFrame[plane][y+dstY][x+dstX] = Round2(m*pred1+(64-m)*pred0, 6)
+			} else {
+				pred0 := preds[0][y][x]
+				pred1 := preds[1][y][x]
+				p.CurrFrame[plane][y+dstY][x+dstX] = Round2(m*pred0+(64-m)*pred1, 6+t.InterPostRound)
+			}
+		}
+	}
 }
 
 var Quant_Dist_Weight = [][]int{
