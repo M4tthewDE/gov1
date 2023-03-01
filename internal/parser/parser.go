@@ -1,6 +1,9 @@
 package parser
 
-import "github.com/m4tthewde/gov1/internal/bitstream"
+import (
+	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/obu"
+)
 
 type Parser struct {
 	state     State
@@ -26,7 +29,8 @@ func (p *Parser) frameUnit(sz int) {
 	for sz > 0 {
 		obuLength := p.bitStream.Leb128()
 		sz -= p.bitStream.Leb128Bytes
-		p.parseObu(obuLength)
+
+		_, _ = obu.NewObu(obuLength, &p.bitStream)
 		sz -= obuLength
 
 	}

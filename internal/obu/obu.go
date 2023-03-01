@@ -26,8 +26,9 @@ type Obu struct {
 }
 
 // open_bitstream_unit(sz)
-func NewObu(sz int, b *bitstream.BitStream, state State) {
+func NewObu(sz int, b *bitstream.BitStream) (Obu, State) {
 	obu := Obu{}
+	state := State{}
 
 	state.header = header.NewHeader(b)
 
@@ -53,7 +54,7 @@ func NewObu(sz int, b *bitstream.BitStream, state State) {
 		if !inTemporalLayer || !inSpatialLayer {
 			//drop_obu()
 			b.Position = b.Position + obu.Size*8
-			return
+			return obu, state
 		}
 	}
 
@@ -95,6 +96,7 @@ func NewObu(sz int, b *bitstream.BitStream, state State) {
 		b.TrailingBits(obu.Size*8 - payloadBits)
 	}
 
+	return obu, state
 }
 
 // frame_obu( sz )

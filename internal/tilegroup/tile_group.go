@@ -4408,3 +4408,10 @@ func (t *TileGroup) decodeSubexpBool(numSyms int, k int, p *parser.Parser) int {
 func countUnitsInFrame(unitSize int, frameSize int) int {
 	return util.Max((frameSize+(unitSize>>1))/unitSize, 1)
 }
+
+func IsInside(candidateR int, candidateC int) bool {
+	return candidateC >= p.state.miColStart &&
+		candidateC < p.state.miColEnd &&
+		candidateR >= p.state.miRowStart &&
+		candidateR < p.state.miRowEnd
+}
