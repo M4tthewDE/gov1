@@ -1,7 +1,6 @@
 package sequenceheader
 
 import (
-	"github.com/m4tthewde/gov1/internal"
 	"github.com/m4tthewde/gov1/internal/bitstream"
 )
 

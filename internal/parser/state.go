@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"github.com/m4tthewde/gov1/internal"
+	"github.com/m4tthewde/gov1/internal/cdef"
 	"github.com/m4tthewde/gov1/internal/header"
 )
 
@@ -37,7 +37,7 @@ type State struct {
 	num4x4BlocksWide     []int
 	num4x4BlocksHigh     []int
 	readDeltas           bool
-	cdef                 internal.Cdef
+	cdef                 cdef.Cdef
 	blockDecoded         [][][]int
 	frameRestorationType []int
 	loopRestorationSize  []int
