@@ -1,55 +1,59 @@
 package parser
 
-import "github.com/m4tthewde/gov1/internal"
+import (
+	"github.com/m4tthewde/gov1/internal"
+	"github.com/m4tthewde/gov1/internal/header"
+)
 
 type State struct {
-	OperatingPointIdc    int
+	header               header.Header
+	operatingPointIdc    int
 	seenFrameHeader      bool
 	renderWidth          int
 	renderHeight         int
 	upscaledWidth        int
 	upscaledHeight       int
 	TileNum              int
-	MiCols               int
-	MiRows               int
-	MiColStarts          []int
-	MiRowStarts          []int
-	MiCol                int
-	MiRow                int
-	MiSize               int
-	MiSizes              [][]int
-	MiRowStart           int
-	MiColStart           int
-	MiRowEnd             int
-	MiColEnd             int
-	TileColsLog2         int
-	TileRowsLog2         int
-	TileCols             int
-	TileRows             int
-	TileSizeBytes        int
-	CurrentQIndex        int
-	DeltaLF              []int
-	RefLrWiener          [][][]int
-	Num4x4BlocksWide     []int
-	Num4x4BlocksHigh     []int
-	ReadDeltas           bool
-	Cdef                 internal.Cdef
-	BlockDecoded         [][][]int
-	FrameRestorationType []int
-	LoopRestorationSize  []int
-	AvailU               bool
-	AvailL               bool
-	AvailUChroma         bool
-	AvailLChroma         bool
-	FeatureEnabled       [][]int
-	FeatureData          [][]int
-	RefFrame             []int
-	RefFrames            [][][]int
-	RefFrameWidth        []int
-	RefFrameHeight       []int
-	GmType               []int
-	PrevGmParams         [][]int
-	PrevSegmentIds       [][]int
-	CurrFrame            [][][]int
-	SymbolMaxBits        int
+	miCols               int
+	miRows               int
+	miColStarts          []int
+	miRowStarts          []int
+	miCol                int
+	miRow                int
+	miSize               int
+	miSizes              [][]int
+	miRowStart           int
+	miColStart           int
+	miRowEnd             int
+	miColEnd             int
+	tileColsLog2         int
+	tileRowsLog2         int
+	tileCols             int
+	tileRows             int
+	tileSizeBytes        int
+	currentQIndex        int
+	deltaLF              []int
+	refLrWiener          [][][]int
+	num4x4BlocksWide     []int
+	num4x4BlocksHigh     []int
+	readDeltas           bool
+	cdef                 internal.Cdef
+	blockDecoded         [][][]int
+	frameRestorationType []int
+	loopRestorationSize  []int
+	availU               bool
+	availL               bool
+	availUChroma         bool
+	availLChroma         bool
+	featureEnabled       [][]int
+	featureData          [][]int
+	refFrame             []int
+	refFrames            [][][]int
+	refFrameWidth        []int
+	refFrameHeight       []int
+	gmType               []int
+	prevGmParams         [][]int
+	prevSegmentIds       [][]int
+	currFrame            [][][]int
+	symbolMaxBits        int
 }

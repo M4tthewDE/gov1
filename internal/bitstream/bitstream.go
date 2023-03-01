@@ -8,14 +8,14 @@ import (
 
 type BitStream struct {
 	data        []byte
-	position    int
+	Position    int
 	Leb128Bytes int
 }
 
 func NewBitStream(data []byte) BitStream {
 	return BitStream{
 		data:     data,
-		position: 0,
+		Position: 0,
 	}
 }
 
@@ -24,7 +24,7 @@ func (b *BitStream) F(n int) int {
 	x := 0
 	for i := 0; i < n; i++ {
 		x = 2*x + b.readBit()
-		b.position++
+		b.Position++
 	}
 
 	return x
@@ -32,11 +32,11 @@ func (b *BitStream) F(n int) int {
 
 // read_bit()
 func (b *BitStream) readBit() int {
-	return int((b.data[int(math.Floor(float64(b.position)/8))] >> (8 - b.position%8 - 1)) & 1)
+	return int((b.data[int(math.Floor(float64(b.Position)/8))] >> (8 - b.Position%8 - 1)) & 1)
 }
 
 func (b *BitStream) moreDataInBistream() bool {
-	return b.position/8 != len(b.data)
+	return b.Position/8 != len(b.data)
 }
 
 // uvlc()
@@ -76,7 +76,7 @@ func (b *BitStream) Leb128() int {
 }
 
 // trailing_bits( nbBits )
-func (b *BitStream) trailingBits(nbBits int) {
+func (b *BitStream) TrailingBits(nbBits int) {
 	// trailingOneBit
 	b.F(1)
 	nbBits--
@@ -89,8 +89,8 @@ func (b *BitStream) trailingBits(nbBits int) {
 }
 
 // byte_alignment()
-func (b *BitStream) byteAlignment() {
-	for b.position&7 != 0 {
+func (b *BitStream) ByteAlignment() {
+	for b.Position&7 != 0 {
 		b.F(1)
 	}
 }

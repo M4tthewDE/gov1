@@ -2,7 +2,7 @@ package sequenceheader
 
 import (
 	"github.com/m4tthewde/gov1/internal"
-	"github.com/m4tthewde/gov1/internal/parser"
+	"github.com/m4tthewde/gov1/internal/bitstream"
 )
 
 const CP_UNSPECIFIED = 2
@@ -90,104 +90,101 @@ type OperatingParametersInfo struct {
 	LowDelayModeFlag   []bool
 }
 
-func NewSequenceHeader(p *parser.Parser) SequenceHeader {
-	s := SequenceHeader{}
-	s.Build(p)
-	return s
-}
-
 // sequence_header_obu()
-func (s *SequenceHeader) Build(p *parser.Parser) {
-	s.SeqProfile = p.F(3)
-	s.StillPicture = p.F(1) != 0
-	s.ReducedStillPictureHeader = p.F(1) != 0
+func NewSequenceHeader(b *bitstream.BitStream) (SequenceHeader, State) {
+	s := SequenceHeader{}
+	state := State{}
+
+	s.SeqProfile = b.F(3)
+	s.StillPicture = b.F(1) != 0
+	s.ReducedStillPictureHeader = b.F(1) != 0
 
 	s.InitialDisplayDelayPresent = false
 	s.OperatingPointsCountMinusOne = 0
 
 	operatingPointIdcArray := []int{0}
 
-	s.SeqLevelIdx = []int{p.F(5)}
+	s.SeqLevelIdx = []int{b.F(5)}
 	s.SeqTier = []int{0}
 	s.DecoderModelPresentForThisOp = []bool{false}
 	s.InitialDisplayDelayPresentForThisOp = []bool{false}
 	s.InitialDisplayDelayMinusOne = []int{}
 
 	if !s.ReducedStillPictureHeader {
-		timingInfoPresent := p.F(1) != 0
+		timingInfoPresent := b.F(1) != 0
 		if timingInfoPresent {
-			s.TimingInfo = NewTimingInfo(p)
-			s.DecoderModelInfoPresent = p.F(1) != 0
+			s.TimingInfo = NewTimingInfo(b)
+			s.DecoderModelInfoPresent = b.F(1) != 0
 
 			if s.DecoderModelInfoPresent {
 				s.DecoderModelInfo = DecoderModelInfo{
-					BufferDelayLengthMinusOne:           p.F(5),
-					NumUnitsInDecodingTick:              p.F(32),
-					BufferRemovalTimeLengthMinusOne:     p.F(5),
-					FramePresentationTimeLengthMinusOne: p.F(5),
+					BufferDelayLengthMinusOne:           b.F(5),
+					NumUnitsInDecodingTick:              b.F(32),
+					BufferRemovalTimeLengthMinusOne:     b.F(5),
+					FramePresentationTimeLengthMinusOne: b.F(5),
 				}
 			}
 
-			s.InitialDisplayDelayPresent = internal.Bool(p.F(1))
-			s.OperatingPointsCountMinusOne = p.F(5)
+			s.InitialDisplayDelayPresent = internal.Bool(b.F(1))
+			s.OperatingPointsCountMinusOne = b.F(5)
 
 			for i := 0; i <= s.OperatingPointsCountMinusOne; i++ {
-				operatingPointIdcArray[i] = p.F(12)
-				s.SeqLevelIdx[i] = p.F(12)
+				operatingPointIdcArray[i] = b.F(12)
+				s.SeqLevelIdx[i] = b.F(12)
 
 				if s.SeqLevelIdx[i] > 7 {
-					s.SeqTier[i] = p.F(1)
+					s.SeqTier[i] = b.F(1)
 				} else {
 					s.SeqTier[i] = 0
 				}
 				if s.DecoderModelInfoPresent {
-					s.DecoderModelPresentForThisOp[i] = internal.Bool(p.F(1))
+					s.DecoderModelPresentForThisOp[i] = internal.Bool(b.F(1))
 
 					if s.DecoderModelPresentForThisOp[i] {
 						// TODO: what are we doing with this?
-						_ = NewOperatingParametersInfo(p, i)
+						_ = NewOperatingParametersInfo(b, i)
 					}
 				} else {
 					s.DecoderModelPresentForThisOp[i] = false
 				}
 
 				if s.InitialDisplayDelayPresent {
-					s.InitialDisplayDelayPresentForThisOp[i] = internal.Bool(p.F(1))
+					s.InitialDisplayDelayPresentForThisOp[i] = internal.Bool(b.F(1))
 
 					if s.InitialDisplayDelayPresentForThisOp[i] {
-						s.InitialDisplayDelayMinusOne[i] = p.F(4)
+						s.InitialDisplayDelayMinusOne[i] = b.F(4)
 					}
 				}
 			}
 		}
-		operatingPoint := p.ChooseOperatingPoint()
-		p.OperatingPointIdc = operatingPointIdcArray[operatingPoint]
+		operatingPoint := chooseOperatingPoint()
+		state.OperatingPointIdc = operatingPointIdcArray[operatingPoint]
 
-		s.FrameWidthBitsMinusOne = p.F(4)
-		s.FrameHeightBitsMinusOne = p.F(4)
+		s.FrameWidthBitsMinusOne = b.F(4)
+		s.FrameHeightBitsMinusOne = b.F(4)
 
 		n := s.FrameWidthBitsMinusOne + 1
-		s.MaxFrameWidthMinusOne = p.F(n)
+		s.MaxFrameWidthMinusOne = b.F(n)
 
 		n = s.FrameHeightBitsMinusOne + 1
-		s.MaxFrameHeightMinusOne = p.F(n)
+		s.MaxFrameHeightMinusOne = b.F(n)
 
 		s.FrameIdNumbersPresent = false
 
 		if s.ReducedStillPictureHeader {
 			s.FrameIdNumbersPresent = false
 		} else {
-			s.FrameIdNumbersPresent = p.F(1) != 0
+			s.FrameIdNumbersPresent = b.F(1) != 0
 		}
 
 		if s.FrameIdNumbersPresent {
-			s.DeltaFrameIdLengthMinusTwo = p.F(4)
-			s.AdditionalFrameIdLengthMinusOne = p.F(3)
+			s.DeltaFrameIdLengthMinusTwo = b.F(4)
+			s.AdditionalFrameIdLengthMinusOne = b.F(3)
 		}
 
-		s.Use128x128SuperBlock = p.F(1) != 0
-		s.EnableFilterIntra = p.F(1) != 0
-		s.EnableIntraEdgeFilter = p.F(1) != 0
+		s.Use128x128SuperBlock = b.F(1) != 0
+		s.EnableFilterIntra = b.F(1) != 0
+		s.EnableIntraEdgeFilter = b.F(1) != 0
 		s.EnableInterIntraCompound = false
 		s.EnableMaskedCompound = false
 		s.EnableWarpedMotion = false
@@ -205,56 +202,58 @@ func (s *SequenceHeader) Build(p *parser.Parser) {
 		s.OrderHintBits = 0
 
 		if !s.ReducedStillPictureHeader {
-			s.EnableInterIntraCompound = p.F(1) != 0
-			s.EnableMaskedCompound = p.F(1) != 0
-			s.EnableWarpedMotion = p.F(1) != 0
-			s.EnableDualFilter = p.F(1) != 0
-			s.EnableOrderHint = p.F(1) != 0
+			s.EnableInterIntraCompound = b.F(1) != 0
+			s.EnableMaskedCompound = b.F(1) != 0
+			s.EnableWarpedMotion = b.F(1) != 0
+			s.EnableDualFilter = b.F(1) != 0
+			s.EnableOrderHint = b.F(1) != 0
 			if s.EnableOrderHint {
-				s.EnableJntComp = p.F(1) != 0
-				s.EnableRefFrameMvs = p.F(1) != 0
+				s.EnableJntComp = b.F(1) != 0
+				s.EnableRefFrameMvs = b.F(1) != 0
 			}
 
-			s.SeqChooseScreenContentTools = p.F(1) != 0
+			s.SeqChooseScreenContentTools = b.F(1) != 0
 			if s.SeqChooseScreenContentTools {
 				s.SeqForceScreenContentTools = 2
 			} else {
-				s.SeqForceScreenContentTools = p.F(1)
+				s.SeqForceScreenContentTools = b.F(1)
 			}
 
 			if s.SeqForceScreenContentTools > 0 {
-				seqChooseIntegerMv := p.F(1) != 0
+				seqChooseIntegerMv := b.F(1) != 0
 
 				if seqChooseIntegerMv {
 					s.SeqForceIntegerMv = 2
 				} else {
-					s.SeqForceIntegerMv = p.F(1)
+					s.SeqForceIntegerMv = b.F(1)
 				}
 			} else {
 				s.SeqForceIntegerMv = 2
 			}
 
 			if s.EnableOrderHint {
-				s.OrderHintBits = p.F(3) + 1
+				s.OrderHintBits = b.F(3) + 1
 			}
 		}
 	}
 
-	s.EnableSuperRes = p.F(1) != 0
-	s.EnableCdef = p.F(1) != 0
-	s.EnableRestoration = p.F(1) != 0
-	s.ColorConfig = NewColorConfig(p, s.SeqProfile)
-	s.FilmGrainParamsPresent = p.F(1) != 0
+	s.EnableSuperRes = b.F(1) != 0
+	s.EnableCdef = b.F(1) != 0
+	s.EnableRestoration = b.F(1) != 0
+	s.ColorConfig = NewColorConfig(b, s.SeqProfile)
+	s.FilmGrainParamsPresent = b.F(1) != 0
+
+	return s, state
 }
 
-func NewTimingInfo(p *parser.Parser) TimingInfo {
-	numUnitsInDisplayTick := p.F(32)
-	timeScale := p.F(32)
-	equalPictureInterval := p.F(1) != 0
+func NewTimingInfo(b *bitstream.BitStream) TimingInfo {
+	numUnitsInDisplayTick := b.F(32)
+	timeScale := b.F(32)
+	equalPictureInterval := b.F(1) != 0
 	numTicksPerPictureMinusOne := 0
 
 	if equalPictureInterval {
-		numTicksPerPictureMinusOne = p.Uvlc()
+		numTicksPerPictureMinusOne = b.Uvlc()
 	}
 
 	return TimingInfo{
@@ -265,17 +264,13 @@ func NewTimingInfo(p *parser.Parser) TimingInfo {
 	}
 }
 
-func NewColorConfig(p *parser.Parser, seqProfile int) ColorConfig {
+func NewColorConfig(b *bitstream.BitStream, seqProfile int) ColorConfig {
 	c := ColorConfig{}
-	c.build(p, seqProfile)
-	return c
-}
 
-func (c *ColorConfig) build(p *parser.Parser, seqProfile int) {
-	c.HighBitDepth = p.F(1) != 0
+	c.HighBitDepth = b.F(1) != 0
 
 	if seqProfile == 2 && c.HighBitDepth {
-		c.TwelveBit = p.F(1) != 0
+		c.TwelveBit = b.F(1) != 0
 		c.BitDepth = 10
 		if c.TwelveBit {
 			c.BitDepth = 12
@@ -284,7 +279,7 @@ func (c *ColorConfig) build(p *parser.Parser, seqProfile int) {
 
 	c.MonoChrome = false
 	if seqProfile != 1 {
-		c.MonoChrome = p.F(1) != 0
+		c.MonoChrome = b.F(1) != 0
 	}
 
 	c.NumPlanes = 3
@@ -292,20 +287,20 @@ func (c *ColorConfig) build(p *parser.Parser, seqProfile int) {
 		c.NumPlanes = 1
 	}
 
-	c.ColorDescriptionPresent = p.F(1) != 0
+	c.ColorDescriptionPresent = b.F(1) != 0
 
 	c.ColorPrimaries = CP_UNSPECIFIED
 	c.TransferCharacteristics = TC_UNSPECIFIED
 	c.MatrixCoefficients = MC_UNSPECIFIED
 
 	if c.ColorDescriptionPresent {
-		c.ColorPrimaries = p.F(8)
-		c.TransferCharacteristics = p.F(8)
-		c.MatrixCoefficients = p.F(8)
+		c.ColorPrimaries = b.F(8)
+		c.TransferCharacteristics = b.F(8)
+		c.MatrixCoefficients = b.F(8)
 	}
 
 	if c.MonoChrome {
-		c.ColorRange = p.F(1) != 0
+		c.ColorRange = b.F(1) != 0
 		c.SubsamplingX = true
 		c.SubsamplingY = true
 
@@ -313,14 +308,13 @@ func (c *ColorConfig) build(p *parser.Parser, seqProfile int) {
 		c.ChromaSamplePosition = 0
 		c.SeparateUvDeltaQ = false
 
-		return
-
+		return c
 	} else if c.ColorPrimaries == 1 && c.TransferCharacteristics == 13 && c.MatrixCoefficients == 0 {
 		c.ColorRange = true
 		c.SubsamplingX = false
 		c.SubsamplingY = false
 	} else {
-		c.ColorRange = p.F(1) != 0
+		c.ColorRange = b.F(1) != 0
 		if seqProfile == 0 {
 			c.SubsamplingX = true
 			c.SubsamplingY = true
@@ -331,9 +325,9 @@ func (c *ColorConfig) build(p *parser.Parser, seqProfile int) {
 
 		} else {
 			if c.BitDepth == 12 {
-				c.SubsamplingX = p.F(1) != 0
+				c.SubsamplingX = b.F(1) != 0
 				if c.SubsamplingX {
-					c.SubsamplingY = p.F(1) != 0
+					c.SubsamplingY = b.F(1) != 0
 				} else {
 					c.SubsamplingY = false
 				}
@@ -345,21 +339,28 @@ func (c *ColorConfig) build(p *parser.Parser, seqProfile int) {
 
 		}
 		if c.SubsamplingX && c.SubsamplingY {
-			c.ChromaSamplePosition = p.F(2)
+			c.ChromaSamplePosition = b.F(2)
 		}
 
 	}
 
-	c.SeparateUvDeltaQ = p.F(1) != 0
+	c.SeparateUvDeltaQ = b.F(1) != 0
+	return c
 }
 
 // operating_parameters_info( op )
-func NewOperatingParametersInfo(p *parser.Parser, bufferDelayLengthMinusOne int) OperatingParametersInfo {
+func NewOperatingParametersInfo(b *bitstream.BitStream, bufferDelayLengthMinusOne int) OperatingParametersInfo {
 	n := bufferDelayLengthMinusOne + 1
 
 	return OperatingParametersInfo{
-		DecoderBufferDelay: []int{p.F(n)},
-		EncoderBufferDelay: []int{p.F(n)},
-		LowDelayModeFlag:   []bool{p.F(n) != 0},
+		DecoderBufferDelay: []int{b.F(n)},
+		EncoderBufferDelay: []int{b.F(n)},
+		LowDelayModeFlag:   []bool{b.F(n) != 0},
 	}
+}
+
+// choose_operating_point()
+func chooseOperatingPoint() int {
+	// TODO: implement properly
+	return 0
 }

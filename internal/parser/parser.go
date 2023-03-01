@@ -48,10 +48,10 @@ func (p *Parser) clearLeftContext() {
 }
 
 func (p *Parser) isInside(candidateR int, candidateC int) bool {
-	return candidateC >= p.state.MiColStart &&
-		candidateC < p.state.MiColEnd &&
-		candidateR >= p.state.MiRowStart &&
-		candidateR < p.state.MiRowEnd
+	return candidateC >= p.state.miColStart &&
+		candidateC < p.state.miColEnd &&
+		candidateR >= p.state.miRowStart &&
+		candidateR < p.state.miRowEnd
 }
 
 // choose_operating_point()

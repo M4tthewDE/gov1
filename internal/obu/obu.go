@@ -1,8 +1,12 @@
-package parser
+package obu
 
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/header"
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
 )
 
 type ObuType int
@@ -22,33 +26,33 @@ type Obu struct {
 }
 
 // open_bitstream_unit(sz)
-func (p *Parser) parseObu(sz int) {
+func NewObu(sz int, b *bitstream.BitStream, state State) {
 	obu := Obu{}
 
-	p.header = NewHeader(p)
+	state.header = header.NewHeader(b)
 
-	if p.header.HasSizeField {
-		obu.Size = p.leb128()
+	if state.header.HasSizeField {
+		obu.Size = b.Leb128()
 	} else {
 		extensionFlagInt := 0
-		if p.header.ExtensionFlag {
+		if state.header.ExtensionFlag {
 			extensionFlagInt = 1
 		}
 		obu.Size = sz - 1 - extensionFlagInt
 	}
 
-	startPosition := p.position
+	startPosition := b.Position
 
-	if p.header.Type != OBU_SEQUENCE_HEADER &&
-		p.header.Type != OBU_TEMPORAL_DELIMITER &&
-		p.operatingPointIdc != 0 &&
-		p.header.ExtensionFlag {
-		inTemporalLayer := ((p.operatingPointIdc >> p.header.ExtensionHeader.TemporalID) & 1) != 0
-		inSpatialLayer := ((p.operatingPointIdc >> (p.header.ExtensionHeader.SpatialID + 8)) & 1) != 0
+	if state.header.Type != OBU_SEQUENCE_HEADER &&
+		state.header.Type != OBU_TEMPORAL_DELIMITER &&
+		state.operatingPointIdc != 0 &&
+		state.header.ExtensionFlag {
+		inTemporalLayer := ((state.operatingPointIdc >> state.header.ExtensionHeader.TemporalID) & 1) != 0
+		inSpatialLayer := ((state.operatingPointIdc >> (state.header.ExtensionHeader.SpatialID + 8)) & 1) != 0
 
 		if !inTemporalLayer || !inSpatialLayer {
 			//drop_obu()
-			p.position = p.position + obu.Size*8
+			b.Position = b.Position + obu.Size*8
 			return
 		}
 	}
@@ -56,57 +60,57 @@ func (p *Parser) parseObu(sz int) {
 	x, _ := json.MarshalIndent(obu, "", "	")
 	fmt.Printf("%s\n", string(x))
 
-	switch p.header.Type {
+	switch state.header.Type {
 	case OBU_SEQUENCE_HEADER:
-		p.sequenceHeader = NewSequenceHeader(p)
+		state.sequenceHeader = sequenceheader.NewSequenceHeader()
 
-		x, _ := json.MarshalIndent(p.sequenceHeader, "", "	")
+		x, _ := json.MarshalIndent(state.sequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))
 	case OBU_TEMPORAL_DELIMITER:
-		p.seenFrameHeader = false
+		state.seenFrameHeader = false
 	case OBU_FRAME:
-		p.ParseFrame(obu.Size)
+		newFrame(obu.Size)
 	case OBU_METADATA:
 
 	default:
-		fmt.Printf("not implemented type %d\n", p.header.Type)
+		fmt.Printf("not implemented type %d\n", state.header.Type)
 		panic("")
 	}
 
-	payloadBits := p.position - startPosition
+	payloadBits := b.Position - startPosition
 
 	fmt.Println("----------------------------------------")
-	fmt.Printf("p.position: %d\n", p.position)
+	fmt.Printf("p.position: %d\n", b.Position)
 	fmt.Printf("startPosition: %d\n", startPosition)
 	fmt.Printf("payloadBits: %d\n", payloadBits)
 	fmt.Printf("obu.Size*8 - payloadBits: %d\n", obu.Size*8-payloadBits)
 	fmt.Println("----------------------------------------")
 
 	if obu.Size > 0 &&
-		p.header.Type != OBU_TILE_GROUP &&
-		p.header.Type != OBU_TILE_LIST &&
-		p.header.Type != OBU_FRAME {
-		p.trailingBits(obu.Size*8 - payloadBits)
+		state.header.Type != OBU_TILE_GROUP &&
+		state.header.Type != OBU_TILE_LIST &&
+		state.header.Type != OBU_FRAME {
+		b.TrailingBits(obu.Size*8 - payloadBits)
 	}
 
 }
 
 // frame_obu( sz )
-func (p *Parser) ParseFrame(sz int) {
-	startBitPos := p.position
+func newFrame(sz int, b *bitstream.BitStream) {
+	startBitPos := b.Position
 
-	p.ParseFrameHeader()
-	p.byteAlignment()
+	ParseFrameHeader()
+	b.ByteAlignment()
 
-	endBitPos := p.position
+	endBitPos := b.Position
 
 	headerBytes := (endBitPos - startBitPos) / 8
 	sz -= headerBytes
-	_ = NewTileGroup(p, sz)
+	_ = NewTileGroup(b, sz)
 }
 
 // frame_header_obu()
-func (p *Parser) ParseFrameHeader() {
+func ParseFrameHeader() {
 	if p.seenFrameHeader {
 		p.FrameHeaderCopy()
 	} else {
@@ -125,6 +129,6 @@ func (p *Parser) ParseFrameHeader() {
 }
 
 // frame_header_copy()
-func (p *Parser) FrameHeaderCopy() {
+func FrameHeaderCopy() {
 	panic("not implemented")
 }
