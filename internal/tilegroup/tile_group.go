@@ -1,4 +1,9 @@
-package main
+package tilegroup
+
+import (
+	"github.com/m4tthewde/gov1/internal/parser"
+	"github.com/m4tthewde/gov1/internal/util"
+)
 
 const FRAME_LF_COUNT = 4
 const WIENER_COEFFS = 3
@@ -766,13 +771,13 @@ type TileGroup struct {
 	BckWeight int
 }
 
-func NewTileGroup(p *Parser, sz int) TileGroup {
+func NewTileGroup(p *parser.Parser, sz int) TileGroup {
 	t := TileGroup{}
 	t.build(p, sz)
 	return t
 }
 
-func (t *TileGroup) build(p *Parser, sz int) {
+func (t *TileGroup) build(p *parser.Parser, sz int) {
 	NumTiles := p.TileCols * p.TileRows
 	startbitPos := p.position
 	tileStartAndEndPresentFlag := false
@@ -824,7 +829,7 @@ func (t *TileGroup) build(p *Parser, sz int) {
 }
 
 // 8.2.4 Exit process for symbol decoder
-func (t *TileGroup) exitSymbol(p *Parser) {
+func (t *TileGroup) exitSymbol(p *parser.Parser) {
 	if p.SymbolMaxBits < -14 {
 		panic("Violating bitstream conformance!")
 	}
@@ -837,7 +842,7 @@ func (t *TileGroup) exitSymbol(p *Parser) {
 }
 
 // decode_tile()
-func (t *TileGroup) decodeTile(p *Parser) {
+func (t *TileGroup) decodeTile(p *parser.Parser) {
 	p.clearAboveContext()
 
 	for i := 0; i < FRAME_LF_COUNT; i++ {
@@ -875,7 +880,7 @@ func (t *TileGroup) decodeTile(p *Parser) {
 }
 
 // decode_partition(r, c, bSize)
-func (t *TileGroup) decodePartition(r int, c int, bSize int, p *Parser) {
+func (t *TileGroup) decodePartition(r int, c int, bSize int, p *parser.Parser) {
 	if r >= p.MiRows || c >= p.MiCols {
 		return
 	}
@@ -965,7 +970,7 @@ func (t *TileGroup) decodePartition(r int, c int, bSize int, p *Parser) {
 }
 
 // decode_block( r, c, subSize)
-func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
+func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *parser.Parser) {
 	p.MiRow = r
 	p.MiCol = c
 	p.MiSize = subSize
@@ -1038,7 +1043,7 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, p *Parser) {
 }
 
 // compoute_prediction()
-func (t *TileGroup) computePrediction(p *Parser) {
+func (t *TileGroup) computePrediction(p *parser.Parser) {
 	sbMask := 15
 	if p.sequenceHeader.Use128x128SuperBlock {
 		sbMask = 31
@@ -1117,7 +1122,7 @@ func (t *TileGroup) computePrediction(p *Parser) {
 }
 
 // 7.11.3 Inter prediction process
-func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow int, candCol int, p *Parser) {
+func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow int, candCol int, p *parser.Parser) {
 	isCompound := p.RefFrames[candRow][candCol][1] > INTRA_FRAME
 
 	t.roundVariablesDerivationProcess(isCompound, p)
@@ -1279,7 +1284,7 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 }
 
 // 7.11.3.9 Overlapped motion compensation process
-func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int, p *Parser) {
+func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int, p *parser.Parser) {
 	subX := 0
 	subY := 0
 	if plane != 0 {
@@ -1369,7 +1374,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int,
 }
 
 // 7.11.3.10 Overlap blending process
-func (t *TileGroup) overlapBlendingProcess(plane int, predX int, predY int, predW int, predH int, pass bool, obmcPred [][]int, mask []int, p *Parser) {
+func (t *TileGroup) overlapBlendingProcess(plane int, predX int, predY int, predW int, predH int, pass bool, obmcPred [][]int, mask []int, p *parser.Parser) {
 	for i := 0; i < predH; i++ {
 		var m int
 		for j := 0; j < predW; j++ {
@@ -1385,7 +1390,7 @@ func (t *TileGroup) overlapBlendingProcess(plane int, predX int, predY int, pred
 }
 
 // 7.11.3.14 Mask blend process
-func (t *TileGroup) maskBlendProcess(preds [][][]int, plane int, dstX int, dstY int, w int, h int, p *Parser) {
+func (t *TileGroup) maskBlendProcess(preds [][][]int, plane int, dstX int, dstY int, w int, h int, p *parser.Parser) {
 	subX := 0
 	subY := 0
 	if plane != 0 {
@@ -1427,7 +1432,7 @@ var Quant_Dist_Lookup = [][]int{
 }
 
 // 7.11.3.15 Distance weights process
-func (t *TileGroup) distanceWeightsProcess(candRow int, candCol int, p *Parser) {
+func (t *TileGroup) distanceWeightsProcess(candRow int, candCol int, p *parser.Parser) {
 	var dist []int
 	for refList := 0; refList < 2; refList++ {
 		h := p.uncompressedHeader.OrderHints[p.RefFrames[candRow][candCol][refList]]
@@ -1462,7 +1467,7 @@ func (t *TileGroup) distanceWeightsProcess(candRow int, candCol int, p *Parser) 
 }
 
 // 7.11.3.12 Difference weight mask process
-func (t *TileGroup) differenceWeightMaskProcess(preds [][][]int, w int, h int, p *Parser) {
+func (t *TileGroup) differenceWeightMaskProcess(preds [][][]int, w int, h int, p *parser.Parser) {
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {
 			diff := Abs(preds[0][i][j] - preds[1][i][j])
@@ -1496,7 +1501,7 @@ func (t *TileGroup) intraModeVariantMaskProcess(w int, h int) {
 }
 
 // 7.11.3.11 Wedge mask process
-func (t *TileGroup) wedgeMaskProcess(w int, h int, p *Parser) {
+func (t *TileGroup) wedgeMaskProcess(w int, h int, p *parser.Parser) {
 	t.InitialiseWedgeMaskTable(p)
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {
@@ -1506,7 +1511,7 @@ func (t *TileGroup) wedgeMaskProcess(w int, h int, p *Parser) {
 }
 
 // 7.11.3.4 Block inter prediction process
-func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y int, xStep int, yStep int, w int, h int, candRow int, candCol int, p *Parser) [][]int {
+func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y int, xStep int, yStep int, w int, h int, candRow int, candCol int, p *parser.Parser) [][]int {
 	var ref [][][]int
 	if refIdx == -1 {
 		ref = p.CurrFrame
@@ -1572,7 +1577,7 @@ func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y 
 }
 
 // 7.11.3.5 Block warp process
-func (t *TileGroup) blockWarpProcess(useWarp int, plane int, refList int, x int, y int, i8 int, j8 int, w int, h int, p *Parser) [][]int {
+func (t *TileGroup) blockWarpProcess(useWarp int, plane int, refList int, x int, y int, i8 int, j8 int, w int, h int, p *parser.Parser) [][]int {
 	var pred [][]int
 
 	refIdx := p.uncompressedHeader.ref_frame_idx[p.RefFrame[refList]-LAST_FRAME]
@@ -1642,7 +1647,7 @@ func (t *TileGroup) blockWarpProcess(useWarp int, plane int, refList int, x int,
 }
 
 // 7.11.3.3  Motion vector scaling process
-func (t *TileGroup) motionVectorScalingProcess(plane int, refIdx int, x int, y int, mv []int, p *Parser) (int, int, int, int) {
+func (t *TileGroup) motionVectorScalingProcess(plane int, refIdx int, x int, y int, mv []int, p *parser.Parser) (int, int, int, int) {
 	xScale := ((t.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameWidth / 2)) / p.uncompressedHeader.FrameWidth
 	yScale := ((t.RefUpscaledHeight[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameHeight / 2)) / p.uncompressedHeader.FrameHeight
 
@@ -1701,7 +1706,7 @@ func (t *TileGroup) setupShearProcess(warpParams []int) (bool, int, int, int, in
 }
 
 // 7.11.3.8 Warp estimation process
-func (t *TileGroup) warpEstimationProcess(p *Parser) {
+func (t *TileGroup) warpEstimationProcess(p *parser.Parser) {
 	var A [][]int
 	var Bx []int
 	var By []int
@@ -1807,7 +1812,7 @@ func (t *TileGroup) resolveDivisorProcess(d int) (int, int) {
 }
 
 // 7.11.3.2 Rounding variables derivation process
-func (t *TileGroup) roundVariablesDerivationProcess(isCompound bool, p *Parser) {
+func (t *TileGroup) roundVariablesDerivationProcess(isCompound bool, p *parser.Parser) {
 	t.InterRound0 = 3
 	t.InterRound1 = 3
 	if isCompound {
@@ -1828,7 +1833,7 @@ func (t *TileGroup) roundVariablesDerivationProcess(isCompound bool, p *Parser) 
 
 // 7.11.2 Intra prediction process
 // predict_intra( plane, x, y, haveLeft, haveAbove, haveAboveRight, haveBelowLeft, mode, log2W, log2H )
-func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbove bool, haveAboveRight int, haveBelowLeft int, mode int, log2W int, log2H int, p *Parser) {
+func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbove bool, haveAboveRight int, haveBelowLeft int, mode int, log2W int, log2H int, p *parser.Parser) {
 	w := 1 << log2W
 	h := 1 << log2H
 	maxX := (p.MiCols * MI_SIZE) - 1
@@ -1926,7 +1931,7 @@ func (t *TileGroup) basicIntraPredictionProcess(w int, h int) [][]int {
 }
 
 // 7.11.2.5 DC intra prediction process
-func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2W int, log2H int, w int, h int, p *Parser) [][]int {
+func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2W int, log2H int, w int, h int, p *parser.Parser) [][]int {
 	var pred [][]int
 	if haveLeft && haveAbove {
 		for i := 0; i < h; i++ {
@@ -2053,7 +2058,7 @@ func (t *TileGroup) smoothIntraPredictionProcess(mode int, log2W int, log2H int,
 }
 
 // 7.11.2.4. Directional intra prediction process
-func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, haveLeft int, haveAbove int, mode int, w int, h int, maxX int, maxY int, p *Parser) [][]int {
+func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, haveLeft int, haveAbove int, mode int, w int, h int, maxX int, maxY int, p *parser.Parser) [][]int {
 	var pred [][]int
 
 	angleDelta := t.AngleDeltaUV
@@ -2197,7 +2202,7 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 }
 
 // 7.11.2.11 Intra edge upsample process
-func (t *TileGroup) intraEdgeUpsampleProcess(numPx int, dir bool, p *Parser) {
+func (t *TileGroup) intraEdgeUpsampleProcess(numPx int, dir bool, p *parser.Parser) {
 	// does this actually modify those arrays?
 	var buf []int
 	if !dir {
@@ -2331,7 +2336,7 @@ func (t *TileGroup) intraEdgeFilterStrengthSelectionProcess(w int, h int, filter
 }
 
 // 7.11.2.8. Intra filter type process
-func (t *TileGroup) getFilterType(plane int, p *Parser) bool {
+func (t *TileGroup) getFilterType(plane int, p *parser.Parser) bool {
 	aboveSmooth := false
 	leftSmooth := false
 
@@ -2379,7 +2384,7 @@ func (t *TileGroup) getFilterType(plane int, p *Parser) bool {
 }
 
 // is_smooth( row, col, plane )
-func (t *TileGroup) isSmooth(row int, col int, plane int, p *Parser) bool {
+func (t *TileGroup) isSmooth(row int, col int, plane int, p *parser.Parser) bool {
 	var mode int
 	if plane == 0 {
 		mode = t.YModes[row][col]
@@ -2400,7 +2405,7 @@ func (t *TileGroup) filterCornerProcess() int {
 }
 
 // 7.11.2.3. Recursive intra prediction process
-func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int, parser *Parser) [][]int {
+func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int, parser *parser.Parser) [][]int {
 	w4 := w >> 2
 	h2 := h >> 1
 
@@ -2445,7 +2450,7 @@ func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int, parser *Parser
 }
 
 // get_plane_residual_size( subsize, plane)
-func (t *TileGroup) getPlaneResidualSize(subsize int, plane int, p *Parser) int {
+func (t *TileGroup) getPlaneResidualSize(subsize int, plane int, p *parser.Parser) int {
 	subx := 0
 	suby := 0
 
@@ -2458,7 +2463,7 @@ func (t *TileGroup) getPlaneResidualSize(subsize int, plane int, p *Parser) int 
 }
 
 // reset_block_context( bw4, bh4 )
-func (t *TileGroup) resetBlockContext(bw4 int, bh4 int, p *Parser) {
+func (t *TileGroup) resetBlockContext(bw4 int, bh4 int, p *parser.Parser) {
 	for plane := 0; plane < 1+2*Int(t.HasChroma); plane++ {
 		subX := 0
 		subY := 0
@@ -2481,7 +2486,7 @@ func (t *TileGroup) resetBlockContext(bw4 int, bh4 int, p *Parser) {
 }
 
 // read_block_tx_size()
-func (t *TileGroup) readBlockTxSize(p *Parser) {
+func (t *TileGroup) readBlockTxSize(p *parser.Parser) {
 	bw4 := p.Num4x4BlocksWide[p.MiSize]
 	bh4 := p.Num4x4BlocksHigh[p.MiSize]
 
@@ -2511,7 +2516,7 @@ func (t *TileGroup) readBlockTxSize(p *Parser) {
 }
 
 // read_tx_size( allowSelect )
-func (t *TileGroup) readTxSize(allowSelect bool, p *Parser) {
+func (t *TileGroup) readTxSize(allowSelect bool, p *parser.Parser) {
 	if t.Lossless {
 		t.TxSize = TX_4X4
 		return
@@ -2531,7 +2536,7 @@ func (t *TileGroup) readTxSize(allowSelect bool, p *Parser) {
 }
 
 // read_var_tx_size( row, col, txSz, depth )
-func (t *TileGroup) readVarTxSize(row int, col int, txSz int, depth int, p *Parser) {
+func (t *TileGroup) readVarTxSize(row int, col int, txSz int, depth int, p *parser.Parser) {
 	if row >= p.MiRows || col >= p.MiCols {
 		return
 	}
@@ -2567,7 +2572,7 @@ func (t *TileGroup) readVarTxSize(row int, col int, txSz int, depth int, p *Pars
 }
 
 // palette_tokens()
-func (t *TileGroup) paletteTokens(p *Parser) {
+func (t *TileGroup) paletteTokens(p *parser.Parser) {
 	blockHeight := t.Block_Height[p.MiSize]
 	blockWidth := t.Block_Width[p.MiSize]
 	onscreenHeight := Min(blockHeight, (p.MiRows-p.MiRow)*MI_SIZE)
@@ -2634,7 +2639,7 @@ func (t *TileGroup) paletteTokens(p *Parser) {
 }
 
 // get_palette_color_context( colorMap, r, c, n )
-func (t *TileGroup) getPaletteColorContext(colorMap [][]int, r int, c int, n int, p *Parser) {
+func (t *TileGroup) getPaletteColorContext(colorMap [][]int, r int, c int, n int, p *parser.Parser) {
 	var scores []int
 	for i := 0; i < PALETTE_COLORS; i++ {
 		scores[i] = 0
@@ -2684,7 +2689,7 @@ func (t *TileGroup) getPaletteColorContext(colorMap [][]int, r int, c int, n int
 }
 
 // mode_info()
-func (t *TileGroup) modeInfo(p *Parser) {
+func (t *TileGroup) modeInfo(p *parser.Parser) {
 	if p.uncompressedHeader.FrameIsIntra {
 		t.intraFrameModeInfo(p)
 	} else {
@@ -2693,7 +2698,7 @@ func (t *TileGroup) modeInfo(p *Parser) {
 }
 
 // inter_frame_mode_info()
-func (t *TileGroup) interFrameModeInfo(p *Parser) {
+func (t *TileGroup) interFrameModeInfo(p *parser.Parser) {
 	t.useIntrabc = 0
 
 	if p.AvailL {
@@ -2746,7 +2751,7 @@ func (t *TileGroup) interFrameModeInfo(p *Parser) {
 }
 
 // intra_block_mode_info()
-func (t *TileGroup) intraBlockModeInfo(p *Parser) {
+func (t *TileGroup) intraBlockModeInfo(p *parser.Parser) {
 	p.RefFrame[0] = INTRA_FRAME
 	p.RefFrame[1] = NONE
 	yMode := p.S()
@@ -2777,7 +2782,7 @@ func (t *TileGroup) intraBlockModeInfo(p *Parser) {
 }
 
 // inter_block_mode_info()
-func (t *TileGroup) interBlockModeInfo(p *Parser) {
+func (t *TileGroup) interBlockModeInfo(p *parser.Parser) {
 	t.PaletteSizeY = 0
 	t.PaletteSizeUV = 0
 	t.readRefFrames(p)
@@ -2866,7 +2871,7 @@ func (t *TileGroup) interBlockModeInfo(p *Parser) {
 }
 
 // needs_interp_filter()
-func (t *TileGroup) needsInterpFilter(p *Parser) bool {
+func (t *TileGroup) needsInterpFilter(p *parser.Parser) bool {
 	large := Min(t.Block_Width[p.MiSize], t.Block_Height[p.MiSize]) >= 8
 
 	if Bool(t.SkipMode) || t.MotionMode == LOCALWARP {
@@ -2881,7 +2886,7 @@ func (t *TileGroup) needsInterpFilter(p *Parser) bool {
 }
 
 // read_compound_type( isCompound )
-func (t *TileGroup) readCompoundType(isCompound bool, p *Parser) {
+func (t *TileGroup) readCompoundType(isCompound bool, p *parser.Parser) {
 	t.CompGroupIdx = 0
 	t.CompoundIdx = 1
 	if Bool(t.SkipMode) {
@@ -2936,7 +2941,7 @@ func (t *TileGroup) readCompoundType(isCompound bool, p *Parser) {
 }
 
 // read_motion_mode( isCompound )
-func (t *TileGroup) readMotionMode(isCompound bool, p *Parser) {
+func (t *TileGroup) readMotionMode(isCompound bool, p *parser.Parser) {
 	if Bool(t.SkipMode) {
 		t.MotionMode = SIMPLE
 		return
@@ -2974,7 +2979,7 @@ func (t *TileGroup) readMotionMode(isCompound bool, p *Parser) {
 }
 
 // is_scaled( refFrame )
-func (t *TileGroup) isScaled(refFrame int, p *Parser) bool {
+func (t *TileGroup) isScaled(refFrame int, p *parser.Parser) bool {
 	refIdx := p.uncompressedHeader.ref_frame_idx[refFrame-LAST_FRAME]
 	xScale := ((t.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameWidth / 2)) / p.uncompressedHeader.FrameWidth
 	yScale := ((t.RefUpscaledHeight[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameHeight / 2)) / p.uncompressedHeader.FrameHeight
@@ -2984,7 +2989,7 @@ func (t *TileGroup) isScaled(refFrame int, p *Parser) bool {
 }
 
 // find_warp_samples() 7.10.4.
-func (t *TileGroup) findWarpSamples(p *Parser) {
+func (t *TileGroup) findWarpSamples(p *parser.Parser) {
 	t.NumSamples = 0
 	t.NumSamplesScanned = 0
 
@@ -3055,7 +3060,7 @@ func (t *TileGroup) findWarpSamples(p *Parser) {
 }
 
 // add_sample 7.10.4.2.
-func (t *TileGroup) addSample(deltaRow int, deltaCol int, p *Parser) {
+func (t *TileGroup) addSample(deltaRow int, deltaCol int, p *parser.Parser) {
 	if t.NumSamplesScanned >= LEAST_SQUARES_SAMPLES_MAX {
 		return
 	}
@@ -3113,7 +3118,7 @@ func (t *TileGroup) addSample(deltaRow int, deltaCol int, p *Parser) {
 }
 
 // read_interintra_mode( isCompound )
-func (t *TileGroup) readInterIntraMode(isCompound bool, p *Parser) {
+func (t *TileGroup) readInterIntraMode(isCompound bool, p *parser.Parser) {
 	if Bool(t.SkipMode) && p.sequenceHeader.EnableInterIntraCompound && !isCompound && p.MiSize > +BLOCK_8X8 && p.MiSize <= BLOCK_32X32 {
 		t.InterIntra = p.S()
 
@@ -3140,7 +3145,7 @@ func (t *TileGroup) hasNearmv() bool {
 }
 
 // read_ref_frames()
-func (t *TileGroup) readRefFrames(p *Parser) {
+func (t *TileGroup) readRefFrames(p *parser.Parser) {
 	if Bool(t.SkipMode) {
 		p.RefFrame[0] = p.uncompressedHeader.SkipModeFrame[0]
 		p.RefFrame[1] = p.uncompressedHeader.SkipModeFrame[1]
@@ -3259,7 +3264,7 @@ func (t *TileGroup) readRefFrames(p *Parser) {
 }
 
 // read_is_inter()
-func (t *TileGroup) readIsInter(p *Parser) {
+func (t *TileGroup) readIsInter(p *parser.Parser) {
 	if Bool(t.SkipMode) {
 		t.IsInter = 1
 	} else if t.segFeatureActive(SEG_LVL_REF_FRAME, p) {
@@ -3272,7 +3277,7 @@ func (t *TileGroup) readIsInter(p *Parser) {
 }
 
 // inter_segment_id( preSkip )
-func (t *TileGroup) interSegmentId(preSkip int, p *Parser) {
+func (t *TileGroup) interSegmentId(preSkip int, p *parser.Parser) {
 	if Bool(p.uncompressedHeader.SegmentationEnabled) {
 		predictedSegmentId := t.getSegmentId(p)
 
@@ -3323,7 +3328,7 @@ func (t *TileGroup) interSegmentId(preSkip int, p *Parser) {
 }
 
 // read_skip_mode()
-func (t *TileGroup) readSkipMode(p *Parser) {
+func (t *TileGroup) readSkipMode(p *parser.Parser) {
 	if t.segFeatureActive(SEG_LVL_SKIP, p) || t.segFeatureActive(SEG_LVL_REF_FRAME, p) || t.segFeatureActive(SEG_LVL_GLOBALMV, p) || !Bool(p.uncompressedHeader.SkipModePresent) || t.Block_Width[p.MiSize] < 8 || t.Block_Height[p.MiSize] < 8 {
 		t.SkipMode = 0
 	} else {
@@ -3332,7 +3337,7 @@ func (t *TileGroup) readSkipMode(p *Parser) {
 }
 
 // get_segment_id( )
-func (t *TileGroup) getSegmentId(p *Parser) int {
+func (t *TileGroup) getSegmentId(p *parser.Parser) int {
 	bw4 := p.Num4x4BlocksWide[p.MiSize]
 	bh4 := p.Num4x4BlocksHigh[p.MiSize]
 	xMis := Min(p.MiCols-p.MiCol, bw4)
@@ -3349,7 +3354,7 @@ func (t *TileGroup) getSegmentId(p *Parser) int {
 }
 
 // intra_frame_mode_info()
-func (t *TileGroup) intraFrameModeInfo(p *Parser) {
+func (t *TileGroup) intraFrameModeInfo(p *parser.Parser) {
 	t.Skip = 0
 	if p.uncompressedHeader.SegIdPreSkip == 1 {
 		t.intraSegmentId(p)
@@ -3416,7 +3421,7 @@ func (t *TileGroup) intraFrameModeInfo(p *Parser) {
 }
 
 // filter_intra_mode_info()
-func (t *TileGroup) filterIntraModeInfo(p *Parser) {
+func (t *TileGroup) filterIntraModeInfo(p *parser.Parser) {
 	useFilterIntra := false
 	if p.sequenceHeader.EnableFilterIntra && t.YMode == DC_PRED && t.PaletteSizeY == 0 && Max(t.Block_Width[p.MiSize], t.Block_Height[p.MiSize]) <= 32 {
 		useFilterIntra = Bool(p.S())
@@ -3428,7 +3433,7 @@ func (t *TileGroup) filterIntraModeInfo(p *Parser) {
 }
 
 // palette_mode_info()
-func (t *TileGroup) paletteModeInfo(p *Parser) {
+func (t *TileGroup) paletteModeInfo(p *parser.Parser) {
 	// TODO: this is used for initilization of has_palette_y I think
 	//bSizeCtx := Mi_Width_Log2[p.MiSize] + Mi_Height_Log2[p.MiSize] - 2
 
@@ -3549,7 +3554,7 @@ func (t *TileGroup) paletteModeInfo(p *Parser) {
 }
 
 // get_palette_cache( plane )
-func (t *TileGroup) getPaletteCache(plane int, p *Parser) int {
+func (t *TileGroup) getPaletteCache(plane int, p *parser.Parser) int {
 	aboveN := 0
 
 	if Bool((p.MiRow * MI_SIZE) % 64) {
@@ -3599,7 +3604,7 @@ func (t *TileGroup) getPaletteCache(plane int, p *Parser) int {
 }
 
 // intra_angle_info_uv()
-func (t *TileGroup) intraAngleInfoUv(p *Parser) {
+func (t *TileGroup) intraAngleInfoUv(p *parser.Parser) {
 	t.AngleDeltaUV = 0
 	if p.MiSize >= BLOCK_8X8 {
 		if t.isDirectionalMode(t.UVMode) {
@@ -3610,7 +3615,7 @@ func (t *TileGroup) intraAngleInfoUv(p *Parser) {
 }
 
 // assign_mv( isCompound )
-func (t *TileGroup) assignMv(isCompound int, p *Parser) {
+func (t *TileGroup) assignMv(isCompound int, p *parser.Parser) {
 	for i := 0; i < 1+isCompound; i++ {
 		var compMode int
 		if Bool(t.useIntrabc) {
@@ -3668,7 +3673,7 @@ func (t *TileGroup) assignMv(isCompound int, p *Parser) {
 }
 
 // read_mv( ref )
-func (t *TileGroup) readMv(ref int, p *Parser) {
+func (t *TileGroup) readMv(ref int, p *parser.Parser) {
 	var diffMv []int
 	diffMv[0] = 0
 	diffMv[1] = 0
@@ -3694,7 +3699,7 @@ func (t *TileGroup) readMv(ref int, p *Parser) {
 }
 
 // read_mv_component( comp )
-func (t *TileGroup) readMvComponent(comp int, p *Parser) int {
+func (t *TileGroup) readMvComponent(comp int, p *parser.Parser) int {
 	mvSign := p.S()
 	mvClass := p.S()
 
@@ -3781,7 +3786,7 @@ func (t *TileGroup) getMode(refList int) int {
 }
 
 // read_cfl_alphas()
-func (t *TileGroup) readCflAlphas(p *Parser) {
+func (t *TileGroup) readCflAlphas(p *parser.Parser) {
 	cflAlphaSigns := p.S()
 	signU := (cflAlphaSigns + 1) / 3
 	signV := (cflAlphaSigns + 1) % 3
@@ -3809,7 +3814,7 @@ func (t *TileGroup) readCflAlphas(p *Parser) {
 }
 
 // intra_angle_info_y()
-func (t *TileGroup) intraAngleInfoY(p *Parser) {
+func (t *TileGroup) intraAngleInfoY(p *parser.Parser) {
 	t.AngleDeltaY = 0
 
 	if p.MiSize >= BLOCK_8X8 {
@@ -3828,7 +3833,7 @@ func (t *TileGroup) isDirectionalMode(mode int) bool {
 
 // 7.10.2. Find MV stack process
 // find_mv_stack( isCompound )
-func (t *TileGroup) findMvStack(isCompound int, p *Parser) {
+func (t *TileGroup) findMvStack(isCompound int, p *parser.Parser) {
 	// 1.
 	t.NumMvFound = 0
 
@@ -3850,7 +3855,7 @@ func (t *TileGroup) findMvStack(isCompound int, p *Parser) {
 	t.scanRowProcess(-1, isCompound, p)
 }
 
-func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, p *Parser) {
+func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, p *parser.Parser) {
 	bw4 := p.Num4x4BlocksWide[p.MiSize]
 	end4 := Min(Min(bw4, p.MiCols-p.MiCol), 16)
 	deltaCol := 0
@@ -3885,7 +3890,7 @@ func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, p *Parser) {
 }
 
 // 7.10.2.7. Add reference motion vector process
-func (t *TileGroup) addRefMvCandidate(mvRow int, mvCol int, isCompound int, weight int, p *Parser) {
+func (t *TileGroup) addRefMvCandidate(mvRow int, mvCol int, isCompound int, weight int, p *parser.Parser) {
 	if t.IsInters[mvRow][mvCol] == 0 {
 		return
 	}
@@ -3906,7 +3911,7 @@ func (t *TileGroup) addRefMvCandidate(mvRow int, mvCol int, isCompound int, weig
 }
 
 // 7.10.2.8. Search stack process
-func (t *TileGroup) searchStackProcess(mvRow int, mvCol int, candList int, weight int, p *Parser) {
+func (t *TileGroup) searchStackProcess(mvRow int, mvCol int, candList int, weight int, p *parser.Parser) {
 	candMode := t.YModes[mvRow][mvCol]
 	candSize := p.MiSizes[mvRow][mvCol]
 	large := Min(t.Block_Width[candSize], t.Block_Height[candSize]) >= 8
@@ -3940,11 +3945,11 @@ func (t *TileGroup) searchStackProcess(mvRow int, mvCol int, candList int, weigh
 }
 
 // 7.10.2.9. Compound search stack process
-func (t *TileGroup) compoundSearchStackProcess(mvRow int, mvCol int, weight int, p *Parser) {
+func (t *TileGroup) compoundSearchStackProcess(mvRow int, mvCol int, weight int, p *parser.Parser) {
 }
 
 // 7.10.2.1 Setup global MV process
-func (t *TileGroup) setupGlobalMvProcess(refList int, p *Parser) []int {
+func (t *TileGroup) setupGlobalMvProcess(refList int, p *parser.Parser) []int {
 	ref := p.RefFrame[refList]
 
 	var typ int
@@ -3985,7 +3990,7 @@ func (t *TileGroup) setupGlobalMvProcess(refList int, p *Parser) []int {
 }
 
 // 7.10.2.10. Lower precision process
-func (t *TileGroup) lowerPrecisionProcess(candMv []int, p *Parser) []int {
+func (t *TileGroup) lowerPrecisionProcess(candMv []int, p *parser.Parser) []int {
 	if p.uncompressedHeader.AllowHighPrecisionMv {
 		return candMv
 	}
@@ -4016,7 +4021,7 @@ func (t *TileGroup) lowerPrecisionProcess(candMv []int, p *Parser) []int {
 }
 
 // read_delta_lf()
-func (t *TileGroup) readDeltaLf(p *Parser) {
+func (t *TileGroup) readDeltaLf(p *parser.Parser) {
 	var sbSize int
 	if p.sequenceHeader.Use128x128SuperBlock {
 		sbSize = BLOCK_128X128
@@ -4069,7 +4074,7 @@ func (t *TileGroup) readDeltaLf(p *Parser) {
 }
 
 // read_delta_qindex()
-func (t *TileGroup) readDeltaQIndex(p *Parser) {
+func (t *TileGroup) readDeltaQIndex(p *parser.Parser) {
 	var sbSize int
 	if p.sequenceHeader.Use128x128SuperBlock {
 		sbSize = BLOCK_128X128
@@ -4106,7 +4111,7 @@ func (t *TileGroup) readDeltaQIndex(p *Parser) {
 }
 
 // read_cdef()
-func (t *TileGroup) readCdef(p *Parser) {
+func (t *TileGroup) readCdef(p *parser.Parser) {
 	if Bool(t.Skip) || p.uncompressedHeader.CodedLossless || !p.sequenceHeader.EnableCdef || p.uncompressedHeader.AllowIntraBc {
 		return
 	}
@@ -4131,7 +4136,7 @@ func (t *TileGroup) readCdef(p *Parser) {
 }
 
 // read_skip()
-func (t *TileGroup) readSkip(p *Parser) {
+func (t *TileGroup) readSkip(p *parser.Parser) {
 	if (p.uncompressedHeader.SegIdPreSkip == 1) && t.segFeatureActive(SEG_LVL_SKIP, p) {
 		t.Skip = 1
 	} else {
@@ -4140,17 +4145,17 @@ func (t *TileGroup) readSkip(p *Parser) {
 }
 
 // seg_feature_active( feature )
-func (t *TileGroup) segFeatureActive(feature int, p *Parser) bool {
+func (t *TileGroup) segFeatureActive(feature int, p *parser.Parser) bool {
 	return t.segFeatureActiveIdx(t.SegmentId, feature, p)
 }
 
 // seg_feature_active_idx( idx, feature )
-func (t *TileGroup) segFeatureActiveIdx(idx int, feature int, p *Parser) bool {
+func (t *TileGroup) segFeatureActiveIdx(idx int, feature int, p *parser.Parser) bool {
 	return (p.uncompressedHeader.SegmentationEnabled == 1) && (p.FeatureEnabled[idx][feature] == 1)
 }
 
 // intra_segment_id()
-func (t *TileGroup) intraSegmentId(p *Parser) {
+func (t *TileGroup) intraSegmentId(p *parser.Parser) {
 	if p.uncompressedHeader.SegmentationEnabled == 1 {
 		t.readSegmentId(p)
 	} else {
@@ -4161,7 +4166,7 @@ func (t *TileGroup) intraSegmentId(p *Parser) {
 }
 
 // read_segment_id()
-func (t *TileGroup) readSegmentId(p *Parser) {
+func (t *TileGroup) readSegmentId(p *parser.Parser) {
 	var prevU int
 	var prevL int
 	var prevUL int
@@ -4209,7 +4214,7 @@ func (t *TileGroup) readSegmentId(p *Parser) {
 }
 
 // clear_block_decoded_flags( r, c, sbSize4 )
-func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int, p *Parser) {
+func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int, p *parser.Parser) {
 	for plane := 0; plane < p.sequenceHeader.ColorConfig.NumPlanes; plane++ {
 		subX := 0
 		subY := 0
@@ -4244,7 +4249,7 @@ func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int, p *Parser)
 }
 
 // read_lr( r, c, bSize )
-func (t *TileGroup) readLr(r int, c int, bSize int, p *Parser) {
+func (t *TileGroup) readLr(r int, c int, bSize int, p *parser.Parser) {
 	if p.uncompressedHeader.AllowIntraBc {
 		return
 	}
@@ -4294,7 +4299,7 @@ func (t *TileGroup) readLr(r int, c int, bSize int, p *Parser) {
 }
 
 // read_lr_unit(plane, unitRow, unitCol)
-func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, p *Parser) {
+func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, p *parser.Parser) {
 	var restorationType int
 	if p.FrameRestorationType[plane] == RESTORE_WIENER {
 		useWiener := p.S()
@@ -4347,7 +4352,7 @@ func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, p *Parser) {
 			} else {
 				v = 0
 				if i == 1 {
-					v = Clip3(min, max, (1<<SGRPROJ_BITS)-t.RefSgrXqd[plane][0])
+					v = util.Clip3(min, max, (1<<SGRPROJ_BITS)-t.RefSgrXqd[plane][0])
 				}
 			}
 
@@ -4358,22 +4363,22 @@ func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, p *Parser) {
 
 }
 
-func (t *TileGroup) decodeSignedSubexpWithRefBool(low int, high int, k int, r int, p *Parser) int {
+func (t *TileGroup) decodeSignedSubexpWithRefBool(low int, high int, k int, r int, p *parser.Parser) int {
 	x := t.decodeUnsignedSubexpWithRefBool(high-low, k, r-low, p)
 	return x + low
 
 }
 
-func (t *TileGroup) decodeUnsignedSubexpWithRefBool(mx int, k int, r int, p *Parser) int {
+func (t *TileGroup) decodeUnsignedSubexpWithRefBool(mx int, k int, r int, p *parser.Parser) int {
 	v := t.decodeSubexpBool(mx, k, p)
 	if (r << 1) <= mx {
-		return InverseRecenter(r, v)
+		return util.InverseRecenter(r, v)
 	} else {
-		return mx - 1 - InverseRecenter(mx-1-r, v)
+		return mx - 1 - util.InverseRecenter(mx-1-r, v)
 	}
 }
 
-func (t *TileGroup) decodeSubexpBool(numSyms int, k int, p *Parser) int {
+func (t *TileGroup) decodeSubexpBool(numSyms int, k int, p *parser.Parser) int {
 	i := 0
 	mk := 0
 	for {
@@ -4401,5 +4406,5 @@ func (t *TileGroup) decodeSubexpBool(numSyms int, k int, p *Parser) int {
 }
 
 func countUnitsInFrame(unitSize int, frameSize int) int {
-	return Max((frameSize+(unitSize>>1))/unitSize, 1)
+	return util.Max((frameSize+(unitSize>>1))/unitSize, 1)
 }

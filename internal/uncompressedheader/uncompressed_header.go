@@ -1,4 +1,4 @@
-package main
+package uncompressedheader
 
 const NUM_REF_FRAMES = 8
 const REFS_PER_FRAME = 7
@@ -1004,7 +1004,7 @@ func (p *Parser) LoadGrainParams(idx int) {
 }
 
 // choose_operating_point()
-func (p *Parser) chooseOperatingPoint() int {
+func (p *Parser) ChooseOperatingPoint() int {
 	// TODO: implement properly
 	return 0
 }

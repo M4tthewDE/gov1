@@ -1,4 +1,4 @@
-package main
+package parser
 
 import (
 	"encoding/json"
@@ -21,29 +21,8 @@ type Obu struct {
 	Size int
 }
 
-// temporal_unit( sz )
-func (p *Parser) temporalUnit(sz int) {
-	for sz > 0 {
-		frameUnitSize := p.leb128()
-		sz -= p.leb128Bytes
-		p.frameUnit(frameUnitSize)
-		sz -= frameUnitSize
-	}
-}
-
-// frame_unit( sz )
-func (p *Parser) frameUnit(sz int) {
-	for sz > 0 {
-		obuLength := p.leb128()
-		sz -= p.leb128Bytes
-		p.ParseObu(obuLength)
-		sz -= obuLength
-
-	}
-}
-
 // open_bitstream_unit(sz)
-func (p *Parser) ParseObu(sz int) {
+func (p *Parser) parseObu(sz int) {
 	obu := Obu{}
 
 	p.header = NewHeader(p)

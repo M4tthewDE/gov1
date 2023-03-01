@@ -1,4 +1,4 @@
-package main
+package wedgemask
 
 const MASK_MASTER_SIZE = 64
 const WEDGE_TYPES = 16

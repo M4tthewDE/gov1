@@ -1,14 +1,15 @@
-package main
+package uncompressedheader
 
 import (
 	"testing"
 
+	"github.com/m4tthewde/gov1/internal/parser"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFrameReferenceModeTrue(t *testing.T) {
 	var data = []byte{0b10000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	u.FrameIsIntra = false
@@ -19,7 +20,7 @@ func TestFrameReferenceModeTrue(t *testing.T) {
 
 func TestFrameReferenceModeFalse(t *testing.T) {
 	var data = []byte{0b01111111}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 	u := UncompressedHeader{}
 	u.FrameIsIntra = false
 	u.frameReferenceMode(&p)
@@ -29,7 +30,7 @@ func TestFrameReferenceModeFalse(t *testing.T) {
 
 func TestReadTxModeCodedLosslessTrue(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	u.CodedLossless = true
@@ -40,7 +41,7 @@ func TestReadTxModeCodedLosslessTrue(t *testing.T) {
 
 func TestReadTxModeSelect(t *testing.T) {
 	var data = []byte{0b10000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	u.CodedLossless = false
@@ -51,7 +52,7 @@ func TestReadTxModeSelect(t *testing.T) {
 
 func TestReadTxModeLargest(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	u.CodedLossless = false
@@ -62,7 +63,7 @@ func TestReadTxModeLargest(t *testing.T) {
 
 func TestDeltaLfParamsNotPresent(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	u.DeltaQPresent = false
@@ -76,7 +77,7 @@ func TestDeltaLfParamsNotPresent(t *testing.T) {
 
 func TestDeltaLfParamsPresent(t *testing.T) {
 	var data = []byte{0b11010000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	u.DeltaQPresent = true
@@ -90,7 +91,7 @@ func TestDeltaLfParamsPresent(t *testing.T) {
 
 func TestDeltaQParamsNotPresent(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	u.BaseQIdx = 0
@@ -102,7 +103,7 @@ func TestDeltaQParamsNotPresent(t *testing.T) {
 
 func TestDeltaQParamsPresent(t *testing.T) {
 	var data = []byte{0b11100000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	u.BaseQIdx = 1
@@ -114,7 +115,7 @@ func TestDeltaQParamsPresent(t *testing.T) {
 
 func TestGetRelativeDistEnableOrderHintfalse(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 	u := UncompressedHeader{}
 
 	u.EnableOrderHint = false
@@ -126,7 +127,7 @@ func TestGetRelativeDistEnableOrderHintfalse(t *testing.T) {
 
 func TestGetRelativeDist(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 	u := UncompressedHeader{}
 
 	u.EnableOrderHint = true
@@ -139,7 +140,7 @@ func TestGetRelativeDist(t *testing.T) {
 
 func TestSuperResparamsSuperResDisabled(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 
@@ -152,7 +153,7 @@ func TestSuperResparamsSuperResDisabled(t *testing.T) {
 
 func TestSuperResparams(t *testing.T) {
 	var data = []byte{0b10000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	p.sequenceHeader.EnableSuperRes = true
@@ -166,7 +167,7 @@ func TestSuperResparams(t *testing.T) {
 
 func TestComputeImageSize(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := NewParser(data)
+	p := parser.NewParser(data)
 
 	u := UncompressedHeader{}
 	u.FrameWidth = 3

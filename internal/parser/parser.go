@@ -1,16 +1,17 @@
-package main
+package parser
 
-import "math"
+import (
+	"math"
+
+	"github.com/m4tthewde/gov1/internal"
+	"github.com/m4tthewde/gov1/internal/util"
+)
 
 type Parser struct {
 	data     []byte
 	position int
 
-	header             Header
-	sequenceHeader     SequenceHeader
-	uncompressedHeader UncompressedHeader
-
-	operatingPointIdc    int
+	OperatingPointIdc    int
 	seenFrameHeader      bool
 	leb128Bytes          int
 	renderWidth          int
@@ -41,7 +42,7 @@ type Parser struct {
 	Num4x4BlocksWide     []int
 	Num4x4BlocksHigh     []int
 	ReadDeltas           bool
-	Cdef                 Cdef
+	Cdef                 internal.Cdef
 	BlockDecoded         [][][]int
 	FrameRestorationType []int
 	LoopRestorationSize  []int
@@ -66,14 +67,14 @@ func NewParser(data []byte) Parser {
 	return Parser{
 		data:              data,
 		position:          0,
-		operatingPointIdc: 0,
+		OperatingPointIdc: 0,
 		seenFrameHeader:   false,
 		leb128Bytes:       0,
 	}
 }
 
 // f(n)
-func (p *Parser) f(n int) int {
+func (p *Parser) F(n int) int {
 	x := 0
 	for i := 0; i < n; i++ {
 		x = 2*x + p.readBit()
@@ -96,16 +97,37 @@ func (p *Parser) bitStream() {
 	}
 }
 
+// temporal_unit( sz )
+func (p *Parser) temporalUnit(sz int) {
+	for sz > 0 {
+		frameUnitSize := p.leb128()
+		sz -= p.leb128Bytes
+		p.frameUnit(frameUnitSize)
+		sz -= frameUnitSize
+	}
+}
+
+// frame_unit( sz )
+func (p *Parser) frameUnit(sz int) {
+	for sz > 0 {
+		obuLength := p.leb128()
+		sz -= p.leb128Bytes
+		p.parseObu(obuLength)
+		sz -= obuLength
+
+	}
+}
+
 func (p *Parser) moreDataInBistream() bool {
 	return p.position/8 != len(p.data)
 }
 
 // uvlc()
-func (p *Parser) uvlc() int {
+func (p *Parser) Uvlc() int {
 	leadingZeros := 0
 
 	for {
-		done := p.f(1) != 0
+		done := p.F(1) != 0
 		if done {
 			break
 		}
@@ -116,14 +138,14 @@ func (p *Parser) uvlc() int {
 		return (1 << 32) - 1
 	}
 
-	return p.f(leadingZeros) + (1 << leadingZeros) - 1
+	return p.F(leadingZeros) + (1 << leadingZeros) - 1
 }
 
 // leb128()
 func (p *Parser) leb128() int {
 	value := 0
 	for i := 0; i < 8; i++ {
-		leb128_byte := p.f(8)
+		leb128_byte := p.F(8)
 
 		value |= int((leb128_byte & 127) << (i * 7))
 		p.leb128Bytes += 1
@@ -139,12 +161,12 @@ func (p *Parser) leb128() int {
 // trailing_bits( nbBits )
 func (p *Parser) trailingBits(nbBits int) {
 	// trailingOneBit
-	p.f(1)
+	p.F(1)
 	nbBits--
 
 	for nbBits > 0 {
 		//trailingZeroBit
-		p.f(1)
+		p.F(1)
 		nbBits--
 	}
 }
@@ -152,13 +174,13 @@ func (p *Parser) trailingBits(nbBits int) {
 // byte_alignment()
 func (p *Parser) byteAlignment() {
 	for p.position&7 != 0 {
-		p.f(1)
+		p.F(1)
 	}
 }
 
 // su()
 func (p *Parser) su(n int) int {
-	value := p.f(n)
+	value := p.F(n)
 	signMask := 1 << (n - 1)
 
 	if (value & signMask) != 0 {
@@ -170,13 +192,13 @@ func (p *Parser) su(n int) int {
 
 // ns( n )
 func (p *Parser) ns(n int) int {
-	w := FloorLog2(n) + 1
+	w := util.FloorLog2(n) + 1
 	m := (1 << w) - n
-	v := p.f(w - 1)
+	v := p.F(w - 1)
 	if v < m {
 		return v
 	}
-	extraBit := p.f(1)
+	extraBit := p.F(1)
 	return (v << 1) - m + extraBit
 }
 
@@ -184,7 +206,7 @@ func (p *Parser) ns(n int) int {
 func (p *Parser) le(n int) int {
 	t := 0
 	for i := 0; i < n; i++ {
-		byte := p.f(8)
+		byte := p.F(8)
 		t += (byte << (i * 8))
 	}
 	return t
@@ -219,7 +241,7 @@ func (p *Parser) L(a int) int {
 
 // NS( n )
 func (p *Parser) NS(n int) int {
-	w := FloorLog2(n) + 1
+	w := util.FloorLog2(n) + 1
 	m := (1 << w) - n
 	v := p.L(w - 1)
 	if v < m {
@@ -231,4 +253,10 @@ func (p *Parser) NS(n int) int {
 
 func (p *Parser) isInside(candidateR int, candidateC int) bool {
 	return candidateC >= p.MiColStart && candidateC < p.MiColEnd && candidateR >= p.MiRowStart && candidateR < p.MiRowEnd
+}
+
+// choose_operating_point()
+func (p *Parser) ChooseOperatingPoint() int {
+	// TODO: implement properly
+	return 0
 }

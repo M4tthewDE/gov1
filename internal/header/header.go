@@ -1,4 +1,6 @@
-package main
+package header
+
+import "github.com/m4tthewde/gov1/internal/parser"
 
 type Header struct {
 	ForbiddenBit    bool
@@ -16,12 +18,12 @@ type ExtensionHeader struct {
 }
 
 // obu_header()
-func NewHeader(p *Parser) Header {
-	forbiddenBit := p.f(1) != 0
-	obuType := p.f(4)
-	extensionFlag := p.f(1) != 0
-	hasSizeField := p.f(1) != 0
-	reservedBit := p.f(1) != 0
+func NewHeader(p *parser.Parser) Header {
+	forbiddenBit := p.F(1) != 0
+	obuType := p.F(4)
+	extensionFlag := p.F(1) != 0
+	hasSizeField := p.F(1) != 0
+	reservedBit := p.F(1) != 0
 
 	if extensionFlag {
 		extensionHeader := NewExtensionHeader(p)
@@ -45,10 +47,10 @@ func NewHeader(p *Parser) Header {
 }
 
 // obu_extension(header)
-func NewExtensionHeader(p *Parser) ExtensionHeader {
+func NewExtensionHeader(p *parser.Parser) ExtensionHeader {
 	return ExtensionHeader{
-		TemporalID:    p.f(3),
-		SpatialID:     p.f(2),
-		Reserved3Bits: p.f(3),
+		TemporalID:    p.F(3),
+		SpatialID:     p.F(2),
+		Reserved3Bits: p.F(3),
 	}
 }

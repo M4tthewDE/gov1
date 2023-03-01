@@ -1,4 +1,4 @@
-package main
+package tileinfo
 
 const MAX_TILE_WIDTH = 4096
 const MAX_TILE_AREA = 4096 * 2304
