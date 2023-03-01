@@ -62,14 +62,16 @@ func NewObu(sz int, b *bitstream.BitStream, state State) {
 
 	switch state.header.Type {
 	case OBU_SEQUENCE_HEADER:
-		state.sequenceHeader = sequenceheader.NewSequenceHeader()
+		sequenceheader, result := sequenceheader.NewSequenceHeader(b)
+		state.sequenceHeader = sequenceheader
+		state.operatingPointIdc = result.OperatingPointIdc
 
 		x, _ := json.MarshalIndent(state.sequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))
 	case OBU_TEMPORAL_DELIMITER:
 		state.seenFrameHeader = false
 	case OBU_FRAME:
-		newFrame(obu.Size)
+		newFrame(obu.Size, b)
 	case OBU_METADATA:
 
 	default:
