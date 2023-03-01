@@ -1,6 +1,8 @@
 package header
 
-import "github.com/m4tthewde/gov1/internal/parser"
+import (
+	"github.com/m4tthewde/gov1/internal/bitstream"
+)
 
 type Header struct {
 	ForbiddenBit    bool
@@ -18,15 +20,15 @@ type ExtensionHeader struct {
 }
 
 // obu_header()
-func NewHeader(p *parser.Parser) Header {
-	forbiddenBit := p.F(1) != 0
-	obuType := p.F(4)
-	extensionFlag := p.F(1) != 0
-	hasSizeField := p.F(1) != 0
-	reservedBit := p.F(1) != 0
+func NewHeader(b *bitstream.BitStream) Header {
+	forbiddenBit := b.F(1) != 0
+	obuType := b.F(4)
+	extensionFlag := b.F(1) != 0
+	hasSizeField := b.F(1) != 0
+	reservedBit := b.F(1) != 0
 
 	if extensionFlag {
-		extensionHeader := NewExtensionHeader(p)
+		extensionHeader := NewExtensionHeader(b)
 		return Header{
 			ForbiddenBit:    forbiddenBit,
 			Type:            obuType,
@@ -47,10 +49,10 @@ func NewHeader(p *parser.Parser) Header {
 }
 
 // obu_extension(header)
-func NewExtensionHeader(p *parser.Parser) ExtensionHeader {
+func NewExtensionHeader(b *bitstream.BitStream) ExtensionHeader {
 	return ExtensionHeader{
-		TemporalID:    p.F(3),
-		SpatialID:     p.F(2),
-		Reserved3Bits: p.F(3),
+		TemporalID:    b.F(3),
+		SpatialID:     b.F(2),
+		Reserved3Bits: b.F(3),
 	}
 }
