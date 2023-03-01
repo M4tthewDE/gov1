@@ -87,6 +87,8 @@ func (p *Parser) ParseObu(sz int) {
 		p.seenFrameHeader = false
 	case OBU_FRAME:
 		p.ParseFrame(obu.Size)
+	case OBU_METADATA:
+
 	default:
 		fmt.Printf("not implemented type %d\n", p.header.Type)
 		panic("")

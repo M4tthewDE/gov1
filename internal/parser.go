@@ -59,6 +59,7 @@ type Parser struct {
 	PrevGmParams         [][]int
 	PrevSegmentIds       [][]int
 	CurrFrame            [][][]int
+	SymbolMaxBits        int
 }
 
 func NewParser(data []byte) Parser {

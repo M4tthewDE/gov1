@@ -819,7 +819,20 @@ func (t *TileGroup) build(p *Parser, sz int) {
 		p.MiColEnd = p.MiColStarts[tileCol+1]
 		p.CurrentQIndex = p.uncompressedHeader.BaseQIdx
 		p.initSymbol(tileSize)
+		t.decodeTile(p)
+	}
+}
 
+// 8.2.4 Exit process for symbol decoder
+func (t *TileGroup) exitSymbol(p *Parser) {
+	if p.SymbolMaxBits < -14 {
+		panic("Violating bitstream conformance!")
+	}
+
+	p.position += Max(0, p.SymbolMaxBits)
+
+	if !p.uncompressedHeader.DisableFrameEndUpdateCdf && p.TileNum == p.uncompressedHeader.TileInfo.ContextUpdateTileId {
+		// TODO: whatever is supposed to happen ehre
 	}
 }
 
