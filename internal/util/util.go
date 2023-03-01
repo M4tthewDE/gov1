@@ -5,28 +5,6 @@ import (
 	"sort"
 )
 
-func SliceAssign[T any](s []T, i int, v T) []T {
-	for i >= len(s) {
-		s = append(s, make([]T, 1)...)
-	}
-
-	s[i] = v
-	return s
-}
-
-func SliceAssignNested[T any](s [][]T, i int, j int, v T) [][]T {
-	for i >= len(s) {
-		s = append(s, make([]T, 1))
-	}
-
-	for j >= len(s[i]) {
-		s[i] = append(s[i], make([]T, 1)...)
-	}
-
-	s[i][j] = v
-	return s
-}
-
 func Equals[T comparable](a []T, b []T) bool {
 	if len(a) != len(b) {
 		return false
@@ -48,7 +26,7 @@ func Sort(arr []int, i1 int, i2 int) []int {
 }
 
 // tile_log2( blkSize, target )
-func tileLog2(blkSize int, target int) int {
+func TileLog2(blkSize int, target int) int {
 	k := 0
 	for (blkSize << k) < target {
 		k++
@@ -142,8 +120,8 @@ func Clip3(x int, y int, z int) int {
 	return z
 }
 
-func Clip1(x int, p *Parser) int {
-	return Clip3(0, int(math.Pow(2, float64(p.sequenceHeader.ColorConfig.BitDepth)-1)), 2)
+func Clip1(x int, bitDepth int) int {
+	return Clip3(0, int(math.Pow(2, float64(bitDepth)-1)), 2)
 }
 
 func NegDeinterleave(diff int, ref int, max int) int {

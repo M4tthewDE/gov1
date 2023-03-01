@@ -9,7 +9,7 @@ import (
 type BitStream struct {
 	data        []byte
 	position    int
-	leb128Bytes int
+	Leb128Bytes int
 }
 
 func NewBitStream(data []byte) BitStream {
@@ -59,13 +59,13 @@ func (b *BitStream) Uvlc() int {
 }
 
 // leb128()
-func (b *BitStream) leb128() int {
+func (b *BitStream) Leb128() int {
 	value := 0
 	for i := 0; i < 8; i++ {
 		leb128_byte := b.F(8)
 
 		value |= int((leb128_byte & 127) << (i * 7))
-		b.leb128Bytes += 1
+		b.Leb128Bytes += 1
 		if (leb128_byte & 0x80) == 0 {
 			break
 		}
@@ -108,7 +108,7 @@ func (b *BitStream) su(n int) int {
 }
 
 // ns( n )
-func (b *BitStream) ns(n int) int {
+func (b *BitStream) Ns(n int) int {
 	w := util.FloorLog2(n) + 1
 	m := (1 << w) - n
 	v := b.F(w - 1)

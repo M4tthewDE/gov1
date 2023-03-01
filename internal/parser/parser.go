@@ -1,59 +1,10 @@
 package parser
 
-import (
-	"github.com/m4tthewde/gov1/internal"
-)
+import "github.com/m4tthewde/gov1/internal/bitstream"
 
 type Parser struct {
-	OperatingPointIdc    int
-	seenFrameHeader      bool
-	renderWidth          int
-	renderHeight         int
-	upscaledWidth        int
-	upscaledHeight       int
-	TileNum              int
-	MiCols               int
-	MiRows               int
-	MiColStarts          []int
-	MiRowStarts          []int
-	MiCol                int
-	MiRow                int
-	MiSize               int
-	MiSizes              [][]int
-	MiRowStart           int
-	MiColStart           int
-	MiRowEnd             int
-	MiColEnd             int
-	TileColsLog2         int
-	TileRowsLog2         int
-	TileCols             int
-	TileRows             int
-	TileSizeBytes        int
-	CurrentQIndex        int
-	DeltaLF              []int
-	RefLrWiener          [][][]int
-	Num4x4BlocksWide     []int
-	Num4x4BlocksHigh     []int
-	ReadDeltas           bool
-	Cdef                 internal.Cdef
-	BlockDecoded         [][][]int
-	FrameRestorationType []int
-	LoopRestorationSize  []int
-	AvailU               bool
-	AvailL               bool
-	AvailUChroma         bool
-	AvailLChroma         bool
-	FeatureEnabled       [][]int
-	FeatureData          [][]int
-	RefFrame             []int
-	RefFrames            [][][]int
-	RefFrameWidth        []int
-	RefFrameHeight       []int
-	GmType               []int
-	PrevGmParams         [][]int
-	PrevSegmentIds       [][]int
-	CurrFrame            [][][]int
-	SymbolMaxBits        int
+	state     State
+	bitStream bitstream.BitStream
 }
 
 func NewParser() Parser {
@@ -63,8 +14,8 @@ func NewParser() Parser {
 // temporal_unit( sz )
 func (p *Parser) temporalUnit(sz int) {
 	for sz > 0 {
-		frameUnitSize := p.leb128()
-		sz -= p.leb128Bytes
+		frameUnitSize := p.bitStream.Leb128()
+		sz -= p.bitStream.Leb128Bytes
 		p.frameUnit(frameUnitSize)
 		sz -= frameUnitSize
 	}
@@ -73,8 +24,8 @@ func (p *Parser) temporalUnit(sz int) {
 // frame_unit( sz )
 func (p *Parser) frameUnit(sz int) {
 	for sz > 0 {
-		obuLength := p.leb128()
-		sz -= p.leb128Bytes
+		obuLength := p.bitStream.Leb128()
+		sz -= p.bitStream.Leb128Bytes
 		p.parseObu(obuLength)
 		sz -= obuLength
 
@@ -97,7 +48,10 @@ func (p *Parser) clearLeftContext() {
 }
 
 func (p *Parser) isInside(candidateR int, candidateC int) bool {
-	return candidateC >= p.MiColStart && candidateC < p.MiColEnd && candidateR >= p.MiRowStart && candidateR < p.MiRowEnd
+	return candidateC >= p.state.MiColStart &&
+		candidateC < p.state.MiColEnd &&
+		candidateR >= p.state.MiRowStart &&
+		candidateR < p.state.MiRowEnd
 }
 
 // choose_operating_point()
