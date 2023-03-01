@@ -1,5 +1,10 @@
 package wedgemask
 
+import (
+	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/util"
+)
+
 const MASK_MASTER_SIZE = 64
 const WEDGE_TYPES = 16
 
@@ -68,7 +73,7 @@ var Wedge_Codebook = [][][]int{
 
 var WedgeMasks = [][][][][]int{}
 
-func (t *TileGroup) InitialiseWedgeMaskTable(p *Parser) {
+func InitialiseWedgeMaskTable(state State) {
 	w := MASK_MASTER_SIZE
 	h := MASK_MASTER_SIZE
 
@@ -76,9 +81,9 @@ func (t *TileGroup) InitialiseWedgeMaskTable(p *Parser) {
 	for j := 0; j < w; j++ {
 		shift := MASK_MASTER_SIZE / 4
 		for i := 0; i < h; i += 2 {
-			MasterMask[WEDGE_OBLIQUE63][i][j] = Wedge_Master_Oblique_Even[Clip3(0, MASK_MASTER_SIZE-1, j-shift)]
+			MasterMask[WEDGE_OBLIQUE63][i][j] = Wedge_Master_Oblique_Even[util.Clip3(0, MASK_MASTER_SIZE-1, j-shift)]
 			shift -= 1
-			MasterMask[WEDGE_OBLIQUE63][i+1][j] = Wedge_Master_Oblique_Odd[Clip3(0, MASK_MASTER_SIZE-1, j-shift)]
+			MasterMask[WEDGE_OBLIQUE63][i+1][j] = Wedge_Master_Oblique_Odd[util.Clip3(0, MASK_MASTER_SIZE-1, j-shift)]
 			MasterMask[WEDGE_VERTICAL][i][j] = Wedge_Master_Vertical[j]
 			MasterMask[WEDGE_VERTICAL][i+1][j] = Wedge_Master_Vertical[j]
 		}
@@ -94,15 +99,15 @@ func (t *TileGroup) InitialiseWedgeMaskTable(p *Parser) {
 		}
 	}
 
-	for bsize := BLOCK_8X8; bsize < BLOCK_SIZES; bsize++ {
+	for bsize := shared.BLOCK_8X8; bsize < shared.BLOCK_SIZES; bsize++ {
 		if Wedge_Bits[bsize] > 0 {
-			w := t.Block_Width[bsize]
-			h := t.Block_Height[bsize]
+			w := state.BlockWidth[bsize]
+			h := state.BlockHeight[bsize]
 
 			for wedge := 0; wedge < WEDGE_TYPES; wedge++ {
-				dir := t.getWedgeDirection(bsize, wedge, p)
-				xoff := MASK_MASTER_SIZE/2 - ((t.getWedgeXoff(bsize, wedge, p) * w) >> 3)
-				yoff := MASK_MASTER_SIZE/2 - ((t.getWedgeYoff(bsize, wedge, p) * h) >> 3)
+				dir := getWedgeDirection(bsize, wedge, state)
+				xoff := MASK_MASTER_SIZE/2 - ((getWedgeXoff(bsize, wedge, state) * w) >> 3)
+				yoff := MASK_MASTER_SIZE/2 - ((getWedgeYoff(bsize, wedge, state) * h) >> 3)
 				sum := 0
 				for i := 0; i < w; i++ {
 					sum += MasterMask[dir][yoff][xoff+i]
@@ -114,8 +119,8 @@ func (t *TileGroup) InitialiseWedgeMaskTable(p *Parser) {
 				flipSign := avg < 32
 				for i := 0; i < h; i++ {
 					for j := 0; j < w; j++ {
-						WedgeMasks[bsize][Int(flipSign)][wedge][i][j] = MasterMask[dir][yoff+i][xoff+j]
-						WedgeMasks[bsize][Int(!flipSign)][wedge][i][j] = 64 - MasterMask[dir][yoff+i][xoff+j]
+						WedgeMasks[bsize][util.Int(flipSign)][wedge][i][j] = MasterMask[dir][yoff+i][xoff+j]
+						WedgeMasks[bsize][util.Int(!flipSign)][wedge][i][j] = 64 - MasterMask[dir][yoff+i][xoff+j]
 					}
 				}
 			}
@@ -123,21 +128,21 @@ func (t *TileGroup) InitialiseWedgeMaskTable(p *Parser) {
 	}
 }
 
-func (t *TileGroup) getWedgeDirection(bsize int, index int, p *Parser) int {
-	return Wedge_Codebook[t.blockShape(bsize, p)][index][0]
+func getWedgeDirection(bsize int, index int, state State) int {
+	return Wedge_Codebook[blockShape(bsize, state)][index][0]
 }
 
-func (t *TileGroup) getWedgeXoff(bsize int, index int, p *Parser) int {
-	return Wedge_Codebook[t.blockShape(bsize, p)][index][1]
+func getWedgeXoff(bsize int, index int, state State) int {
+	return Wedge_Codebook[blockShape(bsize, state)][index][1]
 }
 
-func (t *TileGroup) getWedgeYoff(bsize int, index int, p *Parser) int {
-	return Wedge_Codebook[t.blockShape(bsize, p)][index][2]
+func getWedgeYoff(bsize int, index int, state State) int {
+	return Wedge_Codebook[blockShape(bsize, state)][index][2]
 }
 
-func (t *TileGroup) blockShape(bsize int, p *Parser) int {
-	w4 := p.Num4x4BlocksWide[bsize]
-	h4 := p.Num4x4BlocksHigh[bsize]
+func blockShape(bsize int, state State) int {
+	w4 := state.Num4x4BlocksWide[bsize]
+	h4 := state.Num4x4BlocksHigh[bsize]
 	if h4 > w4 {
 		return 0
 	} else if h4 < w4 {

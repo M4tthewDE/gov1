@@ -2,6 +2,7 @@ package sequenceheader
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/util"
 )
 
 const CP_UNSPECIFIED = 2
@@ -124,7 +125,7 @@ func NewSequenceHeader(b *bitstream.BitStream) (SequenceHeader, State) {
 				}
 			}
 
-			s.InitialDisplayDelayPresent = internal.Bool(b.F(1))
+			s.InitialDisplayDelayPresent = util.Bool(b.F(1))
 			s.OperatingPointsCountMinusOne = b.F(5)
 
 			for i := 0; i <= s.OperatingPointsCountMinusOne; i++ {
@@ -137,7 +138,7 @@ func NewSequenceHeader(b *bitstream.BitStream) (SequenceHeader, State) {
 					s.SeqTier[i] = 0
 				}
 				if s.DecoderModelInfoPresent {
-					s.DecoderModelPresentForThisOp[i] = internal.Bool(b.F(1))
+					s.DecoderModelPresentForThisOp[i] = util.Bool(b.F(1))
 
 					if s.DecoderModelPresentForThisOp[i] {
 						// TODO: what are we doing with this?
@@ -148,7 +149,7 @@ func NewSequenceHeader(b *bitstream.BitStream) (SequenceHeader, State) {
 				}
 
 				if s.InitialDisplayDelayPresent {
-					s.InitialDisplayDelayPresentForThisOp[i] = internal.Bool(b.F(1))
+					s.InitialDisplayDelayPresentForThisOp[i] = util.Bool(b.F(1))
 
 					if s.InitialDisplayDelayPresentForThisOp[i] {
 						s.InitialDisplayDelayMinusOne[i] = b.F(4)
