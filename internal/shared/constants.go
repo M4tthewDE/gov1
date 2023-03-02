@@ -24,3 +24,11 @@ const BLOCK_8X32 = 18
 const BLOCK_32X8 = 19
 const BLOCK_16X64 = 20
 const BLOCK_64X16 = 21
+
+const LAST_FRAME = 1
+const LAST2_FRAME = 2
+const LAST3_FRAME = 3
+const GOLDEN_FRAME = 4
+const BWDREF_FRAME = 5
+const ALTREF2_FRAME = 6
+const ALTREF_FRAME = 7

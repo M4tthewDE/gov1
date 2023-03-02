@@ -3,71 +3,71 @@ package uncompressedheader
 import (
 	"testing"
 
-	"github.com/m4tthewde/gov1/internal/parser"
+	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFrameReferenceModeTrue(t *testing.T) {
 	var data = []byte{0b10000000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
 	u.FrameIsIntra = false
-	u.frameReferenceMode(&p)
+	u.frameReferenceMode(&b)
 
 	assert.True(t, u.ReferenceSelect)
 }
 
 func TestFrameReferenceModeFalse(t *testing.T) {
 	var data = []byte{0b01111111}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 	u := UncompressedHeader{}
 	u.FrameIsIntra = false
-	u.frameReferenceMode(&p)
+	u.frameReferenceMode(&b)
 
 	assert.False(t, u.ReferenceSelect)
 }
 
 func TestReadTxModeCodedLosslessTrue(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
 	u.CodedLossless = true
-	u.readTxMode(&p)
+	u.readTxMode(&b)
 
 	assert.Equal(t, ONLY_4X4, u.TxMode)
 }
 
 func TestReadTxModeSelect(t *testing.T) {
 	var data = []byte{0b10000000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
 	u.CodedLossless = false
-	u.readTxMode(&p)
+	u.readTxMode(&b)
 
 	assert.Equal(t, TX_MODE_SELECT, u.TxMode)
 }
 
 func TestReadTxModeLargest(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
 	u.CodedLossless = false
-	u.readTxMode(&p)
+	u.readTxMode(&b)
 
 	assert.Equal(t, TX_MODE_LARGEST, u.TxMode)
 }
 
 func TestDeltaLfParamsNotPresent(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
 	u.DeltaQPresent = false
-	u.deltaLfParams(&p)
+	u.deltaLfParams(&b)
 
 	assert.False(t, u.DeltaLfPresent)
 	assert.Equal(t, 0, u.DeltaLfRes)
@@ -77,12 +77,12 @@ func TestDeltaLfParamsNotPresent(t *testing.T) {
 
 func TestDeltaLfParamsPresent(t *testing.T) {
 	var data = []byte{0b11010000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
 	u.DeltaQPresent = true
 	u.AllowIntraBc = false
-	u.deltaLfParams(&p)
+	u.deltaLfParams(&b)
 
 	assert.True(t, u.DeltaLfPresent)
 	assert.Equal(t, 2, u.DeltaLfRes)
@@ -91,11 +91,11 @@ func TestDeltaLfParamsPresent(t *testing.T) {
 
 func TestDeltaQParamsNotPresent(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
 	u.BaseQIdx = 0
-	u.deltaQParams(&p)
+	u.deltaQParams(&b)
 
 	assert.False(t, u.DeltaQPresent)
 	assert.Equal(t, 0, u.DeltaQRes)
@@ -103,48 +103,41 @@ func TestDeltaQParamsNotPresent(t *testing.T) {
 
 func TestDeltaQParamsPresent(t *testing.T) {
 	var data = []byte{0b11100000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
 	u.BaseQIdx = 1
-	u.deltaQParams(&p)
+	u.deltaQParams(&b)
 
 	assert.True(t, u.DeltaQPresent)
 	assert.Equal(t, 3, u.DeltaQRes)
 }
 
 func TestGetRelativeDistEnableOrderHintfalse(t *testing.T) {
-	var data = []byte{0b00000000}
-	p := parser.NewParser(data)
 	u := UncompressedHeader{}
-
 	u.EnableOrderHint = false
 
-	a := 0
-	b := 0
-	assert.Equal(t, 0, u.getRelativeDist(a, b, &p))
+	x := 0
+	y := 0
+	assert.Equal(t, 0, u.getRelativeDist(x, y))
 }
 
 func TestGetRelativeDist(t *testing.T) {
-	var data = []byte{0b00000000}
-	p := parser.NewParser(data)
 	u := UncompressedHeader{}
-
 	u.EnableOrderHint = true
-	p.sequenceHeader.OrderHintBits = 2
+	u.State.SequenceHeader.OrderHintBits = 2
 
-	a := 10
-	b := 5
-	assert.Equal(t, 1, u.getRelativeDist(a, b, &p))
+	x := 10
+	y := 5
+	assert.Equal(t, 1, u.getRelativeDist(x, y))
 }
 
 func TestSuperResparamsSuperResDisabled(t *testing.T) {
 	var data = []byte{0b00000000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
-
-	u.superResParams(&p)
+	u.superResParams(&b)
 
 	assert.False(t, u.UseSuperRes)
 	assert.Equal(t, 8, u.SuperResDenom)
@@ -153,12 +146,12 @@ func TestSuperResparamsSuperResDisabled(t *testing.T) {
 
 func TestSuperResparams(t *testing.T) {
 	var data = []byte{0b10000000}
-	p := parser.NewParser(data)
+	b := bitstream.NewBitStream(data)
 
 	u := UncompressedHeader{}
-	p.sequenceHeader.EnableSuperRes = true
+	u.State.SequenceHeader.EnableSuperRes = true
 
-	u.superResParams(&p)
+	u.superResParams(&b)
 
 	assert.True(t, u.UseSuperRes)
 	assert.Equal(t, 9, u.SuperResDenom)
@@ -166,14 +159,11 @@ func TestSuperResparams(t *testing.T) {
 }
 
 func TestComputeImageSize(t *testing.T) {
-	var data = []byte{0b00000000}
-	p := parser.NewParser(data)
-
 	u := UncompressedHeader{}
 	u.FrameWidth = 3
 	u.FrameHeight = 2
-	u.computeImageSize(&p)
+	u.computeImageSize()
 
-	assert.Equal(t, 2, p.MiCols)
-	assert.Equal(t, 2, p.MiRows)
+	assert.Equal(t, 2, u.State.MiCols)
+	assert.Equal(t, 2, u.State.MiRows)
 }

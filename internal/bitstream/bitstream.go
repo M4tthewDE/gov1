@@ -96,7 +96,7 @@ func (b *BitStream) ByteAlignment() {
 }
 
 // su()
-func (b *BitStream) su(n int) int {
+func (b *BitStream) Su(n int) int {
 	value := b.F(n)
 	signMask := 1 << (n - 1)
 
