@@ -7,6 +7,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/header"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 )
 
 type ObuType int
@@ -22,61 +23,66 @@ const OBU_TILE_LIST = 8
 const OBU_PADDING = 15
 
 type Obu struct {
-	Size int
+	State State
+	Size  int
+}
+
+func NewObu(sz int, state State, b *bitstream.BitStream) Obu {
+	obu := Obu{}
+	obu.State = state
+
+	return obu
 }
 
 // open_bitstream_unit(sz)
-func NewObu(sz int, b *bitstream.BitStream) (Obu, State) {
-	obu := Obu{}
-	state := State{}
+func (o *Obu) build(sz int, b *bitstream.BitStream) {
+	o.State.Header = header.NewHeader(b)
 
-	state.header = header.NewHeader(b)
-
-	if state.header.HasSizeField {
-		obu.Size = b.Leb128()
+	if o.State.Header.HasSizeField {
+		o.Size = b.Leb128()
 	} else {
 		extensionFlagInt := 0
-		if state.header.ExtensionFlag {
+		if o.State.Header.ExtensionFlag {
 			extensionFlagInt = 1
 		}
-		obu.Size = sz - 1 - extensionFlagInt
+		o.Size = sz - 1 - extensionFlagInt
 	}
 
 	startPosition := b.Position
 
-	if state.header.Type != OBU_SEQUENCE_HEADER &&
-		state.header.Type != OBU_TEMPORAL_DELIMITER &&
-		state.operatingPointIdc != 0 &&
-		state.header.ExtensionFlag {
-		inTemporalLayer := ((state.operatingPointIdc >> state.header.ExtensionHeader.TemporalID) & 1) != 0
-		inSpatialLayer := ((state.operatingPointIdc >> (state.header.ExtensionHeader.SpatialID + 8)) & 1) != 0
+	if o.State.Header.Type != OBU_SEQUENCE_HEADER &&
+		o.State.Header.Type != OBU_TEMPORAL_DELIMITER &&
+		o.State.OperatingPointIdc != 0 &&
+		o.State.Header.ExtensionFlag {
+		inTemporalLayer := ((o.State.OperatingPointIdc >> o.State.Header.ExtensionHeader.TemporalID) & 1) != 0
+		inSpatialLayer := ((o.State.OperatingPointIdc >> (o.State.Header.ExtensionHeader.SpatialID + 8)) & 1) != 0
 
 		if !inTemporalLayer || !inSpatialLayer {
 			//drop_obu()
-			b.Position = b.Position + obu.Size*8
-			return obu, state
+			b.Position = b.Position + o.Size*8
+			return
 		}
 	}
 
-	x, _ := json.MarshalIndent(obu, "", "	")
+	x, _ := json.MarshalIndent(o, "", "	")
 	fmt.Printf("%s\n", string(x))
 
-	switch state.header.Type {
+	switch o.State.Header.Type {
 	case OBU_SEQUENCE_HEADER:
 		sequenceheader, result := sequenceheader.NewSequenceHeader(b)
-		state.sequenceHeader = sequenceheader
-		state.operatingPointIdc = result.OperatingPointIdc
+		o.State.SequenceHeader = sequenceheader
+		o.State.OperatingPointIdc = result.OperatingPointIdc
 
-		x, _ := json.MarshalIndent(state.sequenceHeader, "", "	")
+		x, _ := json.MarshalIndent(o.State.SequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))
 	case OBU_TEMPORAL_DELIMITER:
-		state.seenFrameHeader = false
+		o.State.SeenFrameHeader = false
 	case OBU_FRAME:
-		newFrame(obu.Size, b)
+		o.newFrame(o.Size, b)
 	case OBU_METADATA:
 
 	default:
-		fmt.Printf("not implemented type %d\n", state.header.Type)
+		fmt.Printf("not implemented type %d\n", o.State.Header.Type)
 		panic("")
 	}
 
@@ -86,24 +92,22 @@ func NewObu(sz int, b *bitstream.BitStream) (Obu, State) {
 	fmt.Printf("p.position: %d\n", b.Position)
 	fmt.Printf("startPosition: %d\n", startPosition)
 	fmt.Printf("payloadBits: %d\n", payloadBits)
-	fmt.Printf("obu.Size*8 - payloadBits: %d\n", obu.Size*8-payloadBits)
+	fmt.Printf("obu.Size*8 - payloadBits: %d\n", o.Size*8-payloadBits)
 	fmt.Println("----------------------------------------")
 
-	if obu.Size > 0 &&
-		state.header.Type != OBU_TILE_GROUP &&
-		state.header.Type != OBU_TILE_LIST &&
-		state.header.Type != OBU_FRAME {
-		b.TrailingBits(obu.Size*8 - payloadBits)
+	if o.Size > 0 &&
+		o.State.Header.Type != OBU_TILE_GROUP &&
+		o.State.Header.Type != OBU_TILE_LIST &&
+		o.State.Header.Type != OBU_FRAME {
+		b.TrailingBits(o.Size*8 - payloadBits)
 	}
-
-	return obu, state
 }
 
 // frame_obu( sz )
-func newFrame(sz int, b *bitstream.BitStream) {
+func (o *Obu) newFrame(sz int, b *bitstream.BitStream) {
 	startBitPos := b.Position
 
-	ParseFrameHeader()
+	o.ParseFrameHeader(b)
 	b.ByteAlignment()
 
 	endBitPos := b.Position
@@ -114,21 +118,24 @@ func newFrame(sz int, b *bitstream.BitStream) {
 }
 
 // frame_header_obu()
-func ParseFrameHeader() {
-	if p.seenFrameHeader {
-		p.FrameHeaderCopy()
+func (o *Obu) ParseFrameHeader(b *bitstream.BitStream) {
+	if o.State.SeenFrameHeader {
+		FrameHeaderCopy()
 	} else {
-		p.seenFrameHeader = true
-		uncompressedHeader := NewUncompressedHeader(p)
+		o.State.SeenFrameHeader = true
+
+		inputState := o.State.newUncompressedHeaderState()
+		uncompressedHeader := uncompressedheader.NewUncompressedHeader(b, inputState)
 
 		if uncompressedHeader.ShowExistingFrame {
-			p.DecodeFrameWrapup()
-			p.seenFrameHeader = false
+			uncompressedHeader.DecodeFrameWrapup()
+			o.State.SeenFrameHeader = false
 		} else {
-			p.TileNum = 0
-			p.seenFrameHeader = true
+			o.State.TileNum = 0
+			o.State.SeenFrameHeader = true
 		}
 
+		o.State.update(uncompressedHeader.State)
 	}
 }
 

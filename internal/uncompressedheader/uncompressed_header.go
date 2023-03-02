@@ -194,6 +194,8 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 			if u.State.SequenceHeader.FilmGrainParamsPresent {
 				u.loadGrainParams(frameToShowMapIdx)
 			}
+
+			return
 		}
 
 		frameType = b.F(2)
@@ -999,7 +1001,7 @@ func (u *UncompressedHeader) filmGrainParams() {
 }
 
 // decode_frame_wrapup()
-func (u *UncompressedHeader) decodeFrameWrapup() {
+func (u *UncompressedHeader) DecodeFrameWrapup() {
 	panic("not implemented")
 }
 
