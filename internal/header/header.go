@@ -4,6 +4,16 @@ import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 )
 
+const OBU_SEQUENCE_HEADER = 1
+const OBU_TEMPORAL_DELIMITER = 2
+const OBU_FRAME_HEADER = 3
+const OBU_TILE_GROUP = 4
+const OBU_METADATA = 5
+const OBU_FRAME = 6
+const OBU_REDUNDANT_FRAME_HEADER = 7
+const OBU_TILE_LIST = 8
+const OBU_PADDING = 15
+
 type Header struct {
 	ForbiddenBit    bool
 	Type            int

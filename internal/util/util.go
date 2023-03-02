@@ -3,6 +3,8 @@ package util
 import (
 	"math"
 	"sort"
+
+	"github.com/m4tthewde/gov1/internal/shared"
 )
 
 func Equals[T comparable](a []T, b []T) bool {
@@ -167,7 +169,12 @@ func Int(x bool) int {
 }
 
 func HasNewmv(mode int) bool {
-	return mode == NEWMV || mode == NEW_NEWMV || mode == NEAR_NEWMV || mode == NEW_NEARMV || mode == NEAREST_NEWMV || mode == NEW_NEARESTMV
+	return mode == shared.NEWMV ||
+		mode == shared.NEW_NEWMV ||
+		mode == shared.NEAR_NEWMV ||
+		mode == shared.NEW_NEARMV ||
+		mode == shared.NEAREST_NEWMV ||
+		mode == shared.NEW_NEARESTMV
 }
 
 func LsProduct(a int, b int) int {

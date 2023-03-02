@@ -12,16 +12,6 @@ import (
 
 type ObuType int
 
-const OBU_SEQUENCE_HEADER = 1
-const OBU_TEMPORAL_DELIMITER = 2
-const OBU_FRAME_HEADER = 3
-const OBU_TILE_GROUP = 4
-const OBU_METADATA = 5
-const OBU_FRAME = 6
-const OBU_REDUNDANT_FRAME_HEADER = 7
-const OBU_TILE_LIST = 8
-const OBU_PADDING = 15
-
 type Obu struct {
 	State State
 	Size  int
@@ -50,8 +40,8 @@ func (o *Obu) build(sz int, b *bitstream.BitStream) {
 
 	startPosition := b.Position
 
-	if o.State.Header.Type != OBU_SEQUENCE_HEADER &&
-		o.State.Header.Type != OBU_TEMPORAL_DELIMITER &&
+	if o.State.Header.Type != header.OBU_SEQUENCE_HEADER &&
+		o.State.Header.Type != header.OBU_TEMPORAL_DELIMITER &&
 		o.State.OperatingPointIdc != 0 &&
 		o.State.Header.ExtensionFlag {
 		inTemporalLayer := ((o.State.OperatingPointIdc >> o.State.Header.ExtensionHeader.TemporalID) & 1) != 0
@@ -68,18 +58,18 @@ func (o *Obu) build(sz int, b *bitstream.BitStream) {
 	fmt.Printf("%s\n", string(x))
 
 	switch o.State.Header.Type {
-	case OBU_SEQUENCE_HEADER:
+	case header.OBU_SEQUENCE_HEADER:
 		sequenceheader, result := sequenceheader.NewSequenceHeader(b)
 		o.State.SequenceHeader = sequenceheader
 		o.State.OperatingPointIdc = result.OperatingPointIdc
 
 		x, _ := json.MarshalIndent(o.State.SequenceHeader, "", "	")
 		fmt.Printf("%s\n", string(x))
-	case OBU_TEMPORAL_DELIMITER:
+	case header.OBU_TEMPORAL_DELIMITER:
 		o.State.SeenFrameHeader = false
-	case OBU_FRAME:
+	case header.OBU_FRAME:
 		o.newFrame(o.Size, b)
-	case OBU_METADATA:
+	case header.OBU_METADATA:
 
 	default:
 		fmt.Printf("not implemented type %d\n", o.State.Header.Type)
@@ -96,9 +86,9 @@ func (o *Obu) build(sz int, b *bitstream.BitStream) {
 	fmt.Println("----------------------------------------")
 
 	if o.Size > 0 &&
-		o.State.Header.Type != OBU_TILE_GROUP &&
-		o.State.Header.Type != OBU_TILE_LIST &&
-		o.State.Header.Type != OBU_FRAME {
+		o.State.Header.Type != header.OBU_TILE_GROUP &&
+		o.State.Header.Type != header.OBU_TILE_LIST &&
+		o.State.Header.Type != header.OBU_FRAME {
 		b.TrailingBits(o.Size*8 - payloadBits)
 	}
 }

@@ -61,6 +61,11 @@ type State struct {
 	SymbolMaxBits        int
 }
 
+func NewState() State {
+	// TODO: probably smart to set some sensible defaults here
+	return State{}
+}
+
 func (s *State) newUncompressedHeaderState() uncompressedheader.State {
 	return uncompressedheader.State{
 		Header:         s.Header,

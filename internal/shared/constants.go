@@ -32,3 +32,16 @@ const GOLDEN_FRAME = 4
 const BWDREF_FRAME = 5
 const ALTREF2_FRAME = 6
 const ALTREF_FRAME = 7
+
+const NEARESTMV = 14
+const NEARMV = 15
+const GLOBALMV = 16
+const NEWMV = 17
+const NEAREST_NEARESTMV = 18
+const NEAR_NEARMV = 19
+const NEAREST_NEWMV = 20
+const NEW_NEARESTMV = 21
+const NEAR_NEWMV = 22
+const NEW_NEARMV = 23
+const GLOBAL_GLOBALMV = 24
+const NEW_NEWMV = 25

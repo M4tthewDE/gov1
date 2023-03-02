@@ -35,7 +35,7 @@ func (b *BitStream) readBit() int {
 	return int((b.data[int(math.Floor(float64(b.Position)/8))] >> (8 - b.Position%8 - 1)) & 1)
 }
 
-func (b *BitStream) moreDataInBistream() bool {
+func (b *BitStream) MoreDataInBistream() bool {
 	return b.Position/8 != len(b.data)
 }
 

@@ -7,11 +7,13 @@ import (
 
 type Parser struct {
 	state     State
-	bitStream bitstream.BitStream
+	bitStream *bitstream.BitStream
 }
 
-func NewParser() Parser {
-	return Parser{}
+func NewParser(b *bitstream.BitStream) Parser {
+	return Parser{
+		bitStream: b,
+	}
 }
 
 // temporal_unit( sz )
@@ -30,9 +32,19 @@ func (p *Parser) frameUnit(sz int) {
 		obuLength := p.bitStream.Leb128()
 		sz -= p.bitStream.Leb128Bytes
 
-		_, _ = obu.NewObu(obuLength, &p.bitStream)
+		inputState := obu.NewState()
+		_ = obu.NewObu(obuLength, inputState, p.bitStream)
+		// TODO: update state for further obus
 		sz -= obuLength
 
+	}
+}
+
+// bitstream( )
+func (p *Parser) bitstream() {
+	for p.bitStream.MoreDataInBistream() {
+		temporalUnitSize := p.bitStream.Leb128()
+		p.temporalUnit(temporalUnitSize)
 	}
 }
 
@@ -52,10 +64,10 @@ func (p *Parser) clearLeftContext() {
 }
 
 func (p *Parser) isInside(candidateR int, candidateC int) bool {
-	return candidateC >= p.state.miColStart &&
-		candidateC < p.state.miColEnd &&
-		candidateR >= p.state.miRowStart &&
-		candidateR < p.state.miRowEnd
+	return candidateC >= p.state.MiColStart &&
+		candidateC < p.state.MiColEnd &&
+		candidateR >= p.state.MiRowStart &&
+		candidateR < p.state.MiRowEnd
 }
 
 // choose_operating_point()
