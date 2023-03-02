@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,7 +48,7 @@ func TestReadTxModeSelect(t *testing.T) {
 	u.CodedLossless = false
 	u.readTxMode(&b)
 
-	assert.Equal(t, TX_MODE_SELECT, u.TxMode)
+	assert.Equal(t, shared.TX_MODE_SELECT, u.TxMode)
 }
 
 func TestReadTxModeLargest(t *testing.T) {
@@ -58,7 +59,7 @@ func TestReadTxModeLargest(t *testing.T) {
 	u.CodedLossless = false
 	u.readTxMode(&b)
 
-	assert.Equal(t, TX_MODE_LARGEST, u.TxMode)
+	assert.Equal(t, shared.TX_MODE_LARGEST, u.TxMode)
 }
 
 func TestDeltaLfParamsNotPresent(t *testing.T) {

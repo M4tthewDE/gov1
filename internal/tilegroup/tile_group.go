@@ -2,7 +2,6 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/parser"
-	"github.com/m4tthewde/gov1/internal/util"
 )
 
 const FRAME_LF_COUNT = 4
@@ -120,8 +119,7 @@ var Sm_Weights_Tx_8x8 = []int{255, 197, 146, 105, 73, 50, 37, 32}
 var Sm_Weights_Tx_16x16 = []int{255, 225, 196, 170, 145, 123, 102, 84, 68, 54, 43, 33, 26, 20, 17, 16}
 var Sm_Weights_Tx_32x32 = []int{255, 240, 225, 210, 196, 182, 169, 157, 145, 133, 122, 111, 101, 92,
 	83, 74,
-	66, 59, 52, 45, 39, 34, 29, 25, 21, 17, 14, 12, 10, 9,
-	8, 8}
+	66, 59, 52, 45, 39, 34, 29, 25, 21, 17, 14, 12, 10, 9, 8, 8}
 var Sm_Weights_Tx_64x64 = []int{255, 248, 240, 233, 225, 218, 210, 203, 196, 189, 182, 176, 169, 163,
 	156,
 	150, 144, 138, 133, 127, 121, 116, 111, 106, 101, 96, 91, 86, 82, 77,
@@ -217,134 +215,6 @@ var Split_Tx_Size = []int{
 
 var Tx_Width = []int{4, 8, 16, 32, 64, 4, 8, 8, 16, 16, 32, 32, 64, 4, 16, 8, 32, 16, 64}
 var Tx_Height = []int{4, 8, 16, 32, 64, 8, 4, 16, 8, 32, 16, 64, 32, 16, 4, 32, 8, 64, 16}
-
-var Partition_Subsize = [][]int{
-	{
-		BLOCK_4X4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X128,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X128,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X128,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X128,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X4,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X8,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-	{
-		BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X16,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X32,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X64,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-		BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
-	},
-}
-
-var Subsampled_Size = [][][]int{
-	{{BLOCK_4X4, BLOCK_4X4}, {BLOCK_4X4, BLOCK_4X4}},
-	{{BLOCK_4X8, BLOCK_4X4}, {BLOCK_INVALID, BLOCK_4X4}},
-	{{BLOCK_8X4, BLOCK_INVALID}, {BLOCK_4X4, BLOCK_4X4}},
-	{{BLOCK_8X8, BLOCK_8X4}, {BLOCK_4X8, BLOCK_4X4}},
-	{{BLOCK_8X16, BLOCK_8X8}, {BLOCK_INVALID, BLOCK_4X8}},
-	{{BLOCK_16X8, BLOCK_INVALID}, {BLOCK_8X8, BLOCK_8X4}},
-	{{BLOCK_16X16, BLOCK_16X8}, {BLOCK_8X16, BLOCK_8X8}},
-	{{BLOCK_16X32, BLOCK_16X16}, {BLOCK_INVALID, BLOCK_8X16}},
-	{{BLOCK_32X16, BLOCK_INVALID}, {BLOCK_16X16, BLOCK_16X8}},
-	{{BLOCK_32X32, BLOCK_32X16}, {BLOCK_16X32, BLOCK_16X16}},
-	{{BLOCK_32X64, BLOCK_32X32}, {BLOCK_INVALID, BLOCK_16X32}},
-	{{BLOCK_64X32, BLOCK_INVALID}, {BLOCK_32X32, BLOCK_32X16}},
-	{{BLOCK_64X64, BLOCK_64X32}, {BLOCK_32X64, BLOCK_32X32}},
-	{{BLOCK_64X128, BLOCK_64X64}, {BLOCK_INVALID, BLOCK_32X64}},
-	{{BLOCK_128X64, BLOCK_INVALID}, {BLOCK_64X64, BLOCK_64X32}},
-	{{BLOCK_128X128, BLOCK_128X64}, {BLOCK_64X128, BLOCK_64X64}},
-	{{BLOCK_4X16, BLOCK_4X8}, {BLOCK_INVALID, BLOCK_4X8}},
-	{{BLOCK_16X4, BLOCK_INVALID}, {BLOCK_8X4, BLOCK_8X4}},
-	{{BLOCK_8X32, BLOCK_8X16}, {BLOCK_INVALID, BLOCK_4X16}},
-	{{BLOCK_32X8, BLOCK_INVALID}, {BLOCK_16X8, BLOCK_16X4}},
-	{{BLOCK_16X64, BLOCK_16X32}, {BLOCK_INVALID, BLOCK_8X32}},
-	{{BLOCK_64X16, BLOCK_INVALID}, {BLOCK_32X16, BLOCK_32X8}},
-}
 
 var Sgrproj_Xqd_Mid = []int{-32, 31}
 var Sgrproj_Xqd_Min = []int{-96, -32}
@@ -617,6 +487,8 @@ const DIV_LUT_PREC_BITS = 13
 const DIV_LUT_BITS = 8
 
 type TileGroup struct {
+	State State
+
 	LrType              [][][]int
 	RefLrWiener         [][][]int
 	LrWiener            [][][][][]int
@@ -4201,172 +4073,4 @@ func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int, p *parser.
 		p.BlockDecoded[plane][sbSize4>>subY][lastElement] = 0
 	}
 
-}
-
-// read_lr( r, c, bSize )
-func (t *TileGroup) readLr(r int, c int, bSize int, p *parser.Parser) {
-	if p.uncompressedHeader.AllowIntraBc {
-		return
-	}
-
-	w := p.Num4x4BlocksWide[bSize]
-	h := p.Num4x4BlocksHigh[bSize]
-
-	for plane := 0; plane < p.sequenceHeader.ColorConfig.NumPlanes; plane++ {
-		if p.FrameRestorationType[plane] != RESTORE_NONE {
-			// FIXME: lots of creative freedom here, dangerous!
-			subX := 0
-			subY := 0
-
-			if p.sequenceHeader.ColorConfig.SubsamplingX {
-				subX = 1
-			}
-
-			if p.sequenceHeader.ColorConfig.SubsamplingY {
-				subY = 1
-			}
-
-			unitSize := p.LoopRestorationSize[plane]
-			unitRows := countUnitsInFrame(unitSize, Round2(p.uncompressedHeader.FrameHeight, subY))
-			unitCols := countUnitsInFrame(unitSize, Round2(p.upscaledWidth, subX))
-			unitRowStart := (r*(MI_SIZE>>subY) + unitSize - 1) / unitSize
-			unitRowEnd := Min(unitRows, ((r+h)*(MI_SIZE>>subY)+unitSize-1)/unitSize)
-
-			var numerator int
-			var denominator int
-			if p.uncompressedHeader.UseSuperRes {
-				numerator = (MI_SIZE >> subX) * p.uncompressedHeader.SuperResDenom
-				denominator = unitSize * SUPERRES_NUM
-			} else {
-				numerator = MI_SIZE >> subX
-				denominator = unitSize
-			}
-			unitColStart := (c*numerator + denominator - 1) / denominator
-			unitColEnd := Min(unitCols, ((c+w)*numerator+denominator-1)/denominator)
-
-			for unitRow := unitRowStart; unitRow < unitRowEnd; unitRow++ {
-				for unitCol := unitColStart; unitCol < unitColEnd; unitCol++ {
-					t.readLrUnit(plane, unitRow, unitCol, p)
-				}
-			}
-		}
-	}
-}
-
-// read_lr_unit(plane, unitRow, unitCol)
-func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, p *parser.Parser) {
-	var restorationType int
-	if p.FrameRestorationType[plane] == RESTORE_WIENER {
-		useWiener := p.S()
-		restorationType = RESTORE_NONE
-		if useWiener == 1 {
-			restorationType = RESTORE_WIENER
-		}
-	} else if p.FrameRestorationType[plane] == RESTORE_SGRPROJ {
-		useSgrproj := p.S()
-		restorationType = RESTORE_NONE
-		if useSgrproj == 1 {
-			restorationType = RESTORE_SGRPROJ
-		}
-	} else {
-		restorationType = p.S()
-	}
-
-	t.LrType[plane][unitRow][unitCol] = restorationType
-
-	if restorationType == RESTORE_WIENER {
-		for pass := 0; pass < 2; pass++ {
-			var firstCoeff int
-			if plane == 1 {
-				firstCoeff = 1
-				t.LrWiener[plane][unitRow][unitCol][pass][0] = 0
-			} else {
-				firstCoeff = 0
-			}
-			for j := firstCoeff; j < 3; j++ {
-				min := Wiener_Taps_Min[j]
-				max := Wiener_Taps_Max[j]
-				k := Wiener_Taps_K[j]
-				v := t.decodeSignedSubexpWithRefBool(min, max+1, k, t.RefLrWiener[plane][pass][j], p)
-				t.LrWiener[plane][unitRow][unitCol][pass][j] = v
-				t.RefLrWiener[plane][pass][j] = v
-			}
-		}
-	} else if restorationType == RESTORE_SGRPROJ {
-		lrSgrSet := p.L(SGRPROJ_PARAMS_BITS)
-		t.LrSgrSet[plane][unitRow][unitCol] = lrSgrSet
-
-		for i := 0; i < 2; i++ {
-			radius := SgrParams[lrSgrSet][i*2]
-			min := Sgrproj_Xqd_Min[i]
-			max := Sgrproj_Xqd_Max[i]
-
-			var v int
-			if radius != 0 {
-				v = t.decodeSignedSubexpWithRefBool(min, max+1, SGRPROJ_PRJ_SUBEXP_K, t.RefSgrXqd[plane][i], p)
-			} else {
-				v = 0
-				if i == 1 {
-					v = util.Clip3(min, max, (1<<SGRPROJ_BITS)-t.RefSgrXqd[plane][0])
-				}
-			}
-
-			t.LrSgrXqd[plane][unitRow][unitCol][i] = v
-			t.RefSgrXqd[plane][i] = v
-		}
-	}
-
-}
-
-func (t *TileGroup) decodeSignedSubexpWithRefBool(low int, high int, k int, r int, p *parser.Parser) int {
-	x := t.decodeUnsignedSubexpWithRefBool(high-low, k, r-low, p)
-	return x + low
-
-}
-
-func (t *TileGroup) decodeUnsignedSubexpWithRefBool(mx int, k int, r int, p *parser.Parser) int {
-	v := t.decodeSubexpBool(mx, k, p)
-	if (r << 1) <= mx {
-		return util.InverseRecenter(r, v)
-	} else {
-		return mx - 1 - util.InverseRecenter(mx-1-r, v)
-	}
-}
-
-func (t *TileGroup) decodeSubexpBool(numSyms int, k int, p *parser.Parser) int {
-	i := 0
-	mk := 0
-	for {
-		b2 := k
-		if i == 1 {
-			b2 = k + i - 1
-		}
-
-		a := 1 << b2
-
-		if numSyms <= -mk+3*a {
-			subexpUnifBools := p.L(1)
-			return subexpUnifBools + mk
-		} else {
-			subexpMoreBools := p.L(1) != 0
-			if subexpMoreBools {
-				i++
-				mk += a
-			} else {
-				subexpBools := p.L(b2)
-				return subexpBools + mk
-			}
-		}
-	}
-}
-
-func countUnitsInFrame(unitSize int, frameSize int) int {
-	return util.Max((frameSize+(unitSize>>1))/unitSize, 1)
-}
-
-func IsInside(candidateR int, candidateC int) bool {
-	return candidateC >= p.state.miColStart &&
-		candidateC < p.state.miColEnd &&
-		candidateR >= p.state.miRowStart &&
-		candidateR < p.state.miRowEnd
 }

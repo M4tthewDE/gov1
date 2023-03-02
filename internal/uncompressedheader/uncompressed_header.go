@@ -24,12 +24,9 @@ const BILINEAR = 3
 const SWITCHABLE = 4
 
 const ONLY_4X4 = 0
-const TX_MODE_LARGEST = 1
-const TX_MODE_SELECT = 2
 
 const SUPERRES_DENOM_BITS = 3
 const SUPERRES_DENOM_MIN = 9
-const SUPERRES_NUM = 8
 const SWITCH_FRAME = 3
 
 const MAX_LOOP_FILTER = 63
@@ -537,11 +534,11 @@ func (u *UncompressedHeader) superResParams(b *bitstream.BitStream) {
 		codedDenom := b.F(SUPERRES_DENOM_BITS)
 		u.SuperResDenom = codedDenom + SUPERRES_DENOM_MIN
 	} else {
-		u.SuperResDenom = SUPERRES_NUM
+		u.SuperResDenom = shared.SUPERRES_NUM
 	}
 
 	u.UpscaledWidth = u.FrameWidth
-	u.FrameWidth = (u.UpscaledWidth*SUPERRES_NUM + (u.SuperResDenom / 2)) / u.SuperResDenom
+	u.FrameWidth = (u.UpscaledWidth*shared.SUPERRES_NUM + (u.SuperResDenom / 2)) / u.SuperResDenom
 }
 
 // compute_image_size()
@@ -800,9 +797,9 @@ func (u *UncompressedHeader) readTxMode(b *bitstream.BitStream) {
 		txModeSelect := util.Bool(b.F(1))
 
 		if txModeSelect {
-			u.TxMode = TX_MODE_SELECT
+			u.TxMode = shared.TX_MODE_SELECT
 		} else {
-			u.TxMode = TX_MODE_LARGEST
+			u.TxMode = shared.TX_MODE_LARGEST
 		}
 	}
 }

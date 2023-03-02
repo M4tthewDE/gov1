@@ -206,3 +206,7 @@ var Obmc_Mask_32 = []int{
 	56, 57, 58, 59, 60, 60, 61, 62,
 	64, 64, 64, 64, 64, 64, 64, 64,
 }
+
+func CountUnitsInFrame(unitSize int, frameSize int) int {
+	return Max((frameSize+(unitSize>>1))/unitSize, 1)
+}
