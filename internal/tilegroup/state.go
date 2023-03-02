@@ -18,4 +18,16 @@ type State struct {
 	MiRow                int
 	MiCols               int
 	MiRows               int
+	MiColStart           int
+	MiColEnd             int
+	MiRowStart           int
+	MiRowEnd             int
+	AvailU               bool
+	AvailL               bool
+	AvailUChroma         bool
+	AvailLChroma         bool
+	Skip                 int
+	RefFrame             []int
+	RefFrames            [][][]int
+	IsInter              int
 }
