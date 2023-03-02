@@ -63,13 +63,6 @@ func (p *Parser) clearLeftContext() {
 	panic("not implemented: clear_left_context()")
 }
 
-func (p *Parser) isInside(candidateR int, candidateC int) bool {
-	return candidateC >= p.state.MiColStart &&
-		candidateC < p.state.MiColEnd &&
-		candidateR >= p.state.MiRowStart &&
-		candidateR < p.state.MiRowEnd
-}
-
 // choose_operating_point()
 func (p *Parser) ChooseOperatingPoint() int {
 	// TODO: implement properly

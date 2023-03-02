@@ -2126,29 +2126,6 @@ func (t *TileGroup) getPlaneResidualSize(subsize int, plane int, p *parser.Parse
 	return Subsampled_Size[subsize][subx][suby]
 }
 
-// reset_block_context( bw4, bh4 )
-func (t *TileGroup) resetBlockContext(bw4 int, bh4 int, p *parser.Parser) {
-	for plane := 0; plane < 1+2*Int(t.HasChroma); plane++ {
-		subX := 0
-		subY := 0
-		if plane > 0 {
-			subX = Int(p.sequenceHeader.ColorConfig.SubsamplingX)
-			subY = Int(p.sequenceHeader.ColorConfig.SubsamplingY)
-		}
-
-		for i := p.MiCol >> subX; i < ((p.MiCol + bw4) >> subX); i++ {
-			t.AboveLevelContext[plane][i] = 0
-			t.AboveDcContext[plane][i] = 0
-		}
-
-		for i := p.MiRow >> subY; i < ((p.MiRow + bh4) >> subY); i++ {
-			t.LeftLevelContext[plane][i] = 0
-			t.LeftDcContext[plane][i] = 0
-		}
-	}
-
-}
-
 // inter_frame_mode_info()
 func (t *TileGroup) interFrameModeInfo(p *parser.Parser) {
 	t.useIntrabc = 0
