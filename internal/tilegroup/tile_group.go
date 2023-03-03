@@ -706,24 +706,6 @@ func (t *TileGroup) decodeTile(p *parser.Parser) {
 	}
 }
 
-var Quant_Dist_Weight = [][]int{
-	{2, 3}, {2, 5}, {2, 7}, {1, MAX_FRAME_DISTANCE},
-}
-
-var Quant_Dist_Lookup = [][]int{
-	{9, 7}, {11, 5}, {12, 4}, {13, 3},
-}
-
-// nondiag(v)
-func (t *TileGroup) nondiag(v int, divFactor int, divShift int) int {
-	return Clip3(-WARPEDMODEL_NONDIAGAFFINE_CLAMP+1, WARPEDMODEL_NONDIAGAFFINE_CLAMP-1, Round2Signed(v*divFactor, divShift))
-}
-
-// diag(v)
-func (t *TileGroup) diag(v int, divFactor int, divShift int) int {
-	return Clip3((1<<WARPEDMODEL_PREC_BITS)-WARPEDMODEL_NONDIAGAFFINE_CLAMP+1, (1<<WARPEDMODEL_PREC_BITS)+WARPEDMODEL_NONDIAGAFFINE_CLAMP-1, Round2Signed(v*divFactor, divShift))
-}
-
 // inter_frame_mode_info()
 func (t *TileGroup) interFrameModeInfo(p *parser.Parser) {
 	t.useIntrabc = 0

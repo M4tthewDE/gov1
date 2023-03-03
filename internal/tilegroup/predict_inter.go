@@ -6,6 +6,14 @@ import (
 	"github.com/m4tthewde/gov1/internal/wedgemask"
 )
 
+var Quant_Dist_Weight = [][]int{
+	{2, 3}, {2, 5}, {2, 7}, {1, MAX_FRAME_DISTANCE},
+}
+
+var Quant_Dist_Lookup = [][]int{
+	{9, 7}, {11, 5}, {12, 4}, {13, 3},
+}
+
 // 7.11.3 Inter prediction process
 func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow int, candCol int) {
 	isCompound := t.State.RefFrames[candRow][candCol][1] > INTRA_FRAME
@@ -710,4 +718,14 @@ func (t *TileGroup) getPlaneResidualSize(subsize int, plane int) int {
 	}
 
 	return shared.Subsampled_Size[subsize][subx][suby]
+}
+
+// nondiag(v)
+func (t *TileGroup) nondiag(v int, divFactor int, divShift int) int {
+	return util.Clip3(-shared.WARPEDMODEL_NONDIAGAFFINE_CLAMP+1, shared.WARPEDMODEL_NONDIAGAFFINE_CLAMP-1, util.Round2Signed(v*divFactor, divShift))
+}
+
+// diag(v)
+func (t *TileGroup) diag(v int, divFactor int, divShift int) int {
+	return util.Clip3((1<<shared.WARPEDMODEL_PREC_BITS)-shared.WARPEDMODEL_NONDIAGAFFINE_CLAMP+1, (1<<shared.WARPEDMODEL_PREC_BITS)+shared.WARPEDMODEL_NONDIAGAFFINE_CLAMP-1, util.Round2Signed(v*divFactor, divShift))
 }

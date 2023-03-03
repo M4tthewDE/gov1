@@ -75,15 +75,15 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStrea
 		}
 	}
 
-	t.computePrediction(b)
+	t.computePrediction()
 }
 
 // mode_info()
 func (t *TileGroup) modeInfo(b *bitstream.BitStream) {
 	if t.State.UncompressedHeader.FrameIsIntra {
-		t.intraFrameModeInfo(b)
+		t.intraFrameModeInfo()
 	} else {
-		t.interFrameModeInfo(b)
+		t.interFrameModeInfo()
 	}
 }
 
