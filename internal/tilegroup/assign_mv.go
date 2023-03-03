@@ -146,3 +146,33 @@ func (t *TileGroup) readMvComponent(comp int, b *bitstream.BitStream) int {
 		return mag
 	}
 }
+
+// get_mode( refList )
+func (t *TileGroup) getMode(refList int) int {
+	var compMode int
+	if refList == 0 {
+		if t.YMode < shared.NEAREST_NEARESTMV {
+			compMode = t.YMode
+		} else if t.YMode == shared.NEW_NEWMV || t.YMode == shared.NEW_NEARESTMV || t.YMode == shared.NEW_NEARMV {
+			compMode = shared.NEWMV
+		} else if t.YMode == shared.NEAREST_NEARESTMV || t.YMode == shared.NEAREST_NEWMV {
+			compMode = shared.NEARESTMV
+		} else if t.YMode == shared.NEAR_NEARMV || t.YMode == shared.NEAR_NEWMV {
+			compMode = shared.NEARMV
+		} else {
+			compMode = shared.GLOBALMV
+		}
+	} else {
+		if t.YMode == shared.NEW_NEWMV || t.YMode == shared.NEAREST_NEWMV || t.YMode == shared.NEAR_NEWMV {
+			compMode = shared.NEWMV
+		} else if t.YMode == shared.NEAREST_NEARESTMV || t.YMode == shared.NEW_NEARESTMV {
+			compMode = shared.NEARMV
+		} else if t.YMode == shared.NEAR_NEARMV || t.YMode == shared.NEW_NEARMV {
+			compMode = shared.NEARMV
+		} else {
+			compMode = shared.GLOBALMV
+		}
+	}
+
+	return compMode
+}

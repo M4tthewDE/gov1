@@ -25,6 +25,8 @@ type State struct {
 	MiColEnd             int
 	MiRowStart           int
 	MiRowEnd             int
+	MiColStarts          []int
+	MiRowStarts          []int
 	AvailU               bool
 	AvailL               bool
 	AvailUChroma         bool
@@ -43,10 +45,18 @@ type State struct {
 	ReadDeltas           bool
 	FeatureEnabled       [][]int
 	Cdef                 cdef.Cdef
+	CdefSize4            int
 	CurrentQIndex        int
 	DeltaLF              []int
 	PrevSegmentIds       [][]int
 	FeatureData          [][]int
+	TileCols             int
+	TileRows             int
+	TileColsLog2         int
+	TileRowsLog2         int
+	TileNum              int
+	TileSizeBytes        int
+	SymbolMaxBits        int
 }
 
 func (s *State) newWedgeMaskState() wedgemask.State {

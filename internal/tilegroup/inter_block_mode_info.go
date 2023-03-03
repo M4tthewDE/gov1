@@ -474,3 +474,8 @@ func (t *TileGroup) readInterIntraMode(isCompound bool, b *bitstream.BitStream) 
 		t.InterIntra = 0
 	}
 }
+
+// has_nearmv()
+func (t *TileGroup) hasNearmv() bool {
+	return t.YMode == shared.NEARMV || t.YMode == shared.NEAR_NEARMV || t.YMode == shared.NEAR_NEWMV || t.YMode == shared.NEW_NEARMV
+}

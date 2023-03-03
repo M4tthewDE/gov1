@@ -5,7 +5,7 @@ type Cdef struct {
 	CdefBits int
 }
 
-func (cdef *Cdef) clearCdef(r int, c int, Use128x128SuperBlock bool, cdefSize4 int) {
+func (cdef *Cdef) ClearCdef(r int, c int, Use128x128SuperBlock bool, cdefSize4 int) {
 	cdef.CdefIdx[r][c] = -1
 
 	if Use128x128SuperBlock {

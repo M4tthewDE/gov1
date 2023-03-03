@@ -1,7 +1,9 @@
 package tilegroup
 
 import (
-	"github.com/m4tthewde/gov1/internal/parser"
+	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/util"
 )
 
 const FRAME_LF_COUNT = 4
@@ -237,19 +239,20 @@ type TileGroup struct {
 	BckWeight int
 }
 
-func NewTileGroup(p *parser.Parser, sz int) TileGroup {
+func NewTileGroup(sz int, b *bitstream.BitStream, state State) TileGroup {
 	t := TileGroup{}
-	t.build(p, sz)
+	t.State = state
+	t.build(sz, b)
 	return t
 }
 
-func (t *TileGroup) build(p *parser.Parser, sz int) {
-	NumTiles := p.TileCols * p.TileRows
-	startbitPos := p.position
+func (t *TileGroup) build(sz int, b *bitstream.BitStream) {
+	NumTiles := t.State.TileCols * t.State.TileRows
+	startbitPos := b.Position
 	tileStartAndEndPresentFlag := false
 
 	if NumTiles > 1 {
-		tileStartAndEndPresentFlag = p.f(1) != 0
+		tileStartAndEndPresentFlag = util.Bool(b.F(1))
 	}
 
 	var tgStart int
@@ -260,64 +263,79 @@ func (t *TileGroup) build(p *parser.Parser, sz int) {
 		tgStart = 0
 		tgEnd = NumTiles - 1
 	} else {
-		tileBits = p.TileColsLog2 + p.TileRowsLog2
-		tgStart = p.f(tileBits)
-		tgEnd = p.f(tileBits)
+		tileBits = t.State.TileColsLog2 + t.State.TileRowsLog2
+		tgStart = b.F(tileBits)
+		tgEnd = b.F(tileBits)
 	}
 
-	p.byteAlignment()
-	endBitBos := p.position
+	b.ByteAlignment()
+	endBitBos := b.Position
 	headerBytes := (endBitBos - startbitPos) / 8
 	sz -= headerBytes
 
-	for p.TileNum = tgStart; p.TileNum <= tgEnd; p.TileNum++ {
-		tileRow := p.TileNum / p.TileCols
-		tileCol := p.TileNum % p.TileCols
-		lastTile := p.TileNum == tgEnd
+	for t.State.TileNum = tgStart; t.State.TileNum <= tgEnd; t.State.TileNum++ {
+		tileRow := t.State.TileNum / t.State.TileCols
+		tileCol := t.State.TileNum % t.State.TileCols
+		lastTile := t.State.TileNum == tgEnd
 
 		var tileSize int
 		if lastTile {
 			tileSize = sz
 		} else {
-			tileSizeMinusOne := p.le(p.TileSizeBytes)
+			tileSizeMinusOne := b.Le(t.State.TileSizeBytes)
 			tileSize = tileSizeMinusOne + 1
-			sz -= tileSize + p.TileSizeBytes
+			sz -= tileSize + t.State.TileSizeBytes
 		}
 
-		p.MiRowStart = p.MiRowStarts[tileRow]
-		p.MiRowEnd = p.MiRowStarts[tileRow+1]
-		p.MiColStart = p.MiColStarts[tileCol]
-		p.MiColEnd = p.MiColStarts[tileCol+1]
-		p.CurrentQIndex = p.uncompressedHeader.BaseQIdx
-		p.initSymbol(tileSize)
-		t.decodeTile(p)
+		t.State.MiRowStart = t.State.MiRowStarts[tileRow]
+		t.State.MiRowEnd = t.State.MiRowStarts[tileRow+1]
+		t.State.MiColStart = t.State.MiColStarts[tileCol]
+		t.State.MiColEnd = t.State.MiColStarts[tileCol+1]
+		t.State.CurrentQIndex = t.State.UncompressedHeader.BaseQIdx
+		t.initSymbol(tileSize)
+		t.decodeTile(b)
 	}
+}
+
+// init_symbol( sz )
+func (t *TileGroup) initSymbol(sz int) {
+	panic("not implemented init_symbol( sz )")
 }
 
 // 8.2.4 Exit process for symbol decoder
-func (t *TileGroup) exitSymbol(p *parser.Parser) {
-	if p.SymbolMaxBits < -14 {
+func (t *TileGroup) exitSymbol(b *bitstream.BitStream) {
+	if t.State.SymbolMaxBits < -14 {
 		panic("Violating bitstream conformance!")
 	}
 
-	p.position += Max(0, p.SymbolMaxBits)
+	b.Position += util.Max(0, t.State.SymbolMaxBits)
 
-	if !p.uncompressedHeader.DisableFrameEndUpdateCdf && p.TileNum == p.uncompressedHeader.TileInfo.ContextUpdateTileId {
-		// TODO: whatever is supposed to happen ehre
+	if !t.State.UncompressedHeader.DisableFrameEndUpdateCdf && t.State.TileNum == t.State.UncompressedHeader.TileInfo.ContextUpdateTileId {
+		// TODO: whatever is supposed to happen here
 	}
 }
 
+// clear_above_context()
+func (t *TileGroup) clearAboveContext() {
+	panic("not implemented: clear_above_context()")
+}
+
+// clear_left_context( x )
+func (t *TileGroup) clearLeftContext() {
+	panic("not implemented: clear_left_context()")
+}
+
 // decode_tile()
-func (t *TileGroup) decodeTile(p *parser.Parser) {
-	p.clearAboveContext()
+func (t *TileGroup) decodeTile(b *bitstream.BitStream) {
+	t.clearAboveContext()
 
 	for i := 0; i < FRAME_LF_COUNT; i++ {
-		p.DeltaLF = SliceAssign(p.DeltaLF, i, 0)
+		t.State.DeltaLF[i] = 0
 	}
 
-	for plane := 0; plane < p.sequenceHeader.ColorConfig.NumPlanes; plane++ {
+	for plane := 0; plane < t.State.SequenceHeader.ColorConfig.NumPlanes; plane++ {
 		for pass := 0; pass < 2; pass++ {
-			t.RefSgrXqd = SliceAssignNested(t.RefSgrXqd, plane, pass, Sgrproj_Xqd_Mid[pass])
+			t.RefSgrXqd[plane][pass] = Sgrproj_Xqd_Mid[pass]
 
 			for i := 0; i < WIENER_COEFFS; i++ {
 				t.RefLrWiener[plane][pass][i] = Wiener_Taps_Mid[i]
@@ -325,107 +343,57 @@ func (t *TileGroup) decodeTile(p *parser.Parser) {
 		}
 
 	}
-	sbSize := BLOCK_64X64
-	if p.sequenceHeader.Use128x128SuperBlock {
-		sbSize = BLOCK_128X128
+	sbSize := shared.BLOCK_64X64
+	if t.State.SequenceHeader.Use128x128SuperBlock {
+		sbSize = shared.BLOCK_128X128
 	}
 
-	sbSize4 := p.Num4x4BlocksWide[sbSize]
+	sbSize4 := t.State.Num4x4BlocksWide[sbSize]
 
-	for r := p.MiRowStart; r < p.MiRowEnd; r += sbSize4 {
-		p.clearLeftContext()
+	for r := t.State.MiRowStart; r < t.State.MiRowEnd; r += sbSize4 {
+		t.clearLeftContext()
 
-		for c := p.MiColStart; c < p.MiColEnd; c += sbSize4 {
-			p.ReadDeltas = p.uncompressedHeader.DeltaQPresent
-			p.Cdef.clear_cdef(r, c, p)
-			t.clearBlockDecodedFlags(r, c, sbSize, p)
-			t.readLr(r, c, sbSize, p)
-			t.decodePartition(r, c, sbSize, p)
+		for c := t.State.MiColStart; c < t.State.MiColEnd; c += sbSize4 {
+			t.State.ReadDeltas = t.State.UncompressedHeader.DeltaQPresent
+			t.State.Cdef.ClearCdef(r, c, t.State.SequenceHeader.Use128x128SuperBlock, t.State.CdefSize4)
+			t.clearBlockDecodedFlags(r, c, sbSize)
+			t.readLr(r, c, sbSize, b)
+			t.decodePartition(r, c, sbSize, b)
 		}
 	}
-}
-
-// is_scaled( refFrame )
-func (t *TileGroup) isScaled(refFrame int) bool {
-	refIdx := p.uncompressedHeader.ref_frame_idx[refFrame-LAST_FRAME]
-	xScale := ((t.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameWidth / 2)) / p.uncompressedHeader.FrameWidth
-	yScale := ((t.RefUpscaledHeight[refIdx] << REF_SCALE_SHIFT) + (p.uncompressedHeader.FrameHeight / 2)) / p.uncompressedHeader.FrameHeight
-	noScale := 1 << REF_SCALE_SHIFT
-
-	return xScale != noScale || yScale != noScale
-}
-
-// has_nearmv()
-func (t *TileGroup) hasNearmv() bool {
-	return t.YMode == NEARMV || t.YMode == NEAR_NEARMV || t.YMode == NEAR_NEWMV || t.YMode == NEW_NEARMV
-}
-
-// get_mode( refList )
-func (t *TileGroup) getMode(refList int) int {
-	var compMode int
-	if refList == 0 {
-		if t.YMode < NEAREST_NEARESTMV {
-			compMode = t.YMode
-		} else if t.YMode == NEW_NEWMV || t.YMode == NEW_NEARESTMV || t.YMode == NEW_NEARMV {
-			compMode = NEWMV
-		} else if t.YMode == NEAREST_NEARESTMV || t.YMode == NEAREST_NEWMV {
-			compMode = NEARESTMV
-		} else if t.YMode == NEAR_NEARMV || t.YMode == NEAR_NEWMV {
-			compMode = NEARMV
-		} else {
-			compMode = GLOBALMV
-		}
-	} else {
-		if t.YMode == NEW_NEWMV || t.YMode == NEAREST_NEWMV || t.YMode == NEAR_NEWMV {
-			compMode = NEWMV
-		} else if t.YMode == NEAREST_NEARESTMV || t.YMode == NEW_NEARESTMV {
-			compMode = NEARMV
-		} else if t.YMode == NEAR_NEARMV || t.YMode == NEW_NEARMV {
-			compMode = NEARMV
-		} else {
-			compMode = GLOBALMV
-		}
-	}
-
-	return compMode
-}
-
-// is_directional_mode( mode )
-func (t *TileGroup) isDirectionalMode(mode int) bool {
-	return (mode >= V_PRED) && (mode <= D67_PRED)
 }
 
 // clear_block_decoded_flags( r, c, sbSize4 )
-func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int, p *parser.Parser) {
-	for plane := 0; plane < p.sequenceHeader.ColorConfig.NumPlanes; plane++ {
+func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int) {
+	for plane := 0; plane < t.State.SequenceHeader.ColorConfig.NumPlanes; plane++ {
 		subX := 0
 		subY := 0
 		if plane > 0 {
-			if p.sequenceHeader.ColorConfig.SubsamplingX {
+			if t.State.SequenceHeader.ColorConfig.SubsamplingX {
 				subX = 1
 			}
-			if p.sequenceHeader.ColorConfig.SubsamplingY {
+			if t.State.SequenceHeader.ColorConfig.SubsamplingY {
 				subY = 1
 			}
 		}
 
-		sbWidth4 := (p.MiColEnd - c) >> subX
-		sbHeight4 := (p.MiRowEnd - r) >> subY
+		sbWidth4 := (t.State.MiColEnd - c) >> subX
+		sbHeight4 := (t.State.MiRowEnd - r) >> subY
 
 		for y := -1; y <= (sbSize4 >> subY); y++ {
 			for x := -1; x <= (sbSize4 >> subX); x++ {
 
 				if y < 0 && x < sbWidth4 {
-					p.BlockDecoded[plane][y][x] = 1
+					t.State.BlockDecoded[plane][y][x] = 1
 				} else if x < 0 && y < sbHeight4 {
-					p.BlockDecoded[plane][y][x] = 1
+					t.State.BlockDecoded[plane][y][x] = 1
 				} else {
-					p.BlockDecoded[plane][y][x] = 0
+					t.State.BlockDecoded[plane][y][x] = 0
 				}
 			}
 		}
-		lastElement := len(p.BlockDecoded[plane][sbSize4>>subY])
-		p.BlockDecoded[plane][sbSize4>>subY][lastElement] = 0
+		lastElement := len(t.State.BlockDecoded[plane][sbSize4>>subY])
+		t.State.BlockDecoded[plane][sbSize4>>subY][lastElement] = 0
 	}
 
 }

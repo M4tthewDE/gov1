@@ -48,21 +48,6 @@ func (p *Parser) bitstream() {
 	}
 }
 
-// init_symbol( x )
-func (p *Parser) initSymbol(a int) {
-	panic("not implemented: init_symbol()")
-}
-
-// clear_above_context()
-func (p *Parser) clearAboveContext() {
-	panic("not implemented: clear_above_context()")
-}
-
-// clear_left_context( x )
-func (p *Parser) clearLeftContext() {
-	panic("not implemented: clear_left_context()")
-}
-
 // choose_operating_point()
 func (p *Parser) ChooseOperatingPoint() int {
 	// TODO: implement properly

@@ -120,7 +120,7 @@ func (b *BitStream) Ns(n int) int {
 }
 
 // le(n)
-func (b *BitStream) le(n int) int {
+func (b *BitStream) Le(n int) int {
 	t := 0
 	for i := 0; i < n; i++ {
 		byte := b.F(8)
