@@ -51,7 +51,7 @@ func (t *TileGroup) computePrediction() {
 				haveLeft = t.State.AvailL
 				haveAbove = t.State.AvailU
 			}
-			t.predictIntra(plane, baseX, baseY, haveLeft, haveAbove, t.State.BlockDecoded[plane][(subBlockMiRow>>subY)-1][(subBlockMiCol>>subX)+num4x4W], p.BlockDecoded[plane][(subBlockMiRow>>subY)+num4x4H][(subBlockMiCol>>subX)-1], mode, log2W, log2H)
+			t.predictIntra(plane, baseX, baseY, haveLeft, haveAbove, t.State.BlockDecoded[plane][(subBlockMiRow>>subY)-1][(subBlockMiCol>>subX)+num4x4W], t.State.BlockDecoded[plane][(subBlockMiRow>>subY)+num4x4H][(subBlockMiCol>>subX)-1], mode, log2W, log2H)
 		}
 
 		if util.Bool(t.IsInter) {
