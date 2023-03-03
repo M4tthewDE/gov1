@@ -83,7 +83,7 @@ func (t *TileGroup) modeInfo(b *bitstream.BitStream) {
 	if t.State.UncompressedHeader.FrameIsIntra {
 		t.intraFrameModeInfo(b)
 	} else {
-		t.interFrameModeInfo()
+		t.interFrameModeInfo(b)
 	}
 }
 
