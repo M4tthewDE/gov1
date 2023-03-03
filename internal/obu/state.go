@@ -4,6 +4,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/cdef"
 	"github.com/m4tthewde/gov1/internal/header"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/tilegroup"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 )
 
@@ -84,6 +85,10 @@ func (s *State) newUncompressedHeaderState() uncompressedheader.State {
 		GmType:         s.GmType,
 		PrevGmParams:   s.PrevGmParams,
 	}
+}
+
+func (s *State) newTileGroupState() tilegroup.State {
+	return tilegroup.State{}
 }
 
 func (s *State) update(state uncompressedheader.State) {

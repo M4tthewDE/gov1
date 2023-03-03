@@ -7,6 +7,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/header"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/tilegroup"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 )
 
@@ -104,7 +105,9 @@ func (o *Obu) newFrame(sz int, b *bitstream.BitStream) {
 
 	headerBytes := (endBitPos - startBitPos) / 8
 	sz -= headerBytes
-	_ = NewTileGroup(b, sz)
+
+	inputState := o.State.newTileGroupState()
+	_ = tilegroup.NewTileGroup(sz, b, inputState)
 }
 
 // frame_header_obu()

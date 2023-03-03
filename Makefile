@@ -3,3 +3,6 @@ test:
 
 e2e:
 	go test -v ./...
+
+build:
+	go build ./...
