@@ -55,7 +55,7 @@ func (t *TileGroup) interFrameModeInfo(b *bitstream.BitStream) {
 	if util.Bool(t.IsInter) {
 		t.interBlockModeInfo(b)
 	} else {
-		t.intraBlockModeInfo(p)
+		t.intraBlockModeInfo(b)
 	}
 }
 
