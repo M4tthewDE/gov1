@@ -178,3 +178,30 @@ const SUPERRES_NUM = 8
 
 const TX_MODE_LARGEST = 1
 const TX_MODE_SELECT = 2
+
+const MI_SIZE_LOG2 = 2
+
+var MI_WIDTH_LOG2 = []int{0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 0, 2, 1, 3, 2, 4}
+var MI_HEIGHT_LOG2 = []int{0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 2, 0, 3, 1, 4, 2}
+
+const WARPEDMODEL_PREC_BITS = 16
+const WARPEDMODEL_NONDIAGAFFINE_CLAMP = 1 << 13
+const WARPEDMODEL_TRANS_CLAMP = 1 << 23
+const WARPEDPIXEL_PREC_SHIFTS = 1 << 6
+const WARPEDDIFF_PREC_BITS = 10
+const WARP_PARAM_REDUCE_BITS = 6
+
+const GM_TRANS_ONLY_PREC_BITS = 3
+const GM_TRANS_PREC_BITS = 6
+const GM_ABS_TRANS_ONLY_BITS = 9
+const GM_ABS_ALPHA_BITS = 12
+const GM_ABS_TRANS_BITS = 12
+const GM_ALPHA_PREC_BITS = 15
+
+const TRANSLATION = 1
+
+const EIGHTTAP = 0
+const EIGHTTAP_SMOOTH = 1
+const EIGHTTAP_SHARP = 2
+const BILINEAR = 3
+const SWITCHABLE = 4

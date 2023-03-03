@@ -120,7 +120,7 @@ func TestGetRelativeDistEnableOrderHintfalse(t *testing.T) {
 
 	x := 0
 	y := 0
-	assert.Equal(t, 0, u.getRelativeDist(x, y))
+	assert.Equal(t, 0, u.GetRelativeDist(x, y))
 }
 
 func TestGetRelativeDist(t *testing.T) {
@@ -130,7 +130,7 @@ func TestGetRelativeDist(t *testing.T) {
 
 	x := 10
 	y := 5
-	assert.Equal(t, 1, u.getRelativeDist(x, y))
+	assert.Equal(t, 1, u.GetRelativeDist(x, y))
 }
 
 func TestSuperResparamsSuperResDisabled(t *testing.T) {

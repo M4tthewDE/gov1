@@ -17,12 +17,6 @@ const SEG_LVL_SKIP = 6
 const SEG_LVL_REF_FRAME = 5
 const SEG_LVL_GLOBALMV = 7
 
-const EIGHTTAP = 0
-const EIGHTTAP_SMOOTH = 1
-const EIGHTTAP_SHARP = 2
-const BILINEAR = 3
-const SWITCHABLE = 4
-
 const ONLY_4X4 = 0
 
 const SUPERRES_DENOM_BITS = 3
@@ -32,31 +26,12 @@ const SWITCH_FRAME = 3
 const MAX_LOOP_FILTER = 63
 
 const IDENTITY = 0
-const TRANSLATION = 1
 const ROTZOOM = 2
 const AFFINE = 3
-const WARPEDMODEL_PREC_BITS = 16
-const WARPEDMODEL_NONDIAGAFFINE_CLAMP = 1 << 13
-const WARPEDMODEL_TRANS_CLAMP = 1 << 23
-const WARPEDPIXEL_PREC_SHIFTS = 1 << 6
-const WARPEDDIFF_PREC_BITS = 10
-const WARP_PARAM_REDUCE_BITS = 6
-
-const GM_TRANS_ONLY_PREC_BITS = 3
-const GM_TRANS_PREC_BITS = 6
-const GM_ABS_TRANS_ONLY_BITS = 9
-const GM_ABS_ALPHA_BITS = 12
-const GM_ABS_TRANS_BITS = 12
-const GM_ALPHA_PREC_BITS = 15
 
 var Segmentation_Feature_Bits = []int{8, 6, 6, 6, 6, 3, 0, 0}
 var Segmentation_Feature_Signed = []int{1, 1, 1, 1, 1, 0, 0, 0}
 var Segmentation_Feature_Max = []int{255, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, 7, 0, 0}
-
-const MI_SIZE_LOG2 = 2
-
-var Mi_Width_Log2 = []int{0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 0, 2, 1, 3, 2, 4}
-var Mi_Height_Log2 = []int{0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 2, 0, 3, 1, 4, 2}
 
 type UncompressedHeader struct {
 	State State
@@ -124,7 +99,7 @@ type UncompressedHeader struct {
 	ForceIntegerMv             bool
 	AllowScreenContentTools    int
 	RefOrderHint               []int
-	ref_frame_idx              []int
+	RefFrameIdx                []int
 	OrderHint                  int
 	OrderHints                 []int
 	SkipModeFrame              []int
@@ -345,8 +320,8 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 		for i := 0; i < REFS_PER_FRAME; i++ {
 			if !frameRefsShortSignaling {
-				u.ref_frame_idx[i] = b.F(3)
-				u.ref_frame_idx[i] = b.F(3)
+				u.RefFrameIdx[i] = b.F(3)
+				u.RefFrameIdx[i] = b.F(3)
 			}
 
 			if u.State.SequenceHeader.FrameIdNumbersPresent {
@@ -385,12 +360,12 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 		for i := 0; i < REFS_PER_FRAME; i++ {
 			refFrame := shared.LAST_FRAME + 1
-			hint := u.RefOrderHint[u.ref_frame_idx[i]]
+			hint := u.RefOrderHint[u.RefFrameIdx[i]]
 			u.OrderHints[refFrame] = hint
 			if !u.State.SequenceHeader.EnableOrderHint {
 				RefFrameSignBias[refFrame] = false
 			} else {
-				RefFrameSignBias[refFrame] = u.getRelativeDist(hint, u.OrderHint) > 0
+				RefFrameSignBias[refFrame] = u.GetRelativeDist(hint, u.OrderHint) > 0
 			}
 		}
 	}
@@ -406,7 +381,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 		u.initNonCoeffCdfs()
 		u.setupPastIndependence()
 	} else {
-		u.loadCdfs(u.ref_frame_idx[u.PrimaryRefFrame])
+		u.loadCdfs(u.RefFrameIdx[u.PrimaryRefFrame])
 		u.loadPrevious()
 	}
 
@@ -567,14 +542,14 @@ func (u *UncompressedHeader) readInterpolationFilter(b *bitstream.BitStream) {
 	isFilterSwitchable := util.Bool(b.F(1))
 
 	if isFilterSwitchable {
-		u.InterpolationFilter = SWITCHABLE
+		u.InterpolationFilter = shared.SWITCHABLE
 	} else {
 		u.InterpolationFilter = b.F(2)
 	}
 }
 
 // get_relative_dist()
-func (u *UncompressedHeader) getRelativeDist(a int, b int) int {
+func (u *UncompressedHeader) GetRelativeDist(a int, b int) int {
 	if !u.EnableOrderHint {
 		return 0
 	}
@@ -826,15 +801,15 @@ func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream) {
 		backwardIdx := -1
 
 		for i := 0; i < REFS_PER_FRAME; i++ {
-			refHint := u.RefOrderHint[u.ref_frame_idx[i]]
+			refHint := u.RefOrderHint[u.RefFrameIdx[i]]
 
-			if u.getRelativeDist(refHint, u.OrderHint) < 0 {
-				if forwardIdx < 0 || u.getRelativeDist(refHint, forwardHint) > 0 {
+			if u.GetRelativeDist(refHint, u.OrderHint) < 0 {
+				if forwardIdx < 0 || u.GetRelativeDist(refHint, forwardHint) > 0 {
 					forwardIdx = i
 					forwardHint = refHint
 				}
-			} else if u.getRelativeDist(refHint, u.OrderHint) > 0 {
-				if backwardIdx < 0 || u.getRelativeDist(refHint, backwardHint) > 0 {
+			} else if u.GetRelativeDist(refHint, u.OrderHint) > 0 {
+				if backwardIdx < 0 || u.GetRelativeDist(refHint, backwardHint) > 0 {
 					backwardIdx = i
 					backwardHint = refHint
 				}
@@ -851,9 +826,9 @@ func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream) {
 			secondForwardIdx := -1
 			var secondForwardHint int
 			for i := 0; i < REFS_PER_FRAME; i++ {
-				refHint := u.RefOrderHint[u.ref_frame_idx[i]]
-				if u.getRelativeDist(refHint, forwardHint) < 0 {
-					if secondForwardIdx < 0 || u.getRelativeDist(refHint, secondForwardHint) > 0 {
+				refHint := u.RefOrderHint[u.RefFrameIdx[i]]
+				if u.GetRelativeDist(refHint, forwardHint) < 0 {
+					if secondForwardIdx < 0 || u.GetRelativeDist(refHint, secondForwardHint) > 0 {
 						secondForwardIdx = i
 						secondForwardHint = refHint
 					}
@@ -882,7 +857,7 @@ func (u *UncompressedHeader) globalMotionParams(b *bitstream.BitStream) {
 		u.State.GmType[ref] = IDENTITY
 		for i := 0; i < 6; i++ {
 			if i%3 == 2 {
-				u.GmParams[ref][i] = 1 << WARPEDMODEL_PREC_BITS
+				u.GmParams[ref][i] = 1 << shared.WARPEDMODEL_PREC_BITS
 
 			} else {
 				u.GmParams[ref][i] = 0
@@ -906,7 +881,7 @@ func (u *UncompressedHeader) globalMotionParams(b *bitstream.BitStream) {
 
 				isTranslation := b.F(1)
 				if util.Bool(isTranslation) {
-					typ = TRANSLATION
+					typ = shared.TRANSLATION
 				} else {
 					typ = AFFINE
 				}
@@ -920,24 +895,24 @@ func (u *UncompressedHeader) globalMotionParams(b *bitstream.BitStream) {
 }
 
 func (u *UncompressedHeader) readGlobalParam(typ int, ref int, idx int, b *bitstream.BitStream) {
-	absBits := GM_ABS_ALPHA_BITS
-	precBits := GM_ALPHA_PREC_BITS
+	absBits := shared.GM_ABS_ALPHA_BITS
+	precBits := shared.GM_ALPHA_PREC_BITS
 
 	if idx < 2 {
-		if typ == TRANSLATION {
-			absBits = GM_ABS_TRANS_ONLY_BITS - util.Int(!u.AllowHighPrecisionMv)
-			precBits = GM_TRANS_ONLY_PREC_BITS - util.Int(!u.AllowHighPrecisionMv)
+		if typ == shared.TRANSLATION {
+			absBits = shared.GM_ABS_TRANS_ONLY_BITS - util.Int(!u.AllowHighPrecisionMv)
+			precBits = shared.GM_TRANS_ONLY_PREC_BITS - util.Int(!u.AllowHighPrecisionMv)
 		} else {
-			absBits = GM_ABS_TRANS_BITS
-			precBits = GM_TRANS_PREC_BITS
+			absBits = shared.GM_ABS_TRANS_BITS
+			precBits = shared.GM_TRANS_PREC_BITS
 		}
 	}
 
-	precDiff := WARPEDMODEL_PREC_BITS - precBits
+	precDiff := shared.WARPEDMODEL_PREC_BITS - precBits
 
 	var round int
 	if idx%3 == 2 {
-		round = 1 << WARPEDMODEL_PREC_BITS
+		round = 1 << shared.WARPEDMODEL_PREC_BITS
 	} else {
 		round = 0
 	}
