@@ -1,6 +1,7 @@
 package tilegroup
 
 import (
+	"github.com/m4tthewde/gov1/internal/cdef"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/wedgemask"
@@ -39,6 +40,11 @@ type State struct {
 	CurrFrame            [][][]int
 	BlockWidth           []int
 	BlockHeight          []int
+	ReadDeltas           bool
+	FeatureEnabled       [][]int
+	Cdef                 cdef.Cdef
+	CurrentQIndex        int
+	DeltaLF              []int
 }
 
 func (s *State) newWedgeMaskState() wedgemask.State {

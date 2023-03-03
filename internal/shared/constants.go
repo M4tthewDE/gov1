@@ -205,3 +205,23 @@ const EIGHTTAP_SMOOTH = 1
 const EIGHTTAP_SHARP = 2
 const BILINEAR = 3
 const SWITCHABLE = 4
+
+const NUM_REF_FRAMES = 8
+const REFS_PER_FRAME = 7
+const KEY_FRAME = 0
+const PRIMARY_REF_NONE = 7
+const MAX_SEGMENTS = 8
+const SEG_LVL_MAX = 8
+const SEG_LVL_SKIP = 6
+const SEG_LVL_REF_FRAME = 5
+const SEG_LVL_GLOBALMV = 7
+
+const MAX_LOOP_FILTER = 63
+
+const IDENTITY = 0
+const ROTZOOM = 2
+const AFFINE = 3
+
+var Segmentation_Feature_Bits = []int{8, 6, 6, 6, 6, 3, 0, 0}
+var Segmentation_Feature_Signed = []int{1, 1, 1, 1, 1, 0, 0, 0}
+var Segmentation_Feature_Max = []int{255, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, 7, 0, 0}
