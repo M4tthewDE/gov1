@@ -1,7 +1,6 @@
 package tilegroup
 
 import (
-	"github.com/m4tthewde/gov1/internal/parser"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
@@ -64,11 +63,11 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 	if plane == 0 && util.Bool(t.UseFilterIntra) {
 		pred = t.recursiveIntraPredictionProcess(w, h)
 	} else if t.isDirectionalMode(mode) {
-		pred = t.directionalIntraPredictionProcess(plane, x, y, util.Int(haveLeft), util.Int(haveAbove), mode, w, h, maxX, maxY, p)
+		pred = t.directionalIntraPredictionProcess(plane, x, y, util.Int(haveLeft), util.Int(haveAbove), mode, w, h, maxX, maxY)
 	} else if mode == SMOOTH_PRED || mode == SMOOTH_V_PRED || mode == SMOOTH_H_PRED {
 		pred = t.smoothIntraPredictionProcess(mode, log2W, log2H, w, h)
 	} else if mode == DC_PRED {
-		pred = t.dcIntraPredictionProcess(haveLeft, haveAbove, log2W, log2H, w, h, p)
+		pred = t.dcIntraPredictionProcess(haveLeft, haveAbove, log2W, log2H, w, h)
 	} else {
 		pred = t.basicIntraPredictionProcess(w, h)
 	}
@@ -150,7 +149,7 @@ func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int) [][]int {
 }
 
 // 7.11.2.4. Directional intra prediction process
-func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, haveLeft int, haveAbove int, mode int, w int, h int, maxX int, maxY int, p *parser.Parser) [][]int {
+func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, haveLeft int, haveAbove int, mode int, w int, h int, maxX int, maxY int) [][]int {
 	var pred [][]int
 
 	angleDelta := t.AngleDeltaUV
@@ -169,7 +168,7 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 				t.LeftCol[len(t.LeftCol)] = t.filterCornerProcess()
 				t.AboveRow[len(t.AboveRow)] = t.filterCornerProcess()
 			}
-			filterType = util.Int(t.getFilterType(plane, p))
+			filterType = util.Int(t.getFilterType(plane))
 
 			if haveAbove == 1 {
 				strength := t.intraEdgeFilterStrengthSelectionProcess(w, h, filterType, pAngle-90)
@@ -294,7 +293,7 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 }
 
 // 7.11.2.5 DC intra prediction process
-func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2W int, log2H int, w int, h int, p *parser.Parser) [][]int {
+func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2W int, log2H int, w int, h int) [][]int {
 	var pred [][]int
 	if haveLeft && haveAbove {
 		for i := 0; i < h; i++ {
@@ -427,7 +426,7 @@ func (t *TileGroup) filterCornerProcess() int {
 }
 
 // 7.11.2.8. Intra filter type process
-func (t *TileGroup) getFilterType(plane int, p *parser.Parser) bool {
+func (t *TileGroup) getFilterType(plane int) bool {
 	aboveSmooth := false
 	leftSmooth := false
 
@@ -448,7 +447,7 @@ func (t *TileGroup) getFilterType(plane int, p *parser.Parser) bool {
 				r--
 			}
 		}
-		aboveSmooth = t.isSmooth(r, c, plane, p)
+		aboveSmooth = t.isSmooth(r, c, plane)
 	}
 
 	condition = t.State.AvailLChroma
@@ -468,7 +467,7 @@ func (t *TileGroup) getFilterType(plane int, p *parser.Parser) bool {
 				r++
 			}
 		}
-		aboveSmooth = t.isSmooth(r, c, plane, p)
+		aboveSmooth = t.isSmooth(r, c, plane)
 	}
 
 	return aboveSmooth || leftSmooth
@@ -606,4 +605,19 @@ func (t *TileGroup) intraEdgeFilterProcess(sz int, strength int, left int) {
 			}
 		}
 	}
+}
+
+// is_smooth( row, col, plane )
+func (t *TileGroup) isSmooth(row int, col int, plane int) bool {
+	var mode int
+	if plane == 0 {
+		mode = t.YModes[row][col]
+	} else {
+		if t.State.RefFrames[row][col][0] > INTRA_FRAME {
+			return false
+		}
+		mode = t.UVModes[row][col]
+	}
+
+	return mode == SMOOTH_PRED || mode == SMOOTH_V_PRED || mode == SMOOTH_H_PRED
 }

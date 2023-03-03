@@ -724,21 +724,6 @@ func (t *TileGroup) diag(v int, divFactor int, divShift int) int {
 	return Clip3((1<<WARPEDMODEL_PREC_BITS)-WARPEDMODEL_NONDIAGAFFINE_CLAMP+1, (1<<WARPEDMODEL_PREC_BITS)+WARPEDMODEL_NONDIAGAFFINE_CLAMP-1, Round2Signed(v*divFactor, divShift))
 }
 
-// is_smooth( row, col, plane )
-func (t *TileGroup) isSmooth(row int, col int, plane int, p *parser.Parser) bool {
-	var mode int
-	if plane == 0 {
-		mode = t.YModes[row][col]
-	} else {
-		if p.RefFrames[row][col][0] > INTRA_FRAME {
-			return false
-		}
-		mode = t.UVModes[row][col]
-	}
-
-	return mode == SMOOTH_PRED || mode == SMOOTH_V_PRED || mode == SMOOTH_H_PRED
-}
-
 // inter_frame_mode_info()
 func (t *TileGroup) interFrameModeInfo(p *parser.Parser) {
 	t.useIntrabc = 0
