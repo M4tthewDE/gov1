@@ -45,6 +45,8 @@ type State struct {
 	Cdef                 cdef.Cdef
 	CurrentQIndex        int
 	DeltaLF              []int
+	PrevSegmentIds       [][]int
+	FeatureData          [][]int
 }
 
 func (s *State) newWedgeMaskState() wedgemask.State {

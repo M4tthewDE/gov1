@@ -81,7 +81,7 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStrea
 // mode_info()
 func (t *TileGroup) modeInfo(b *bitstream.BitStream) {
 	if t.State.UncompressedHeader.FrameIsIntra {
-		t.intraFrameModeInfo()
+		t.intraFrameModeInfo(b)
 	} else {
 		t.interFrameModeInfo()
 	}
