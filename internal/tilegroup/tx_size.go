@@ -91,3 +91,68 @@ func (t *TileGroup) readVarTxSize(row int, col int, txSz int, depth int, b *bits
 		t.TxSize = txSz
 	}
 }
+
+const MAX_VARTX_DEPTH = 2
+
+const TX_4X4 = 0
+const TX_8X8 = 1
+const TX_16X16 = 2
+const TX_32X32 = 3
+const TX_64X64 = 4
+const TX_4X8 = 5
+const TX_8X4 = 6
+const TX_8X16 = 7
+const TX_16X8 = 8
+const TX_16X32 = 9
+const TX_32X16 = 10
+const TX_32X64 = 11
+const TX_64X32 = 12
+const TX_4X16 = 13
+const TX_16X4 = 14
+const TX_8X32 = 15
+const TX_32X8 = 16
+const TX_16X64 = 17
+const TX_64X16 = 18
+
+var Max_Tx_Size_Rect = []int{
+	TX_4X4, TX_4X8, TX_8X4, TX_8X8,
+	TX_8X16, TX_16X8, TX_16X16, TX_16X32,
+	TX_32X16, TX_32X32, TX_32X64, TX_64X32,
+	TX_64X64, TX_64X64, TX_64X64, TX_64X64,
+	TX_4X16, TX_16X4, TX_8X32, TX_32X8,
+	TX_16X64, TX_64X16,
+}
+
+var Max_Tx_Depth = []int{
+	0, 1, 1, 1,
+	2, 2, 2, 3,
+	3, 3, 4, 4,
+	4, 4, 4, 4,
+	2, 2, 3, 3,
+	4, 4,
+}
+
+var Split_Tx_Size = []int{
+	TX_4X4,
+	TX_4X4,
+	TX_8X8,
+	TX_16X16,
+	TX_32X32,
+	TX_4X4,
+	TX_4X4,
+	TX_8X8,
+	TX_8X8,
+	TX_16X16,
+	TX_16X16,
+	TX_32X32,
+	TX_32X32,
+	TX_4X8,
+	TX_8X4,
+	TX_8X16,
+	TX_16X8,
+	TX_16X32,
+	TX_32X16,
+}
+
+var Tx_Width = []int{4, 8, 16, 32, 64, 4, 8, 8, 16, 16, 32, 32, 64, 4, 16, 8, 32, 16, 64}
+var Tx_Height = []int{4, 8, 16, 32, 64, 8, 4, 16, 8, 32, 16, 64, 32, 16, 4, 32, 8, 64, 16}

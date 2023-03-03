@@ -161,3 +161,14 @@ func (t *TileGroup) decodeSubexpBool(numSyms int, k int, b *bitstream.BitStream)
 		}
 	}
 }
+
+var Sgrproj_Xqd_Mid = []int{-32, 31}
+var Sgrproj_Xqd_Min = []int{-96, -32}
+var Sgrproj_Xqd_Max = []int{31, 95}
+var Wiener_Taps_Mid = []int{3, -7, 15}
+var Wiener_Taps_Min = []int{-5, -23, -17}
+var Wiener_Taps_Max = []int{10, 8, 46}
+var Wiener_Taps_K = []int{1, 2, 3}
+
+// TODO: why is this empty?
+var SgrParams = [][]int{}
