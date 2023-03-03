@@ -43,13 +43,13 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream) {
 		t.PaletteSizeUV = 0
 		t.InterpFilter[0] = shared.BILINEAR
 		t.InterpFilter[1] = shared.BILINEAR
-		t.findMvStack(0, p)
-		t.assignMv(0, p)
+		t.findMvStack(0)
+		t.assignMv(0, b)
 	} else {
 		t.IsInter = 0
 		intraFrameYMode := b.S()
 		t.YMode = intraFrameYMode
-		t.intraAngleInfoY(p)
+		t.intraAngleInfoY(b)
 
 		if t.HasChroma {
 			uvMode := b.S()
@@ -57,19 +57,19 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream) {
 			t.UVMode = uvMode
 
 			if t.UVMode == UV_CFL_PRED {
-				t.readCflAlphas(p)
+				t.readCflAlphas(b)
 			}
 
-			t.intraAngleInfoUv(p)
+			t.intraAngleInfoUv(b)
 		}
 
 		t.PaletteSizeY = 0
 		t.PaletteSizeUV = 0
 
 		if t.State.MiSize >= shared.BLOCK_8X8 && t.Block_Width[t.State.MiSize] <= 64 && t.Block_Height[t.State.MiSize] <= 64 && util.Bool(t.State.UncompressedHeader.AllowScreenContentTools) {
-			t.paletteModeInfo(p)
+			t.paletteModeInfo(b)
 		}
-		t.filterIntraModeInfo(p)
+		t.filterIntraModeInfo(b)
 	}
 }
 
@@ -262,6 +262,70 @@ func (t *TileGroup) readDeltaLf(b *bitstream.BitStream) {
 
 				t.State.DeltaLF[i] = util.Clip3(-shared.MAX_LOOP_FILTER, shared.MAX_LOOP_FILTER, t.State.DeltaLF[i]+(reducedDeltaLfLevel<<t.State.UncompressedHeader.DeltaLfRes))
 			}
+		}
+	}
+}
+
+// intra_angle_info_y()
+func (t *TileGroup) intraAngleInfoY(b *bitstream.BitStream) {
+	t.AngleDeltaY = 0
+
+	if t.State.MiSize >= shared.BLOCK_8X8 {
+
+		if t.isDirectionalMode(t.YMode) {
+			angleDeltaY := b.S()
+			t.AngleDeltaY = angleDeltaY - MAX_ANGLE_DELTA
+		}
+	}
+}
+
+// read_cfl_alphas()
+func (t *TileGroup) readCflAlphas(b *bitstream.BitStream) {
+	cflAlphaSigns := b.S()
+	signU := (cflAlphaSigns + 1) / 3
+	signV := (cflAlphaSigns + 1) % 3
+
+	if signU != CFL_SIGN_ZERO {
+		cflAlphaU := b.S()
+		t.CflAlphaU = 1 + cflAlphaU
+		if signU == CFL_SIGN_NEG {
+			t.CflAlphaU = -t.CflAlphaU
+		}
+	} else {
+		t.CflAlphaU = 0
+	}
+
+	if signV != CFL_SIGN_ZERO {
+		cflAlphaV := b.S()
+		t.CflAlphaV = 1 + cflAlphaV
+		if signV == CFL_SIGN_NEG {
+			t.CflAlphaV = -t.CflAlphaV
+		}
+	} else {
+		t.CflAlphaV = 0
+	}
+
+}
+
+// intra_angle_info_uv()
+func (t *TileGroup) intraAngleInfoUv(b *bitstream.BitStream) {
+	t.AngleDeltaUV = 0
+	if t.State.MiSize >= shared.BLOCK_8X8 {
+		if t.isDirectionalMode(t.UVMode) {
+			angleDeltaUv := b.S()
+			t.AngleDeltaUV = angleDeltaUv - MAX_ANGLE_DELTA
+		}
+	}
+}
+
+// filter_intra_mode_info()
+func (t *TileGroup) filterIntraModeInfo(b *bitstream.BitStream) {
+	useFilterIntra := false
+	if t.State.SequenceHeader.EnableFilterIntra && t.YMode == DC_PRED && t.PaletteSizeY == 0 && util.Max(t.Block_Width[t.State.MiSize], t.Block_Height[t.State.MiSize]) <= 32 {
+		useFilterIntra = util.Bool(b.S())
+
+		if useFilterIntra {
+			t.FilterIntraMode = b.S()
 		}
 	}
 }
