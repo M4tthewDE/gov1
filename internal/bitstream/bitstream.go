@@ -99,7 +99,7 @@ func (b *BitStream) ByteAlignment() {
 // su()
 func (b *BitStream) Su(n int) int {
 	value := b.F(n)
-	signMask := 1 << (n - 1)
+	signMask := 1 << uint((n - 1))
 
 	if (value & signMask) != 0 {
 		value = value - 2*signMask
