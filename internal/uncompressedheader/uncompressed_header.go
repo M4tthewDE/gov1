@@ -94,6 +94,13 @@ type UncompressedHeader struct {
 	LoopFilterRefDeltas    [8]int
 	LoopFilterModeDeltas   [2]int
 	LoopFilterSharpness    int
+
+	CdefBits          int
+	CdefYPriStrength  []int
+	CdefYSecStrength  []int
+	CdefUVPriStrength []int
+	CdefUVSecStrength []int
+	CdefDampening     int
 }
 
 func NewUncompressedHeader(b *bitstream.BitStream, inputState State) UncompressedHeader {
@@ -420,7 +427,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	u.AllLossless = u.CodedLossless && (u.FrameWidth == u.UpscaledWidth)
 
 	u.loopFilterParams(b)
-	u.cdefParams()
+	u.cdefParams(b)
 	u.lrParams()
 	u.readTxMode(b)
 	u.frameReferenceMode(b)
@@ -855,8 +862,47 @@ func (u *UncompressedHeader) loopFilterParams(b *bitstream.BitStream) {
 	}
 }
 
-func (u *UncompressedHeader) cdefParams() {
-	panic("not implemented")
+// cdef_params( )
+func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream) {
+	if u.CodedLossless || u.AllowIntraBc || !u.State.SequenceHeader.EnableCdef {
+		u.CdefYPriStrength = make([]int, 1)
+		u.CdefYSecStrength = make([]int, 1)
+		u.CdefUVPriStrength = make([]int, 1)
+		u.CdefUVSecStrength = make([]int, 1)
+
+		u.CdefBits = 0
+		u.CdefYPriStrength[0] = 0
+		u.CdefYSecStrength[0] = 0
+		u.CdefUVPriStrength[0] = 0
+		u.CdefUVSecStrength[0] = 0
+		u.CdefDampening = 3
+		return
+	}
+
+	cdefDampeningMinus3 := b.F(2)
+	u.CdefDampening = cdefDampeningMinus3 + 3
+	u.CdefBits = b.F(2)
+	u.CdefYPriStrength = make([]int, (1 << u.CdefBits))
+	u.CdefYSecStrength = make([]int, (1 << u.CdefBits))
+	u.CdefUVPriStrength = make([]int, (1 << u.CdefBits))
+	u.CdefUVSecStrength = make([]int, (1 << u.CdefBits))
+
+	for i := 0; i < (1 << u.CdefBits); i++ {
+		u.CdefYPriStrength[i] = b.F(4)
+		u.CdefYSecStrength[i] = b.F(2)
+		if u.CdefYSecStrength[i] == 3 {
+			u.CdefYSecStrength[i] += 1
+		}
+
+		if u.State.SequenceHeader.ColorConfig.NumPlanes > 1 {
+			u.CdefUVPriStrength[i] = b.F(4)
+			u.CdefUVSecStrength[i] = b.F(2)
+			if u.CdefUVSecStrength[i] == 3 {
+				u.CdefUVSecStrength[i] += 1
+			}
+
+		}
+	}
 }
 
 func (u *UncompressedHeader) lrParams() {
