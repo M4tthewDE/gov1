@@ -357,8 +357,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	}
 
 	if u.PrimaryRefFrame == shared.PRIMARY_REF_NONE {
-
-		u.initNonCoeffCdfs()
+		initNonCoeffCdfs()
 		u.setupPastIndependence()
 	} else {
 		u.loadCdfs(u.RefFrameIdx[u.PrimaryRefFrame])
@@ -539,10 +538,6 @@ func (u *UncompressedHeader) GetRelativeDist(a int, b int) int {
 	diff = (diff & (m - 1)) - (diff & m)
 
 	return diff
-}
-
-func (u *UncompressedHeader) initNonCoeffCdfs() {
-	panic("not implemented")
 }
 
 func (u *UncompressedHeader) setupPastIndependence() {
