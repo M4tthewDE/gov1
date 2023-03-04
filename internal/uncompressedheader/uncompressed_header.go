@@ -678,7 +678,7 @@ func (u *UncompressedHeader) segmentationParams(b *bitstream.BitStream) {
 
 		if u.SegmentationUpdateData == 1 {
 			for i := 0; i < shared.MAX_SEGMENTS; i++ {
-				for j := 0; j < shared.SEG_LVL_MAX; i++ {
+				for j := 0; j < shared.SEG_LVL_MAX; j++ {
 					featureValue := 0
 					featureEnabled := b.F(1)
 					u.State.FeatureEnabled[i][j] = featureEnabled
