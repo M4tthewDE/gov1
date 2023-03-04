@@ -74,7 +74,7 @@ type UncompressedHeader struct {
 	SegmentationTemporalUpdate int
 	SegmentationUpdateMap      int
 	SegmentationUpdateData     int
-	LosslessArray              []bool
+	LosslessArray              [shared.MAX_SEGMENTS]bool
 	GmParams                   [][]int
 	ForceIntegerMv             bool
 	AllowScreenContentTools    int
@@ -84,6 +84,7 @@ type UncompressedHeader struct {
 	OrderHints                 []int
 	SkipModeFrame              []int
 	SkipModePresent            int
+	SegQMLevel                 [3][shared.MAX_SEGMENTS]int
 }
 
 func NewUncompressedHeader(b *bitstream.BitStream, inputState State) UncompressedHeader {
@@ -386,8 +387,6 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 	u.CodedLossless = true
 
-	SegQMLevel := [][]int{}
-
 	for segmentId := 0; segmentId < shared.MAX_SEGMENTS; segmentId++ {
 		qIndex := u.getQIndex(1, segmentId)
 		u.LosslessArray[segmentId] = qIndex == 0 && u.DeltaQYDc == 0 && u.DeltaQUAc == 0 && u.DeltaQUDc == 0 && u.DeltaQVAc == 0 && u.DeltaQVDc == 0
@@ -398,13 +397,13 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 		if u.UsingQMatrix {
 			if u.LosslessArray[segmentId] {
-				SegQMLevel[0][segmentId] = 15
-				SegQMLevel[1][segmentId] = 15
-				SegQMLevel[2][segmentId] = 15
+				u.SegQMLevel[0][segmentId] = 15
+				u.SegQMLevel[1][segmentId] = 15
+				u.SegQMLevel[2][segmentId] = 15
 			} else {
-				SegQMLevel[0][segmentId] = u.Qmy
-				SegQMLevel[1][segmentId] = u.Qmy
-				SegQMLevel[2][segmentId] = u.Qmy
+				u.SegQMLevel[0][segmentId] = u.Qmy
+				u.SegQMLevel[1][segmentId] = u.Qmy
+				u.SegQMLevel[2][segmentId] = u.Qmy
 			}
 		}
 	}
