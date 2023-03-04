@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"log"
+
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/obu"
 )
@@ -18,6 +20,7 @@ func NewParser(b *bitstream.BitStream) Parser {
 
 // temporal_unit( sz )
 func (p *Parser) temporalUnit(sz int) {
+	log.Println(p.bitStream.Position)
 	for sz > 0 {
 		frameUnitSize := p.bitStream.Leb128()
 		sz -= p.bitStream.Leb128Bytes
@@ -28,6 +31,7 @@ func (p *Parser) temporalUnit(sz int) {
 
 // frame_unit( sz )
 func (p *Parser) frameUnit(sz int) {
+	log.Println(p.bitStream.Position)
 	for sz > 0 {
 		obuLength := p.bitStream.Leb128()
 		sz -= p.bitStream.Leb128Bytes
@@ -36,7 +40,7 @@ func (p *Parser) frameUnit(sz int) {
 		_ = obu.NewObu(obuLength, inputState, p.bitStream)
 		// TODO: update state for further obus
 		sz -= obuLength
-
+		// end case might be broken
 	}
 }
 

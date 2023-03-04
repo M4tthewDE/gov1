@@ -21,6 +21,7 @@ type Obu struct {
 func NewObu(sz int, state State, b *bitstream.BitStream) Obu {
 	obu := Obu{}
 	obu.State = state
+	obu.build(sz, b)
 
 	return obu
 }

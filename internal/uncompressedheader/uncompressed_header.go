@@ -108,9 +108,10 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	var errorResilientMode bool
 
 	refFrameType := []int{}
-	refValid := []int{}
-	refOrderHint := []int{}
-	orderHints := []int{}
+	var refValid [shared.NUM_REF_FRAMES]int
+	var refOrderHint [shared.NUM_REF_FRAMES]int
+	var orderHints [shared.REFS_PER_FRAME]int
+
 	bufferRemovalTime := []int{}
 
 	allFrames := ((1 << shared.NUM_REF_FRAMES) - 1)

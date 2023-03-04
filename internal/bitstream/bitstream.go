@@ -7,14 +7,14 @@ import (
 )
 
 type BitStream struct {
-	data        []byte
+	Data        []byte
 	Position    int
 	Leb128Bytes int
 }
 
 func NewBitStream(data []byte) BitStream {
 	return BitStream{
-		data:     data,
+		Data:     data,
 		Position: 0,
 	}
 }
@@ -32,11 +32,11 @@ func (b *BitStream) F(n int) int {
 
 // read_bit()
 func (b *BitStream) readBit() int {
-	return int((b.data[int(math.Floor(float64(b.Position)/8))] >> (8 - b.Position%8 - 1)) & 1)
+	return int((b.Data[int(math.Floor(float64(b.Position)/8))] >> (8 - b.Position%8 - 1)) & 1)
 }
 
 func (b *BitStream) MoreDataInBistream() bool {
-	return b.Position/8 != len(b.data)
+	return b.Position/8 != len(b.Data)
 }
 
 // uvlc()
@@ -61,12 +61,13 @@ func (b *BitStream) Uvlc() int {
 // leb128()
 func (b *BitStream) Leb128() int {
 	value := 0
+	b.Leb128Bytes = 0
 	for i := 0; i < 8; i++ {
 		leb128_byte := b.F(8)
 
-		value |= int((leb128_byte & 127) << (i * 7))
+		value |= int((leb128_byte & 0x7F) << (i * 7))
 		b.Leb128Bytes += 1
-		if (leb128_byte & 0x80) == 0 {
+		if !util.Bool(leb128_byte & 0x80) {
 			break
 		}
 
