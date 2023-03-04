@@ -759,8 +759,9 @@ func (u *UncompressedHeader) deltaLfParams(b *bitstream.BitStream) {
 	}
 }
 
+// init_coeff_cdfs()
 func (u *UncompressedHeader) initCoeffCdfs() {
-	panic("not implemented")
+	// TODO: implement when needed, not quiet known when these values will be needed yet
 }
 
 func (u *UncompressedHeader) loadPreviousSegementIds() {
