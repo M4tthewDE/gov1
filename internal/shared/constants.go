@@ -213,10 +213,12 @@ const REFS_PER_FRAME = 7
 const KEY_FRAME = 0
 const PRIMARY_REF_NONE = 7
 const MAX_SEGMENTS = 8
-const SEG_LVL_MAX = 8
-const SEG_LVL_SKIP = 6
+
+const SEG_LVL_ALT_Q = 0
 const SEG_LVL_REF_FRAME = 5
+const SEG_LVL_SKIP = 6
 const SEG_LVL_GLOBALMV = 7
+const SEG_LVL_MAX = 8
 
 const MAX_LOOP_FILTER = 63
 

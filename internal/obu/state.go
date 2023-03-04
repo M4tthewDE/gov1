@@ -80,6 +80,7 @@ func (s *State) newUncompressedHeaderState() uncompressedheader.State {
 		FeatureData:    s.FeatureData,
 		GmType:         s.GmType,
 		PrevGmParams:   s.PrevGmParams,
+		CurrentQIndex:  s.CurrentQIndex,
 	}
 }
 

@@ -137,12 +137,12 @@ func (t *TileGroup) segFeatureActive(feature int) bool {
 
 // seg_feature_active_idx( idx, feature )
 func (t *TileGroup) segFeatureActiveIdx(idx int, feature int) bool {
-	return (t.State.UncompressedHeader.SegmentationEnabled == 1) && (t.State.FeatureEnabled[idx][feature] == 1)
+	return t.State.UncompressedHeader.SegmentationEnabled && (t.State.FeatureEnabled[idx][feature] == 1)
 }
 
 // intra_segment_id()
 func (t *TileGroup) intraSegmentId(b *bitstream.BitStream) {
-	if t.State.UncompressedHeader.SegmentationEnabled == 1 {
+	if t.State.UncompressedHeader.SegmentationEnabled {
 		t.readSegmentId(b)
 	} else {
 		t.SegmentId = 0

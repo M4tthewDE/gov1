@@ -92,7 +92,7 @@ func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream) {
 
 // inter_segment_id( preSkip )
 func (t *TileGroup) interSegmentId(preSkip int, b *bitstream.BitStream) {
-	if util.Bool(t.State.UncompressedHeader.SegmentationEnabled) {
+	if t.State.UncompressedHeader.SegmentationEnabled {
 		predictedSegmentId := t.getSegmentId()
 
 		if util.Bool(t.State.UncompressedHeader.SegmentationUpdateMap) {

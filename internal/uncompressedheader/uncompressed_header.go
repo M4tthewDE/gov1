@@ -70,7 +70,7 @@ type UncompressedHeader struct {
 	PrimaryRefFrame            int
 	SegIdPreSkip               int
 	LastActiveSegId            int
-	SegmentationEnabled        int
+	SegmentationEnabled        bool
 	SegmentationTemporalUpdate int
 	SegmentationUpdateMap      int
 	SegmentationUpdateData     int
@@ -661,8 +661,8 @@ func (u *UncompressedHeader) readDeltaQ(b *bitstream.BitStream) int {
 
 // segmentation_params
 func (u *UncompressedHeader) segmentationParams(b *bitstream.BitStream) {
-	u.SegmentationEnabled = b.F(1)
-	if u.SegmentationEnabled == 1 {
+	u.SegmentationEnabled = util.Bool(b.F(1))
+	if u.SegmentationEnabled {
 		if u.PrimaryRefFrame == shared.PRIMARY_REF_NONE {
 			u.SegmentationUpdateMap = 1
 			u.SegmentationTemporalUpdate = 0
@@ -768,8 +768,30 @@ func (u *UncompressedHeader) loadPreviousSegementIds() {
 	panic("not implemented")
 }
 
-func (u *UncompressedHeader) getQIndex(a int, b int) int {
-	panic("not implemented")
+// get_qindex( ignoreDeltaQ, segmentId )
+func (u *UncompressedHeader) getQIndex(ignoreDeltaQ int, segmentId int) int {
+	if u.segFeatureActiveIdx(segmentId, shared.SEG_LVL_ALT_Q) {
+		data := u.State.FeatureData[segmentId][shared.SEG_LVL_ALT_Q]
+		qindex := u.BaseQIdx + data
+
+		if ignoreDeltaQ == 0 && u.DeltaQPresent {
+			qindex = u.State.CurrentQIndex
+		}
+
+		return util.Clip3(0, 255, qindex)
+	}
+
+	if ignoreDeltaQ == 0 && u.DeltaQPresent {
+		return u.State.CurrentQIndex
+	}
+
+	return u.BaseQIdx
+}
+
+// seg_feature_active_idx( idx, feature )
+func (u *UncompressedHeader) segFeatureActiveIdx(idx int, feature int) bool {
+	return u.SegmentationEnabled && util.Bool(u.State.FeatureEnabled[idx][feature])
+
 }
 
 func (u *UncompressedHeader) loopFilterParams() {

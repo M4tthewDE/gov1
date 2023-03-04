@@ -28,6 +28,8 @@ type State struct {
 	LoopFilterDeltaEnabled bool
 	LoopFilterRefDeltas    [8]int
 	LoopFilterModeDeltas   [2]int
+
+	CurrentQIndex int
 }
 
 func (s *State) newTileInfoState() tileinfo.State {
