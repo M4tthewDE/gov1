@@ -32,6 +32,9 @@ func NewTileInfo(b *bitstream.BitStream, s State) (TileInfo, State) {
 		sbShift = 5
 	}
 
+	s.MiColStarts = make([]int, sbCols+1)
+	s.MiRowStarts = make([]int, sbRows+1)
+
 	sbSize := sbShift + 2
 	maxTileWidthSb := MAX_TILE_WIDTH >> sbSize
 	maxTileAreaSb := MAX_TILE_AREA >> (2 * sbSize)
