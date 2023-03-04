@@ -25,10 +25,6 @@ type State struct {
 	PrevGmParams   [shared.ALTREF_FRAME + 1][6]int
 	PrevSegmentIds [][]int
 
-	LoopFilterDeltaEnabled bool
-	LoopFilterRefDeltas    [8]int
-	LoopFilterModeDeltas   [2]int
-
 	CurrentQIndex int
 }
 

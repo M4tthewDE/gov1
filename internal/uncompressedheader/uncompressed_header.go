@@ -13,6 +13,8 @@ const SUPERRES_DENOM_BITS = 3
 const SUPERRES_DENOM_MIN = 9
 const SWITCH_FRAME = 3
 
+const TOTAL_REFS_PER_FRAME = 8
+
 type UncompressedHeader struct {
 	State State
 
@@ -85,6 +87,13 @@ type UncompressedHeader struct {
 	SkipModeFrame              []int
 	SkipModePresent            int
 	SegQMLevel                 [3][shared.MAX_SEGMENTS]int
+
+	LoopFilterDeltaEnabled bool
+	LoopFilterDeltaUpdate  int
+	LoopFilterLevel        [4]int
+	LoopFilterRefDeltas    [8]int
+	LoopFilterModeDeltas   [2]int
+	LoopFilterSharpness    int
 }
 
 func NewUncompressedHeader(b *bitstream.BitStream, inputState State) UncompressedHeader {
@@ -410,7 +419,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 	u.AllLossless = u.CodedLossless && (u.FrameWidth == u.UpscaledWidth)
 
-	u.loopFilterParams()
+	u.loopFilterParams(b)
 	u.cdefParams()
 	u.lrParams()
 	u.readTxMode(b)
@@ -573,18 +582,18 @@ func (u *UncompressedHeader) setupPastIndependence() {
 		}
 	}
 
-	u.State.LoopFilterDeltaEnabled = true
-	u.State.LoopFilterRefDeltas[shared.INTRA_FRAME] = 1
-	u.State.LoopFilterRefDeltas[shared.LAST_FRAME] = 0
-	u.State.LoopFilterRefDeltas[shared.LAST2_FRAME] = 0
-	u.State.LoopFilterRefDeltas[shared.LAST3_FRAME] = 0
-	u.State.LoopFilterRefDeltas[shared.BWDREF_FRAME] = 0
-	u.State.LoopFilterRefDeltas[shared.GOLDEN_FRAME] = -1
-	u.State.LoopFilterRefDeltas[shared.ALTREF_FRAME] = -1
-	u.State.LoopFilterRefDeltas[shared.ALTREF2_FRAME] = -1
+	u.LoopFilterDeltaEnabled = true
+	u.LoopFilterRefDeltas[shared.INTRA_FRAME] = 1
+	u.LoopFilterRefDeltas[shared.LAST_FRAME] = 0
+	u.LoopFilterRefDeltas[shared.LAST2_FRAME] = 0
+	u.LoopFilterRefDeltas[shared.LAST3_FRAME] = 0
+	u.LoopFilterRefDeltas[shared.BWDREF_FRAME] = 0
+	u.LoopFilterRefDeltas[shared.GOLDEN_FRAME] = -1
+	u.LoopFilterRefDeltas[shared.ALTREF_FRAME] = -1
+	u.LoopFilterRefDeltas[shared.ALTREF2_FRAME] = -1
 
-	u.State.LoopFilterModeDeltas[0] = 0
-	u.State.LoopFilterModeDeltas[1] = 0
+	u.LoopFilterModeDeltas[0] = 0
+	u.LoopFilterModeDeltas[1] = 0
 }
 
 func (u *UncompressedHeader) loadCdfs(a int) {
@@ -793,8 +802,57 @@ func (u *UncompressedHeader) segFeatureActiveIdx(idx int, feature int) bool {
 
 }
 
-func (u *UncompressedHeader) loopFilterParams() {
-	panic("not implemented")
+// loop_filter_params()
+func (u *UncompressedHeader) loopFilterParams(b *bitstream.BitStream) {
+	if u.CodedLossless || u.AllowIntraBc {
+		u.LoopFilterLevel[0] = 0
+		u.LoopFilterLevel[1] = 1
+		u.LoopFilterRefDeltas[shared.INTRA_FRAME] = 1
+		u.LoopFilterRefDeltas[shared.LAST_FRAME] = 0
+		u.LoopFilterRefDeltas[shared.LAST2_FRAME] = 0
+		u.LoopFilterRefDeltas[shared.LAST3_FRAME] = 0
+		u.LoopFilterRefDeltas[shared.BWDREF_FRAME] = 0
+		u.LoopFilterRefDeltas[shared.GOLDEN_FRAME] = -1
+		u.LoopFilterRefDeltas[shared.ALTREF_FRAME] = -1
+		u.LoopFilterRefDeltas[shared.ALTREF2_FRAME] = -1
+
+		u.LoopFilterModeDeltas[0] = 0
+		u.LoopFilterModeDeltas[1] = 0
+
+		return
+	}
+
+	u.LoopFilterLevel[0] = b.F(6)
+	u.LoopFilterLevel[1] = b.F(6)
+
+	if u.State.SequenceHeader.ColorConfig.NumPlanes > 1 {
+		if util.Bool(u.LoopFilterLevel[0]) || util.Bool(u.LoopFilterLevel[1]) {
+			u.LoopFilterLevel[2] = b.F(6)
+			u.LoopFilterLevel[3] = b.F(6)
+		}
+	}
+
+	u.LoopFilterSharpness = b.F(6)
+	u.LoopFilterDeltaEnabled = util.Bool(b.F(1))
+
+	if u.LoopFilterDeltaEnabled {
+		u.LoopFilterDeltaUpdate = b.F(1)
+
+		if u.LoopFilterDeltaUpdate == 1 {
+			for i := 0; i < TOTAL_REFS_PER_FRAME; i++ {
+				updateRefDelta := b.F(1)
+				if updateRefDelta == 1 {
+					u.LoopFilterRefDeltas[i] = b.Su(1 + 6)
+				}
+			}
+			for i := 0; i < 2; i++ {
+				updateModeDelta := b.F(1)
+				if updateModeDelta == 1 {
+					u.LoopFilterModeDeltas[i] = b.Su(1 + 6)
+				}
+			}
+		}
+	}
 }
 
 func (u *UncompressedHeader) cdefParams() {
