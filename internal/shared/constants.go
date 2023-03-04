@@ -153,6 +153,8 @@ var Subsampled_Size = [][][]int{
 	{{BLOCK_64X16, BLOCK_INVALID}, {BLOCK_32X16, BLOCK_32X8}},
 }
 
+const NONE = -1
+const INTRA_FRAME = 0
 const LAST_FRAME = 1
 const LAST2_FRAME = 2
 const LAST3_FRAME = 3

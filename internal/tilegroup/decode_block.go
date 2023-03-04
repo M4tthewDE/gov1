@@ -2,6 +2,7 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
@@ -46,13 +47,13 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStrea
 		t.resetBlockContext(bw4, bh4, b)
 	}
 
-	isCompound := t.State.RefFrame[1] > INTRA_FRAME
+	isCompound := t.State.RefFrame[1] > shared.INTRA_FRAME
 
 	for y := 0; y < bh4; y++ {
 		for x := 0; x < bw4; x++ {
 			t.YModes[r+y][c+x] = t.YMode
 
-			if t.State.RefFrame[0] == INTRA_FRAME && t.HasChroma {
+			if t.State.RefFrame[0] == shared.INTRA_FRAME && t.HasChroma {
 				t.UVModes[r+y][c+x] = t.UVMode
 			}
 

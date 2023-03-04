@@ -13,7 +13,7 @@ func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream) {
 	t.PaletteSizeUV = 0
 	t.readRefFrames(b)
 
-	isCompound := t.State.RefFrame[1] > INTRA_FRAME
+	isCompound := t.State.RefFrame[1] > shared.INTRA_FRAME
 	t.findMvStack(util.Int(isCompound))
 
 	if util.Bool(t.SkipMode) {
@@ -103,7 +103,7 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream) {
 		t.State.RefFrame[1] = t.State.UncompressedHeader.SkipModeFrame[1]
 	} else if t.segFeatureActive(shared.SEG_LVL_REF_FRAME) {
 		t.State.RefFrame[0] = t.State.FeatureData[t.SegmentId][shared.SEG_LVL_REF_FRAME]
-		t.State.RefFrame[1] = NONE
+		t.State.RefFrame[1] = shared.NONE
 	} else {
 		bw4 := t.State.Num4x4BlocksWide[t.State.MiSize]
 		bh4 := t.State.Num4x4BlocksHigh[t.State.MiSize]
@@ -210,7 +210,7 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream) {
 					}
 				}
 			}
-			t.State.RefFrame[1] = NONE
+			t.State.RefFrame[1] = shared.NONE
 		}
 	}
 }
@@ -347,7 +347,7 @@ func (t *TileGroup) addSample(deltaRow int, deltaCol int) {
 		return
 	}
 
-	if t.State.RefFrames[mvRow][mvCol][1] != NONE {
+	if t.State.RefFrames[mvRow][mvCol][1] != shared.NONE {
 		return
 	}
 
@@ -460,7 +460,7 @@ func (t *TileGroup) readInterIntraMode(isCompound bool, b *bitstream.BitStream) 
 
 		if util.Bool(t.InterIntra) {
 			t.InterIntraMode = b.S()
-			t.State.RefFrame[1] = INTRA_FRAME
+			t.State.RefFrame[1] = shared.INTRA_FRAME
 			t.AngleDeltaY = 0
 			t.AngleDeltaUV = 0
 			t.UseFilterIntra = 0

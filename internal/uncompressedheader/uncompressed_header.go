@@ -540,8 +540,52 @@ func (u *UncompressedHeader) GetRelativeDist(a int, b int) int {
 	return diff
 }
 
+// setup_past_independence()
 func (u *UncompressedHeader) setupPastIndependence() {
-	panic("not implemented")
+	for i := 0; i < shared.MAX_SEGMENTS; i++ {
+		for j := 0; j < shared.SEG_LVL_MAX; j++ {
+			u.State.FeatureData[i][j] = 0
+			u.State.FeatureEnabled[i][j] = 0
+		}
+	}
+
+	u.State.PrevSegmentIds = make([][]int, u.State.MiRows)
+	for i := range u.State.PrevSegmentIds {
+		u.State.PrevSegmentIds[i] = make([]int, u.State.MiCols)
+	}
+
+	for row := 0; row < u.State.MiRows; row++ {
+		for col := 0; col < u.State.MiCols; col++ {
+			u.State.PrevSegmentIds[row][col] = 0
+		}
+	}
+
+	for ref := shared.LAST_FRAME; ref <= shared.ALTREF_FRAME; ref++ {
+		u.State.GmType[ref] = shared.IDENTITY
+	}
+
+	for ref := shared.LAST_FRAME; ref <= shared.ALTREF_FRAME; ref++ {
+		for i := 0; i <= 5; i++ {
+			if (i % 3) == 2 {
+				u.State.PrevGmParams[ref][i] = 1 << shared.WARPEDMODEL_PREC_BITS
+			} else {
+				u.State.PrevGmParams[ref][i] = 0
+			}
+		}
+	}
+
+	u.State.LoopFilterDeltaEnabled = true
+	u.State.LoopFilterRefDeltas[shared.INTRA_FRAME] = 1
+	u.State.LoopFilterRefDeltas[shared.LAST_FRAME] = 0
+	u.State.LoopFilterRefDeltas[shared.LAST2_FRAME] = 0
+	u.State.LoopFilterRefDeltas[shared.LAST3_FRAME] = 0
+	u.State.LoopFilterRefDeltas[shared.BWDREF_FRAME] = 0
+	u.State.LoopFilterRefDeltas[shared.GOLDEN_FRAME] = -1
+	u.State.LoopFilterRefDeltas[shared.ALTREF_FRAME] = -1
+	u.State.LoopFilterRefDeltas[shared.ALTREF2_FRAME] = -1
+
+	u.State.LoopFilterModeDeltas[0] = 0
+	u.State.LoopFilterModeDeltas[1] = 0
 }
 
 func (u *UncompressedHeader) loadCdfs(a int) {

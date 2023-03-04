@@ -32,7 +32,7 @@ func (t *TileGroup) computePrediction() {
 		candRow := (t.State.MiRow >> subY) << subY
 		candCol := (t.State.MiCol >> subX) << subX
 
-		t.IsInterIntra = (util.Bool(t.IsInter) && t.State.RefFrame[1] == INTRA_FRAME)
+		t.IsInterIntra = (util.Bool(t.IsInter) && t.State.RefFrame[1] == shared.INTRA_FRAME)
 
 		if t.IsInterIntra {
 			var mode int
@@ -61,7 +61,7 @@ func (t *TileGroup) computePrediction() {
 
 			for r := 0; r < (num4x4H << subY); r++ {
 				for c := 0; c < (num4x4W << subX); c++ {
-					if t.State.RefFrames[candRow+r][candCol+c][0] == INTRA_FRAME {
+					if t.State.RefFrames[candRow+r][candCol+c][0] == shared.INTRA_FRAME {
 						someUseIntra = true
 					}
 				}

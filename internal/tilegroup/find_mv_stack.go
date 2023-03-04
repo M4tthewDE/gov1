@@ -130,7 +130,7 @@ func (t *TileGroup) setupGlobalMvProcess(refList int) []int {
 	ref := t.State.RefFrame[refList]
 
 	var typ int
-	if ref != INTRA_FRAME {
+	if ref != shared.INTRA_FRAME {
 		typ = t.State.GmType[ref]
 	}
 
@@ -140,7 +140,7 @@ func (t *TileGroup) setupGlobalMvProcess(refList int) []int {
 	var xc int
 	var yc int
 	mv := []int{}
-	if ref == INTRA_FRAME || typ == shared.IDENTITY {
+	if ref == shared.INTRA_FRAME || typ == shared.IDENTITY {
 		mv[0] = 0
 		mv[1] = 0
 	} else if typ == shared.TRANSLATION {

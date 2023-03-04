@@ -34,9 +34,6 @@ const PALETTE_NUM_NEIGHBORS = 3
 const DELTA_Q_SMALL = 3
 const DELTA_LF_SMALL = 3
 
-const INTRA_FRAME = 0
-const NONE = -1
-
 const SINGLE_REFERENCE = 0
 const COMPOUND_REFERENCE = 1
 

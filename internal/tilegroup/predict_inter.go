@@ -16,7 +16,7 @@ var Quant_Dist_Lookup = [][]int{
 
 // 7.11.3 Inter prediction process
 func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow int, candCol int) {
-	isCompound := t.State.RefFrames[candRow][candCol][1] > INTRA_FRAME
+	isCompound := t.State.RefFrames[candRow][candCol][1] > shared.INTRA_FRAME
 
 	t.roundVariablesDerivationProcess(isCompound)
 
@@ -509,7 +509,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int)
 				candCol := x4 | 1
 				candSz := t.State.MiSizes[candRow][candCol]
 				step4 := util.Clip3(2, 16, t.State.Num4x4BlocksWide[candSz])
-				if t.State.RefFrames[candRow][candCol][0] > INTRA_FRAME {
+				if t.State.RefFrames[candRow][candCol][0] > shared.INTRA_FRAME {
 					nCount += 1
 					predW := util.Min(w, (step4*MI_SIZE)>>subX)
 					predH := util.Min(h>>1, 32>>subY)
@@ -549,7 +549,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int)
 			candRow := y4 | 1
 			candSz := t.State.MiSizes[candRow][candCol]
 			step4 := util.Clip3(2, 16, t.State.Num4x4BlocksHigh[candSz])
-			if t.State.RefFrames[candRow][candCol][0] > INTRA_FRAME {
+			if t.State.RefFrames[candRow][candCol][0] > shared.INTRA_FRAME {
 				nCount += 1
 				predW := util.Min(w>>1, 32>>subX)
 				predH := util.Min(h, (step4*MI_SIZE)>>subY)

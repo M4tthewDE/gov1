@@ -24,8 +24,8 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream) {
 	t.readDeltaLf(b)
 
 	t.State.ReadDeltas = false
-	t.State.RefFrame[0] = INTRA_FRAME
-	t.State.RefFrame[0] = NONE
+	t.State.RefFrame[0] = shared.INTRA_FRAME
+	t.State.RefFrame[0] = shared.NONE
 
 	if t.State.UncompressedHeader.AllowIntraBc {
 		t.useIntrabc = b.S()

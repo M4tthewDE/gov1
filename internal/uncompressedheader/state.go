@@ -3,6 +3,7 @@ package uncompressedheader
 import (
 	"github.com/m4tthewde/gov1/internal/header"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/tileinfo"
 )
 
@@ -18,10 +19,15 @@ type State struct {
 	TileCols       int
 	TileRows       int
 	TileSizeBytes  int
-	FeatureEnabled [][]int
-	FeatureData    [][]int
-	GmType         []int
-	PrevGmParams   [][]int
+	FeatureEnabled [shared.MAX_SEGMENTS][shared.SEG_LVL_MAX]int
+	FeatureData    [shared.MAX_SEGMENTS][shared.SEG_LVL_MAX]int
+	GmType         [shared.ALTREF_FRAME + 1]int
+	PrevGmParams   [shared.ALTREF_FRAME + 1][6]int
+	PrevSegmentIds [][]int
+
+	LoopFilterDeltaEnabled bool
+	LoopFilterRefDeltas    [8]int
+	LoopFilterModeDeltas   [2]int
 }
 
 func (s *State) newTileInfoState() tileinfo.State {

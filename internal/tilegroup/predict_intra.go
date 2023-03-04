@@ -1,6 +1,7 @@
 package tilegroup
 
 import (
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
@@ -613,7 +614,7 @@ func (t *TileGroup) isSmooth(row int, col int, plane int) bool {
 	if plane == 0 {
 		mode = t.YModes[row][col]
 	} else {
-		if t.State.RefFrames[row][col][0] > INTRA_FRAME {
+		if t.State.RefFrames[row][col][0] > shared.INTRA_FRAME {
 			return false
 		}
 		mode = t.UVModes[row][col]

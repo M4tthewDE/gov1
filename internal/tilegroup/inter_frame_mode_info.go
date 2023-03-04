@@ -14,22 +14,22 @@ func (t *TileGroup) interFrameModeInfo(b *bitstream.BitStream) {
 		t.LeftRefFrame[0] = t.State.RefFrames[t.State.MiRow][t.State.MiCol-1][0]
 		t.LeftRefFrame[1] = t.State.RefFrames[t.State.MiRow][t.State.MiCol-1][1]
 	} else {
-		t.LeftRefFrame[0] = INTRA_FRAME
-		t.LeftRefFrame[1] = NONE
+		t.LeftRefFrame[0] = shared.INTRA_FRAME
+		t.LeftRefFrame[1] = shared.NONE
 	}
 
 	if t.State.AvailU {
 		t.AboveRefFrame[0] = t.State.RefFrames[t.State.MiRow-1][t.State.MiCol][0]
 		t.AboveRefFrame[1] = t.State.RefFrames[t.State.MiRow-1][t.State.MiCol][1]
 	} else {
-		t.AboveRefFrame[0] = INTRA_FRAME
-		t.AboveRefFrame[1] = NONE
+		t.AboveRefFrame[0] = shared.INTRA_FRAME
+		t.AboveRefFrame[1] = shared.NONE
 	}
 
-	t.LeftIntra = t.LeftRefFrame[0] <= INTRA_FRAME
-	t.AboveIntra = t.AboveRefFrame[0] <= INTRA_FRAME
-	t.LeftSingle = t.LeftRefFrame[1] <= INTRA_FRAME
-	t.AboveSingle = t.AboveRefFrame[1] <= INTRA_FRAME
+	t.LeftIntra = t.LeftRefFrame[0] <= shared.INTRA_FRAME
+	t.AboveIntra = t.AboveRefFrame[0] <= shared.INTRA_FRAME
+	t.LeftSingle = t.LeftRefFrame[1] <= shared.INTRA_FRAME
+	t.AboveSingle = t.AboveRefFrame[1] <= shared.INTRA_FRAME
 
 	t.Skip = 0
 	t.interSegmentId(1, b)
@@ -61,8 +61,8 @@ func (t *TileGroup) interFrameModeInfo(b *bitstream.BitStream) {
 
 // intra_block_mode_info()
 func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream) {
-	t.State.RefFrame[0] = INTRA_FRAME
-	t.State.RefFrame[1] = NONE
+	t.State.RefFrame[0] = shared.INTRA_FRAME
+	t.State.RefFrame[1] = shared.NONE
 	yMode := b.S()
 	t.YMode = yMode
 	t.intraAngleInfoY(b)
@@ -172,7 +172,7 @@ func (t *TileGroup) readIsInter(b *bitstream.BitStream) {
 	if util.Bool(t.SkipMode) {
 		t.IsInter = 1
 	} else if t.segFeatureActive(shared.SEG_LVL_REF_FRAME) {
-		t.IsInter = util.Int(t.State.FeatureData[t.SegmentId][shared.SEG_LVL_REF_FRAME] != INTRA_FRAME)
+		t.IsInter = util.Int(t.State.FeatureData[t.SegmentId][shared.SEG_LVL_REF_FRAME] != shared.INTRA_FRAME)
 	} else if t.segFeatureActive(shared.SEG_LVL_GLOBALMV) {
 		t.IsInter = 0
 	} else {

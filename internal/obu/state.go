@@ -4,6 +4,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/cdef"
 	"github.com/m4tthewde/gov1/internal/header"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/tilegroup"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 )
@@ -49,22 +50,17 @@ type State struct {
 	AvailL               bool
 	AvailUChroma         bool
 	AvailLChroma         bool
-	FeatureEnabled       [][]int
-	FeatureData          [][]int
+	FeatureEnabled       [shared.MAX_SEGMENTS][shared.SEG_LVL_MAX]int
+	FeatureData          [shared.MAX_SEGMENTS][shared.SEG_LVL_MAX]int
 	RefFrame             []int
 	RefFrames            [][][]int
 	RefFrameWidth        []int
 	RefFrameHeight       []int
-	GmType               []int
-	PrevGmParams         [][]int
+	GmType               [shared.ALTREF_FRAME + 1]int
+	PrevGmParams         [shared.ALTREF_FRAME + 1][6]int
 	PrevSegmentIds       [][]int
 	CurrFrame            [][][]int
 	SymbolMaxBits        int
-}
-
-func NewState() State {
-	// TODO: probably smart to set some sensible defaults here
-	return State{}
 }
 
 func (s *State) newUncompressedHeaderState() uncompressedheader.State {
