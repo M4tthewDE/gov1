@@ -77,7 +77,7 @@ type UncompressedHeader struct {
 	SegmentationUpdateMap      int
 	SegmentationUpdateData     int
 	LosslessArray              [shared.MAX_SEGMENTS]bool
-	GmParams                   [][]int
+	GmParams                   [shared.ALTREF_FRAME + 1][6]int
 	ForceIntegerMv             bool
 	AllowScreenContentTools    int
 	RefOrderHint               []int

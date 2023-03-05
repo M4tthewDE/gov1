@@ -311,7 +311,7 @@ func (t *TileGroup) blockWarpProcess(useWarp int, plane int, refList int, x int,
 	srcX := (x + j8*8 + 4) << subX
 	srcY := (y + i8*8 + 4) << subY
 
-	var warpParams []int
+	var warpParams [6]int
 	if useWarp == 1 {
 		warpParams = t.LocalWarpParams
 	} else {
@@ -362,7 +362,7 @@ func (t *TileGroup) blockWarpProcess(useWarp int, plane int, refList int, x int,
 }
 
 // 7.11.3.6 Setup shear process
-func (t *TileGroup) setupShearProcess(warpParams []int) (bool, int, int, int, int) {
+func (t *TileGroup) setupShearProcess(warpParams [6]int) (bool, int, int, int, int) {
 	alpha0 := util.Clip3(-32768, 32767, warpParams[2]-(1<<shared.WARPEDMODEL_PREC_BITS))
 	beta0 := util.Clip3(-32768, 32767, warpParams[3])
 

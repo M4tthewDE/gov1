@@ -222,7 +222,7 @@ type TileGroup struct {
 	InterPostRound int
 
 	LocalValid      bool
-	LocalWarpParams []int
+	LocalWarpParams [6]int
 
 	FrameStore [][][][]int
 	Mask       [][]int
