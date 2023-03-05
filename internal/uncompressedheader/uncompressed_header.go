@@ -11,6 +11,8 @@ const ONLY_4X4 = 0
 
 const SUPERRES_DENOM_BITS = 3
 const SUPERRES_DENOM_MIN = 9
+
+const INTER_FRAME = 1
 const SWITCH_FRAME = 3
 
 const TOTAL_REFS_PER_FRAME = 8
@@ -20,6 +22,8 @@ type UncompressedHeader struct {
 
 	ShowExistingFrame          bool
 	ShowableFrame              bool
+	ShowFrame                  bool
+	FrameType                  int
 	RefreshImageFlags          int
 	DisplayFrameId             int
 	FrameIdNumbersPresent      bool
@@ -105,6 +109,31 @@ type UncompressedHeader struct {
 
 	FrameRestorationType [3]int
 	UsesLr               bool
+
+	ApplyGrain            bool
+	GrainSeed             int
+	PointYValue           []int
+	PointYScaling         []int
+	ChromaScalingFromLuna bool
+	PointCbValue          []int
+	PointCbScaling        []int
+	PointCrValue          []int
+	PointCrScaling        []int
+	GrainScalingMinus8    int
+	ArCoeffLag            int
+	ArCoeffsYPlus128      []int
+	ArCoeffsCbPlus128     []int
+	ArCoeffsCrPlus128     []int
+	ArCoeffShiftMinus6    int
+	GrainScaleShift       int
+	CbMult                int
+	CbLumaMult            int
+	CbOffset              int
+	CrMult                int
+	CrLumaMult            int
+	CrOffset              int
+	OverlapFlag           bool
+	ClipToRestrictedRange bool
 }
 
 func NewUncompressedHeader(b *bitstream.BitStream, inputState State) UncompressedHeader {
@@ -123,9 +152,6 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 			u.State.SequenceHeader.DeltaFrameIdLengthMinusTwo + 3
 	}
 
-	var frameType int
-	var showFrame bool
-
 	var errorResilientMode bool
 
 	refFrameType := []int{}
@@ -138,10 +164,10 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	allFrames := ((1 << shared.NUM_REF_FRAMES) - 1)
 	if u.State.SequenceHeader.ReducedStillPictureHeader {
 		u.ShowExistingFrame = false
-		frameType = shared.KEY_FRAME
+		u.FrameType = shared.KEY_FRAME
 		u.FrameIsIntra = true
 
-		showFrame = true
+		u.ShowFrame = true
 		u.ShowableFrame = false
 	} else {
 		showExistingFrame := util.Bool(b.F(1))
@@ -158,9 +184,9 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 				u.DisplayFrameId = b.F(idLen)
 			}
 
-			frameType := refFrameType[frameToShowMapIdx]
+			u.FrameType = refFrameType[frameToShowMapIdx]
 
-			if frameType == shared.KEY_FRAME {
+			if u.FrameType == shared.KEY_FRAME {
 				u.RefreshImageFlags = allFrames
 			}
 
@@ -171,30 +197,30 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 			return
 		}
 
-		frameType = b.F(2)
+		u.FrameType = b.F(2)
 
-		u.FrameIsIntra = (frameType == 2 || frameType == 0)
+		u.FrameIsIntra = (u.FrameType == 2 || u.FrameType == 0)
 
-		showFrame = util.Bool(b.F(1))
+		u.ShowFrame = util.Bool(b.F(1))
 
-		if showFrame && u.State.SequenceHeader.DecoderModelInfoPresent && !u.State.SequenceHeader.TimingInfo.EqualPictureInterval {
+		if u.ShowFrame && u.State.SequenceHeader.DecoderModelInfoPresent && !u.State.SequenceHeader.TimingInfo.EqualPictureInterval {
 			u.TemporalPointInfo(b)
 		}
 
-		if showFrame {
-			u.ShowableFrame = frameType != 0
+		if u.ShowFrame {
+			u.ShowableFrame = u.FrameType != 0
 		} else {
 			u.ShowableFrame = util.Bool(b.F(1))
 		}
 
-		if frameType == 3 || frameType == 0 && showFrame {
+		if u.FrameType == 3 || u.FrameType == 0 && u.ShowFrame {
 			errorResilientMode = true
 		} else {
 			errorResilientMode = util.Bool(b.F(1))
 		}
 	}
 
-	if frameType == 0 && showFrame {
+	if u.FrameType == 0 && u.ShowFrame {
 		for i := 0; i < shared.NUM_REF_FRAMES; i++ {
 			refValid[i] = 0
 			refOrderHint[i] = 0
@@ -235,7 +261,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 		u.CurrentFrameId = 0
 	}
 
-	if frameType == SWITCH_FRAME {
+	if u.FrameType == SWITCH_FRAME {
 		u.FrameSizeOverrideFlag = true
 	} else if u.State.SequenceHeader.ReducedStillPictureHeader {
 		u.FrameSizeOverrideFlag = false
@@ -278,7 +304,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	useRefFrameMvs := false
 	var refreshFrameFlags int
 
-	if frameType == 3 || frameType == 0 || showFrame {
+	if u.FrameType == 3 || u.FrameType == 0 || u.ShowFrame {
 		refreshFrameFlags = allFrames
 	} else {
 		refreshFrameFlags = b.F(8)
@@ -446,7 +472,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	u.ReducedTxSet = util.Bool(b.F(1))
 
 	u.globalMotionParams(b)
-	u.filmGrainParams()
+	u.filmGrainParams(b)
 }
 
 // mark_ref_frames( idLen)
@@ -1162,8 +1188,151 @@ func (u *UncompressedHeader) decodeSubexp(numSyms int, b *bitstream.BitStream) i
 	}
 }
 
-func (u *UncompressedHeader) filmGrainParams() {
-	panic("not implemented")
+// film_grain_params()
+func (u *UncompressedHeader) filmGrainParams(b *bitstream.BitStream) {
+	if !u.State.SequenceHeader.FilmGrainParamsPresent || (!u.ShowFrame && !u.ShowableFrame) {
+		u.resetGrainParams()
+		return
+	}
+
+	u.ApplyGrain = util.Bool(b.F(1))
+	if !u.ApplyGrain {
+		u.resetGrainParams()
+		return
+	}
+
+	u.GrainSeed = b.F(16)
+
+	var updateGrain bool
+	if u.FrameType == INTER_FRAME {
+		updateGrain = util.Bool(b.F(1))
+	} else {
+		updateGrain = true
+	}
+
+	if !updateGrain {
+		filmGrainParamsRefIdx := b.F(3)
+		tempGrainSeed := u.GrainSeed
+		u.loadGrainParams(filmGrainParamsRefIdx)
+		u.GrainSeed = tempGrainSeed
+		return
+	}
+
+	numYPoints := b.F(4)
+	u.PointYValue = make([]int, numYPoints)
+	u.PointYScaling = make([]int, numYPoints)
+	for i := 0; i < numYPoints; i++ {
+		u.PointYValue[i] = b.F(8)
+		u.PointYScaling[i] = b.F(8)
+
+	}
+
+	if u.State.SequenceHeader.ColorConfig.MonoChrome {
+		u.ChromaScalingFromLuna = false
+	} else {
+		u.ChromaScalingFromLuna = util.Bool(b.F(1))
+	}
+
+	var numCbPoints int
+	var numCrPoints int
+	if u.State.SequenceHeader.ColorConfig.MonoChrome || u.ChromaScalingFromLuna || (u.State.SequenceHeader.ColorConfig.SubsamplingX && u.State.SequenceHeader.ColorConfig.SubsamplingY && numYPoints == 0) {
+		numCbPoints = 0
+		numCrPoints = 0
+	} else {
+		numCbPoints = b.F(4)
+
+		u.PointCbValue = make([]int, numCbPoints)
+		u.PointCbScaling = make([]int, numCbPoints)
+		for i := 0; i < numCbPoints; i++ {
+			u.PointCbValue[i] = b.F(8)
+			u.PointCbScaling[i] = b.F(8)
+		}
+
+		numCrPoints = b.F(4)
+
+		u.PointCrValue = make([]int, numCrPoints)
+		u.PointCrScaling = make([]int, numCrPoints)
+		for i := 0; i < numCrPoints; i++ {
+			u.PointCrValue[i] = b.F(8)
+			u.PointCrScaling[i] = b.F(8)
+		}
+	}
+
+	u.GrainScalingMinus8 = b.F(2)
+	u.ArCoeffLag = b.F(2)
+
+	numPosLuma := 2 * u.ArCoeffLag * (u.ArCoeffLag + 1)
+
+	var numPosChroma int
+	if util.Bool(numYPoints) {
+		numPosChroma = numPosLuma + 1
+		u.ArCoeffsYPlus128 = make([]int, numPosLuma)
+		for i := 0; i < numPosLuma; i++ {
+			u.ArCoeffsYPlus128[i] = b.F(8)
+		}
+	} else {
+		numPosChroma = numPosLuma
+	}
+
+	if u.ChromaScalingFromLuna || util.Bool(numCbPoints) {
+		u.ArCoeffsCbPlus128 = make([]int, numPosChroma)
+		for i := 0; i < numPosChroma; i++ {
+			u.ArCoeffsCbPlus128[i] = b.F(8)
+		}
+	}
+
+	if u.ChromaScalingFromLuna || util.Bool(numCrPoints) {
+		u.ArCoeffsCrPlus128 = make([]int, numPosChroma)
+		for i := 0; i < numPosChroma; i++ {
+			u.ArCoeffsCrPlus128[i] = b.F(8)
+		}
+	}
+
+	u.ArCoeffShiftMinus6 = b.F(2)
+	u.GrainScaleShift = b.F(2)
+
+	if util.Bool(numCbPoints) {
+		u.CbMult = b.F(8)
+		u.CbLumaMult = b.F(8)
+		u.CbOffset = b.F(9)
+	}
+
+	if util.Bool(numCrPoints) {
+		u.CrMult = b.F(8)
+		u.CrLumaMult = b.F(8)
+		u.CrOffset = b.F(9)
+	}
+
+	u.OverlapFlag = util.Bool(b.F(1))
+	u.ClipToRestrictedRange = util.Bool(b.F(1))
+}
+
+// rest_grain_params()
+func (u *UncompressedHeader) resetGrainParams() {
+	u.ApplyGrain = false
+	u.GrainSeed = 0
+	u.PointYValue = []int{}
+	u.PointYScaling = []int{}
+	u.ChromaScalingFromLuna = false
+	u.PointCbValue = []int{}
+	u.PointCbScaling = []int{}
+	u.PointCrValue = []int{}
+	u.PointCrScaling = []int{}
+	u.GrainScalingMinus8 = 0
+	u.ArCoeffLag = 0
+	u.ArCoeffsYPlus128 = []int{}
+	u.ArCoeffsCbPlus128 = []int{}
+	u.ArCoeffsCrPlus128 = []int{}
+	u.ArCoeffShiftMinus6 = 0
+	u.GrainScaleShift = 0
+	u.CbMult = 0
+	u.CbLumaMult = 0
+	u.CbOffset = 0
+	u.CrMult = 0
+	u.CrLumaMult = 0
+	u.CrOffset = 0
+	u.OverlapFlag = false
+	u.ClipToRestrictedRange = false
 }
 
 // decode_frame_wrapup()
