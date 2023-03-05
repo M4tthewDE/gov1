@@ -229,3 +229,14 @@ const AFFINE = 3
 var Segmentation_Feature_Bits = []int{8, 6, 6, 6, 6, 3, 0, 0}
 var Segmentation_Feature_Signed = []int{1, 1, 1, 1, 1, 0, 0, 0}
 var Segmentation_Feature_Max = []int{255, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, 7, 0, 0}
+
+const RESTORE_NONE = 0
+const RESTORE_WIENER = 1
+const RESTORE_SGRPROJ = 2
+const RESTORE_SWITCHABLE = 3
+
+var REMAP_LR_TYPE = []int{
+	RESTORE_NONE, RESTORE_SWITCHABLE, RESTORE_WIENER, RESTORE_SGRPROJ,
+}
+
+const RESTORATION_TILESIZE_MAX = 256

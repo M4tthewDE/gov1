@@ -16,7 +16,7 @@ func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream) {
 	h := t.State.Num4x4BlocksHigh[bSize]
 
 	for plane := 0; plane < t.State.SequenceHeader.ColorConfig.NumPlanes; plane++ {
-		if t.State.FrameRestorationType[plane] != RESTORE_NONE {
+		if t.State.UncompressedHeader.FrameRestorationType[plane] != shared.RESTORE_NONE {
 			subX := 0
 			subY := 0
 
@@ -58,17 +58,17 @@ func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream) {
 // read_lr_unit(plane, unitRow, unitCol)
 func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, b *bitstream.BitStream) {
 	var restorationType int
-	if t.State.FrameRestorationType[plane] == RESTORE_WIENER {
+	if t.State.UncompressedHeader.FrameRestorationType[plane] == shared.RESTORE_WIENER {
 		useWiener := b.S()
-		restorationType = RESTORE_NONE
+		restorationType = shared.RESTORE_NONE
 		if useWiener == 1 {
-			restorationType = RESTORE_WIENER
+			restorationType = shared.RESTORE_WIENER
 		}
-	} else if t.State.FrameRestorationType[plane] == RESTORE_SGRPROJ {
+	} else if t.State.UncompressedHeader.FrameRestorationType[plane] == shared.RESTORE_SGRPROJ {
 		useSgrproj := b.S()
-		restorationType = RESTORE_NONE
+		restorationType = shared.RESTORE_NONE
 		if useSgrproj == 1 {
-			restorationType = RESTORE_SGRPROJ
+			restorationType = shared.RESTORE_SGRPROJ
 		}
 	} else {
 		restorationType = b.S()
@@ -76,7 +76,7 @@ func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, b *bitstream
 
 	t.LrType[plane][unitRow][unitCol] = restorationType
 
-	if restorationType == RESTORE_WIENER {
+	if restorationType == shared.RESTORE_WIENER {
 		for pass := 0; pass < 2; pass++ {
 			var firstCoeff int
 			if plane == 1 {
@@ -94,7 +94,7 @@ func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, b *bitstream
 				t.RefLrWiener[plane][pass][j] = v
 			}
 		}
-	} else if restorationType == RESTORE_SGRPROJ {
+	} else if restorationType == shared.RESTORE_SGRPROJ {
 		lrSgrSet := b.L(SGRPROJ_PARAMS_BITS)
 		t.LrSgrSet[plane][unitRow][unitCol] = lrSgrSet
 

@@ -52,11 +52,6 @@ var Mode_To_Angle = []int{0, 90, 180, 45, 135, 113, 157, 203, 67, 0, 0, 0, 0}
 
 const ANGLE_STEP = 3
 
-const RESTORE_NONE = 0
-const RESTORE_WIENER = 1
-const RESTORE_SGRPROJ = 2
-const RESTORE_SWITCHABLE = 3
-
 const MI_SIZE = 4
 
 const SGRPROJ_PARAMS_BITS = 4

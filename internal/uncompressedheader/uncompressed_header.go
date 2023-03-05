@@ -94,6 +94,7 @@ type UncompressedHeader struct {
 	LoopFilterRefDeltas    [8]int
 	LoopFilterModeDeltas   [2]int
 	LoopFilterSharpness    int
+	LoopRestorationSize    []int
 
 	CdefBits          int
 	CdefYPriStrength  []int
@@ -101,6 +102,9 @@ type UncompressedHeader struct {
 	CdefUVPriStrength []int
 	CdefUVSecStrength []int
 	CdefDampening     int
+
+	FrameRestorationType [3]int
+	UsesLr               bool
 }
 
 func NewUncompressedHeader(b *bitstream.BitStream, inputState State) UncompressedHeader {
@@ -428,7 +432,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 	u.loopFilterParams(b)
 	u.cdefParams(b)
-	u.lrParams()
+	u.lrParams(b)
 	u.readTxMode(b)
 	u.frameReferenceMode(b)
 	u.skipModeParams(b)
@@ -905,8 +909,54 @@ func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream) {
 	}
 }
 
-func (u *UncompressedHeader) lrParams() {
-	panic("not implemented")
+// lr_params()
+func (u *UncompressedHeader) lrParams(b *bitstream.BitStream) {
+	if u.AllLossless || u.AllowIntraBc || !u.State.SequenceHeader.EnableRestoration {
+		u.FrameRestorationType[0] = shared.RESTORE_NONE
+		u.FrameRestorationType[1] = shared.RESTORE_NONE
+		u.FrameRestorationType[2] = shared.RESTORE_NONE
+		u.UsesLr = false
+		return
+	}
+
+	u.UsesLr = false
+	usesChromaLr := false
+	for i := 0; i < u.State.SequenceHeader.ColorConfig.NumPlanes; i++ {
+		lrType := b.F(2)
+		u.FrameRestorationType[i] = shared.REMAP_LR_TYPE[lrType]
+		if u.FrameRestorationType[i] != shared.RESTORE_NONE {
+			u.UsesLr = true
+			if i > 0 {
+				usesChromaLr = true
+			}
+		}
+	}
+
+	var lrUnitShift int
+	if u.UsesLr {
+		if u.State.SequenceHeader.Use128x128SuperBlock {
+			lrUnitShift = b.F(1)
+			lrUnitShift++
+		} else {
+			lrUnitShift = b.F(1)
+
+			if util.Bool(lrUnitShift) {
+				lrUnitExtraShift := b.F(1)
+				lrUnitShift += lrUnitExtraShift
+			}
+		}
+		u.LoopRestorationSize[0] = shared.RESTORATION_TILESIZE_MAX >> (2 - lrUnitShift)
+
+		var lrUvShift int
+		if u.State.SequenceHeader.ColorConfig.SubsamplingX && u.State.SequenceHeader.ColorConfig.SubsamplingY && usesChromaLr {
+			lrUvShift = b.F(1)
+		} else {
+			lrUvShift = 0
+		}
+
+		u.LoopRestorationSize[1] = u.LoopRestorationSize[0] >> lrUvShift
+		u.LoopRestorationSize[2] = u.LoopRestorationSize[0] >> lrUvShift
+	}
 }
 
 // read_tx_mode()
