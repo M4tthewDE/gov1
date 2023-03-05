@@ -69,6 +69,10 @@ func (o *Obu) build(sz int, b *bitstream.BitStream) {
 		fmt.Printf("%s\n", string(x))
 	case header.OBU_TEMPORAL_DELIMITER:
 		o.State.SeenFrameHeader = false
+	case header.OBU_FRAME_HEADER:
+		o.ParseFrameHeader(b)
+	case header.OBU_REDUNDANT_FRAME_HEADER:
+		o.ParseFrameHeader(b)
 	case header.OBU_FRAME:
 		o.newFrame(o.Size, b)
 	case header.OBU_METADATA:
