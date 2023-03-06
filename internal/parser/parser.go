@@ -33,9 +33,9 @@ func (p *Parser) frameUnit(sz int) {
 		sz -= p.bitStream.Leb128Bytes
 
 		inputState := obu.State{}
-		_ = obu.NewObu(obuLength, inputState, p.bitStream)
+		obu := obu.NewObu(obuLength, inputState, p.bitStream)
 		// TODO: update state for further obus
-		sz -= obuLength
+		sz -= obu.Size
 		// end case might be broken
 	}
 }
