@@ -154,7 +154,6 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 	var errorResilientMode bool
 
-	refFrameType := []int{}
 	var refValid [shared.NUM_REF_FRAMES]int
 	var refOrderHint [shared.NUM_REF_FRAMES]int
 	var orderHints [shared.REFS_PER_FRAME]int
@@ -184,7 +183,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 				u.DisplayFrameId = b.F(idLen)
 			}
 
-			u.FrameType = refFrameType[frameToShowMapIdx]
+			u.FrameType = u.State.RefFrameType[frameToShowMapIdx]
 
 			if u.FrameType == shared.KEY_FRAME {
 				u.RefreshImageFlags = allFrames

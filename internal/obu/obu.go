@@ -1,9 +1,6 @@
 package obu
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/header"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
@@ -56,17 +53,11 @@ func (o *Obu) build(sz int, b *bitstream.BitStream) {
 		}
 	}
 
-	x, _ := json.MarshalIndent(o, "", "	")
-	fmt.Printf("%s\n", string(x))
-
 	switch o.State.Header.Type {
 	case header.OBU_SEQUENCE_HEADER:
 		sequenceheader, result := sequenceheader.NewSequenceHeader(b)
 		o.State.SequenceHeader = sequenceheader
 		o.State.OperatingPointIdc = result.OperatingPointIdc
-
-		x, _ := json.MarshalIndent(o.State.SequenceHeader, "", "	")
-		fmt.Printf("%s\n", string(x))
 	case header.OBU_TEMPORAL_DELIMITER:
 		o.State.SeenFrameHeader = false
 	case header.OBU_FRAME_HEADER:
@@ -78,18 +69,10 @@ func (o *Obu) build(sz int, b *bitstream.BitStream) {
 	case header.OBU_METADATA:
 
 	default:
-		fmt.Printf("not implemented type %d\n", o.State.Header.Type)
-		panic("")
+		panic("not implemented")
 	}
 
 	payloadBits := b.Position - startPosition
-
-	fmt.Println("----------------------------------------")
-	fmt.Printf("p.position: %d\n", b.Position)
-	fmt.Printf("startPosition: %d\n", startPosition)
-	fmt.Printf("payloadBits: %d\n", payloadBits)
-	fmt.Printf("obu.Size*8 - payloadBits: %d\n", o.Size*8-payloadBits)
-	fmt.Println("----------------------------------------")
 
 	if o.Size > 0 &&
 		o.State.Header.Type != header.OBU_TILE_GROUP &&

@@ -61,6 +61,7 @@ type State struct {
 	PrevSegmentIds       [][]int
 	CurrFrame            [][][]int
 	SymbolMaxBits        int
+	RefFrameTypes        [7]int
 }
 
 func (s *State) newUncompressedHeaderState() uncompressedheader.State {
@@ -81,6 +82,7 @@ func (s *State) newUncompressedHeaderState() uncompressedheader.State {
 		GmType:         s.GmType,
 		PrevGmParams:   s.PrevGmParams,
 		CurrentQIndex:  s.CurrentQIndex,
+		RefFrameType:   s.RefFrameTypes,
 	}
 }
 

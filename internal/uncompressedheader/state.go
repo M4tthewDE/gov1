@@ -24,6 +24,7 @@ type State struct {
 	GmType         [shared.ALTREF_FRAME + 1]int
 	PrevGmParams   [shared.ALTREF_FRAME + 1][6]int
 	PrevSegmentIds [][]int
+	RefFrameType   [7]int
 
 	CurrentQIndex int
 }

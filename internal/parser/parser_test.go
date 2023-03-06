@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"log"
 	"os"
 	"testing"
 
@@ -18,7 +17,6 @@ func TestParseEndToEnd(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	log.Println(len(data))
 
 	b := bitstream.NewBitStream(data)
 	p := NewParser(&b)
