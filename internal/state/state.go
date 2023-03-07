@@ -22,4 +22,8 @@ type State struct {
 	RefFrameType      [7]int
 	CurrentQIndex     int
 	OperatingPointIdc int
+	MiColStart        int
+	MiColEnd          int
+	MiRowStart        int
+	MiRowEnd          int
 }

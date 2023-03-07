@@ -8,7 +8,6 @@ import (
 )
 
 type Parser struct {
-	state     State
 	bitStream *bitstream.BitStream
 }
 
