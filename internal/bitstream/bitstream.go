@@ -65,7 +65,7 @@ func (b *BitStream) Leb128() int {
 	for i := 0; i < 8; i++ {
 		leb128_byte := b.F(8)
 
-		value |= int((leb128_byte & 0x7F) << (i * 7))
+		value |= (leb128_byte & 0x7f) << (i * 7)
 		b.Leb128Bytes += 1
 		if !util.Bool(leb128_byte & 0x80) {
 			break

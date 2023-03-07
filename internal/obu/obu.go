@@ -6,6 +6,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/tilegroup"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
+	"github.com/m4tthewde/gov1/internal/util"
 )
 
 type ObuType int
@@ -30,11 +31,7 @@ func (o *Obu) build(sz int, b *bitstream.BitStream) {
 	if o.State.Header.HasSizeField {
 		o.Size = b.Leb128()
 	} else {
-		extensionFlagInt := 0
-		if o.State.Header.ExtensionFlag {
-			extensionFlagInt = 1
-		}
-		o.Size = sz - 1 - extensionFlagInt
+		o.Size = sz - 1 - util.Int(o.State.Header.ExtensionFlag)
 	}
 
 	startPosition := b.Position
@@ -66,8 +63,8 @@ func (o *Obu) build(sz int, b *bitstream.BitStream) {
 		o.ParseFrameHeader(b)
 	case header.OBU_FRAME:
 		o.newFrame(o.Size, b)
-	case header.OBU_METADATA:
-
+	case header.OBU_PADDING:
+		o.paddingObu(b)
 	default:
 		panic("not implemented")
 	}
@@ -82,6 +79,7 @@ func (o *Obu) build(sz int, b *bitstream.BitStream) {
 	}
 }
 
+// TODO: remove size, should be included in struct
 // frame_obu( sz )
 func (o *Obu) newFrame(sz int, b *bitstream.BitStream) {
 	startBitPos := b.Position
@@ -123,4 +121,14 @@ func (o *Obu) ParseFrameHeader(b *bitstream.BitStream) {
 // frame_header_copy()
 func FrameHeaderCopy() {
 	panic("not implemented")
+}
+
+// padding_obu( )
+func (o *Obu) paddingObu(b *bitstream.BitStream) {
+	obuPaddingByte := 1
+	for obuPaddingByte != 0 {
+		obuPaddingByte = b.F(8)
+	}
+
+	b.Position -= 8
 }
