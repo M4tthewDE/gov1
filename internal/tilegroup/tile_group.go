@@ -121,8 +121,6 @@ const DIV_LUT_PREC_BITS = 13
 const DIV_LUT_BITS = 8
 
 type TileGroup struct {
-	State State
-
 	LrType              [][][]int
 	RefLrWiener         [][][]int
 	LrWiener            [][][][][]int

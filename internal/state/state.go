@@ -59,4 +59,10 @@ type State struct {
 	CurrFrame            [][][]int
 	SymbolMaxBits        int
 	RefFrameTypes        [7]int
+	Skip                 int
+	IsInter              int
+	CdefSize4            int
+	CdefFrame            [][][]int
+	UpscaledCurrFrame    [][][]int
+	LrFrame              [][][]int
 }
