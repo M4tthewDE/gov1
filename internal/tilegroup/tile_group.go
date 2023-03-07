@@ -286,7 +286,30 @@ func (t *TileGroup) build(sz int, b *bitstream.BitStream) {
 		t.State.CurrentQIndex = t.State.UncompressedHeader.BaseQIdx
 		t.initSymbol(tileSize)
 		t.decodeTile(b)
+		t.exitSymbol(b)
 	}
+
+	if tgEnd == NumTiles-1 {
+		if !t.State.UncompressedHeader.DisableFrameEndUpdateCdf {
+			t.framEndUpdateCdf()
+		}
+		t.decodeFrameWrapup()
+		t.State.SeenFrameHeader = false
+	}
+}
+
+// decode_frame_wrapup( )
+func (t *TileGroup) decodeFrameWrapup() {
+	if !t.State.UncompressedHeader.ShowExistingFrame {
+		if t.State.UncompressedHeader.LoopFilterLevel[0] != 0 || t.State.UncompressedHeader.LoopFilterLevel1 != 0 {
+		}
+
+	}
+}
+
+// frame_end_update_cdf( )
+func (t *TileGroup) framEndUpdateCdf() {
+	panic("not implemented")
 }
 
 // init_symbol( sz )

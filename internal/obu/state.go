@@ -87,7 +87,9 @@ func (s *State) newUncompressedHeaderState() uncompressedheader.State {
 }
 
 func (s *State) newTileGroupState() tilegroup.State {
-	return tilegroup.State{}
+	return tilegroup.State{
+		TileNum: s.TileNum,
+	}
 }
 
 func (s *State) update(state uncompressedheader.State) {

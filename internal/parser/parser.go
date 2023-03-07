@@ -2,7 +2,9 @@ package parser
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/logger"
 	"github.com/m4tthewde/gov1/internal/obu"
+	"go.uber.org/zap"
 )
 
 type Parser struct {
@@ -11,6 +13,8 @@ type Parser struct {
 }
 
 func NewParser(b *bitstream.BitStream) Parser {
+	logger.Initialize()
+
 	return Parser{
 		bitStream: b,
 	}
@@ -32,8 +36,12 @@ func (p *Parser) frameUnit(sz int) {
 		obuLength := p.bitStream.Leb128()
 		sz -= p.bitStream.Leb128Bytes
 
+		logger.Logger.Info("Parsing obu...", zap.Int("sz", sz))
+
 		inputState := obu.State{}
-		_ = obu.NewObu(obuLength, inputState, p.bitStream)
+		obu := obu.NewObu(obuLength, inputState, p.bitStream)
+
+		logger.Logger.Info("Parsed obu:", zap.Int("type", obu.State.Header.Type))
 
 		// TODO: update state for further obus
 		sz -= obuLength

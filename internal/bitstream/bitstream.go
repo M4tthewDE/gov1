@@ -44,7 +44,7 @@ func (b *BitStream) Uvlc() int {
 	leadingZeros := 0
 
 	for {
-		done := b.F(1) != 0
+		done := util.Bool(b.F(1))
 		if done {
 			break
 		}
@@ -91,7 +91,7 @@ func (b *BitStream) TrailingBits(nbBits int) {
 
 // byte_alignment()
 func (b *BitStream) ByteAlignment() {
-	for b.Position&7 != 0 {
+	for util.Bool(b.Position & 7) {
 		b.F(1)
 	}
 }
@@ -101,7 +101,7 @@ func (b *BitStream) Su(n int) int {
 	value := b.F(n)
 	signMask := 1 << uint((n - 1))
 
-	if (value & signMask) != 0 {
+	if util.Bool(value & signMask) {
 		value = value - 2*signMask
 	}
 

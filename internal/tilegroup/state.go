@@ -56,6 +56,7 @@ type State struct {
 	TileNum             int
 	TileSizeBytes       int
 	SymbolMaxBits       int
+	SeenFrameHeader     bool
 }
 
 func (s *State) newWedgeMaskState() wedgemask.State {
