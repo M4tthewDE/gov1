@@ -301,9 +301,31 @@ func (t *TileGroup) build(sz int, b *bitstream.BitStream) {
 // decode_frame_wrapup( )
 func (t *TileGroup) decodeFrameWrapup() {
 	if !t.State.UncompressedHeader.ShowExistingFrame {
-		if t.State.UncompressedHeader.LoopFilterLevel[0] != 0 || t.State.UncompressedHeader.LoopFilterLevel1 != 0 {
+		if t.State.UncompressedHeader.LoopFilterLevel[0] != 0 || t.State.UncompressedHeader.LoopFilterLevel[1] != 0 {
+			t.loopFilterProcess()
 		}
 
+		t.State.CdefFrame = t.cdefProcess()
+		t.State.UpscaledCurrFrame = t.upscalingProcess()
+		t.State.UpscaledCurrFrame = t.upscalingProcess()
+		t.State.LrFrame = t.loopRestorationProcess()
+
+		if t.State.UncompressedHeader.SegmentationEnabled && t.State.UncompressedHeader.SegmentationUpdateMap == 0 {
+			for row := 0; row < t.State.MiRows; row++ {
+				for col := 0; col < t.State.MiCols; col++ {
+					t.SegmentIds[row][col] = t.State.PrevSegmentIds[row][col]
+				}
+			}
+		}
+	} else {
+		if t.State.UncompressedHeader.FrameType == shared.KEY_FRAME {
+			t.referenceFrameLoadingProcess()
+		}
+	}
+
+	t.referenceFrameUpdateProcess()
+	if t.State.UncompressedHeader.ShowFrame || t.State.UncompressedHeader.ShowExistingFrame {
+		t.outputProcess()
 	}
 }
 
