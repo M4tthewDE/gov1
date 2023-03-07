@@ -594,8 +594,7 @@ func (t *TileGroup) overlapBlendingProcess(plane int, predX int, predY int, pred
 
 // 7.11.3.11 Wedge mask process
 func (t *TileGroup) wedgeMaskProcess(w int, h int) {
-	inputState := t.State.newWedgeMaskState()
-	wedgemask.InitialiseWedgeMaskTable(inputState)
+	wedgemask.InitialiseWedgeMaskTable()
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {
 			t.Mask[i][j] = wedgemask.WedgeMasks[t.State.MiSize][t.WedgeSign][t.WedgeIndex][i][j]

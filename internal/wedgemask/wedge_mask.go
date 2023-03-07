@@ -2,6 +2,7 @@ package wedgemask
 
 import (
 	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
@@ -73,7 +74,7 @@ var Wedge_Codebook = [][][]int{
 
 var WedgeMasks = [][][][][]int{}
 
-func InitialiseWedgeMaskTable(state State) {
+func InitialiseWedgeMaskTable(state *state.State) {
 	w := MASK_MASTER_SIZE
 	h := MASK_MASTER_SIZE
 
@@ -128,19 +129,19 @@ func InitialiseWedgeMaskTable(state State) {
 	}
 }
 
-func getWedgeDirection(bsize int, index int, state State) int {
+func getWedgeDirection(bsize int, index int, state *state.State) int {
 	return Wedge_Codebook[blockShape(bsize, state)][index][0]
 }
 
-func getWedgeXoff(bsize int, index int, state State) int {
+func getWedgeXoff(bsize int, index int, state *state.State) int {
 	return Wedge_Codebook[blockShape(bsize, state)][index][1]
 }
 
-func getWedgeYoff(bsize int, index int, state State) int {
+func getWedgeYoff(bsize int, index int, state *state.State) int {
 	return Wedge_Codebook[blockShape(bsize, state)][index][2]
 }
 
-func blockShape(bsize int, state State) int {
+func blockShape(bsize int, state *state.State) int {
 	w4 := state.Num4x4BlocksWide[bsize]
 	h4 := state.Num4x4BlocksHigh[bsize]
 	if h4 > w4 {

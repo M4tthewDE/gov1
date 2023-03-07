@@ -26,4 +26,9 @@ type State struct {
 	MiColEnd          int
 	MiRowStart        int
 	MiRowEnd          int
+
+	BlockWidth       []int
+	BlockHeight      []int
+	Num4x4BlocksWide []int
+	Num4x4BlocksHigh []int
 }

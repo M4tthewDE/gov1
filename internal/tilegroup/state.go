@@ -4,7 +4,6 @@ import (
 	"github.com/m4tthewde/gov1/internal/cdef"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
-	"github.com/m4tthewde/gov1/internal/wedgemask"
 )
 
 type State struct {
@@ -60,13 +59,4 @@ type State struct {
 	CdefFrame           [][][]int
 	UpscaledCurrFrame   [][][]int
 	LrFrame             [][][]int
-}
-
-func (s *State) newWedgeMaskState() wedgemask.State {
-	return wedgemask.State{
-		BlockWidth:       s.BlockWidth,
-		BlockHeight:      s.BlockHeight,
-		Num4x4BlocksWide: s.Num4x4BlocksWide,
-		Num4x4BlocksHigh: s.Num4x4BlocksHigh,
-	}
 }
