@@ -2,6 +2,8 @@ package tileinfo
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
@@ -14,21 +16,21 @@ type TileInfo struct {
 	ContextUpdateTileId int
 }
 
-func NewTileInfo(b *bitstream.BitStream, s State) (TileInfo, State) {
+func NewTileInfo(sh sequenceheader.SequenceHeader, s *state.State, b *bitstream.BitStream) TileInfo {
 	tileInfo := TileInfo{}
 
 	sbCols := (s.MiCols + 15) >> 4
-	if s.Use128x128SuperBlock {
+	if sh.Use128x128SuperBlock {
 		sbCols = (s.MiCols + 31) >> 5
 	}
 
 	sbRows := (s.MiRows + 15) >> 4
-	if s.Use128x128SuperBlock {
+	if sh.Use128x128SuperBlock {
 		sbCols = (s.MiRows + 31) >> 5
 	}
 
 	sbShift := 4
-	if s.Use128x128SuperBlock {
+	if sh.Use128x128SuperBlock {
 		sbShift = 5
 	}
 
@@ -135,5 +137,5 @@ func NewTileInfo(b *bitstream.BitStream, s State) (TileInfo, State) {
 		tileInfo.ContextUpdateTileId = 0
 	}
 
-	return tileInfo, s
+	return tileInfo
 }

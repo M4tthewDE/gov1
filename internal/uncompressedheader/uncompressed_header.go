@@ -2,7 +2,10 @@ package uncompressedheader
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/header"
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/tileinfo"
 	"github.com/m4tthewde/gov1/internal/util"
 )
@@ -18,8 +21,6 @@ const SWITCH_FRAME = 3
 const TOTAL_REFS_PER_FRAME = 8
 
 type UncompressedHeader struct {
-	State State
-
 	ShowExistingFrame          bool
 	ShowableFrame              bool
 	ShowFrame                  bool
@@ -136,20 +137,18 @@ type UncompressedHeader struct {
 	ClipToRestrictedRange bool
 }
 
-func NewUncompressedHeader(b *bitstream.BitStream, inputState State) UncompressedHeader {
-	u := UncompressedHeader{
-		State: inputState,
-	}
+func NewUncompressedHeader(h header.Header, sh sequenceheader.SequenceHeader, b *bitstream.BitStream, s *state.State) UncompressedHeader {
+	u := UncompressedHeader{}
 
-	u.build(b)
+	u.build(h, sh, s, b)
 	return u
 }
 
-func (u *UncompressedHeader) build(b *bitstream.BitStream) {
+func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHeader, s *state.State, b *bitstream.BitStream) {
 	var idLen int
-	if u.State.SequenceHeader.FrameIdNumbersPresent {
-		idLen = u.State.SequenceHeader.AdditionalFrameIdLengthMinusOne +
-			u.State.SequenceHeader.DeltaFrameIdLengthMinusTwo + 3
+	if sh.FrameIdNumbersPresent {
+		idLen = sh.AdditionalFrameIdLengthMinusOne +
+			sh.DeltaFrameIdLengthMinusTwo + 3
 	}
 
 	var errorResilientMode bool
@@ -161,7 +160,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	bufferRemovalTime := []int{}
 
 	allFrames := ((1 << shared.NUM_REF_FRAMES) - 1)
-	if u.State.SequenceHeader.ReducedStillPictureHeader {
+	if sh.ReducedStillPictureHeader {
 		u.ShowExistingFrame = false
 		u.FrameType = shared.KEY_FRAME
 		u.FrameIsIntra = true
@@ -174,22 +173,22 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 		if showExistingFrame {
 			frameToShowMapIdx := b.F(3)
 
-			if u.State.SequenceHeader.DecoderModelInfoPresent && !u.State.SequenceHeader.TimingInfo.EqualPictureInterval {
-				u.TemporalPointInfo(b)
+			if sh.DecoderModelInfoPresent && !sh.TimingInfo.EqualPictureInterval {
+				u.TemporalPointInfo(sh, b)
 			}
 
 			u.RefreshImageFlags = 0
-			if u.State.SequenceHeader.FrameIdNumbersPresent {
+			if sh.FrameIdNumbersPresent {
 				u.DisplayFrameId = b.F(idLen)
 			}
 
-			u.FrameType = u.State.RefFrameType[frameToShowMapIdx]
+			u.FrameType = s.RefFrameType[frameToShowMapIdx]
 
 			if u.FrameType == shared.KEY_FRAME {
 				u.RefreshImageFlags = allFrames
 			}
 
-			if u.State.SequenceHeader.FilmGrainParamsPresent {
+			if sh.FilmGrainParamsPresent {
 				u.loadGrainParams(frameToShowMapIdx)
 			}
 
@@ -202,8 +201,8 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 		u.ShowFrame = util.Bool(b.F(1))
 
-		if u.ShowFrame && u.State.SequenceHeader.DecoderModelInfoPresent && !u.State.SequenceHeader.TimingInfo.EqualPictureInterval {
-			u.TemporalPointInfo(b)
+		if u.ShowFrame && sh.DecoderModelInfoPresent && !sh.TimingInfo.EqualPictureInterval {
+			u.TemporalPointInfo(sh, b)
 		}
 
 		if u.ShowFrame {
@@ -232,14 +231,14 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 	disableCdfUpdate := util.Bool(b.F(1))
 
-	if u.State.SequenceHeader.SeqForceScreenContentTools == 2 {
+	if sh.SeqForceScreenContentTools == 2 {
 		u.AllowScreenContentTools = b.F(1)
 	} else {
 		u.AllowScreenContentTools = 1
 	}
 
 	if util.Bool(u.AllowScreenContentTools) {
-		if u.State.SequenceHeader.SeqForceIntegerMv == 2 {
+		if sh.SeqForceIntegerMv == 2 {
 			u.ForceIntegerMv = util.Bool(b.F(1))
 		} else {
 			u.ForceIntegerMv = true
@@ -252,7 +251,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 		u.ForceIntegerMv = true
 	}
 
-	if u.State.SequenceHeader.FrameIdNumbersPresent {
+	if sh.FrameIdNumbersPresent {
 		u.PrevFrameId = u.CurrentFrameId
 		u.CurrentFrameId = b.F(idLen)
 		u.markRefFrames(idLen)
@@ -262,14 +261,14 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 
 	if u.FrameType == SWITCH_FRAME {
 		u.FrameSizeOverrideFlag = true
-	} else if u.State.SequenceHeader.ReducedStillPictureHeader {
+	} else if sh.ReducedStillPictureHeader {
 		u.FrameSizeOverrideFlag = false
 
 	} else {
 		u.FrameSizeOverrideFlag = util.Bool(b.F(1))
 	}
 
-	orderHint := b.F(u.State.SequenceHeader.OrderHintBits)
+	orderHint := b.F(sh.OrderHintBits)
 	u.OrderHint = orderHint
 
 	if u.FrameIsIntra || errorResilientMode {
@@ -278,18 +277,18 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 		u.PrimaryRefFrame = b.F(3)
 	}
 
-	if u.State.SequenceHeader.DecoderModelInfoPresent {
+	if sh.DecoderModelInfoPresent {
 		bufferRemovalTimePresent := util.Bool(b.F(1))
 
 		if bufferRemovalTimePresent {
-			for opNum := 0; opNum <= u.State.SequenceHeader.OperatingPointsCountMinusOne; opNum++ {
-				if u.State.SequenceHeader.DecoderModelPresentForThisOp[opNum] {
-					opPtIdc := u.State.SequenceHeader.OperatingPointIdc[opNum]
-					inTemporalLayer := ((opPtIdc >> u.State.Header.ExtensionHeader.TemporalID) & 1) != 0
-					inSpatialLayer := ((opPtIdc >> u.State.Header.ExtensionHeader.SpatialID) & 1) != 0
+			for opNum := 0; opNum <= sh.OperatingPointsCountMinusOne; opNum++ {
+				if sh.DecoderModelPresentForThisOp[opNum] {
+					opPtIdc := sh.OperatingPointIdc[opNum]
+					inTemporalLayer := ((opPtIdc >> h.ExtensionHeader.TemporalID) & 1) != 0
+					inSpatialLayer := ((opPtIdc >> h.ExtensionHeader.SpatialID) & 1) != 0
 
 					if opPtIdc == 0 || (inTemporalLayer && inSpatialLayer) {
-						n := u.State.SequenceHeader.DecoderModelInfo.BufferRemovalTimeLengthMinusOne + 1
+						n := sh.DecoderModelInfo.BufferRemovalTimeLengthMinusOne + 1
 						bufferRemovalTime[opNum] = b.F(n)
 					}
 				}
@@ -310,9 +309,9 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	}
 
 	if !u.FrameIsIntra || refreshFrameFlags != allFrames {
-		if errorResilientMode && u.State.SequenceHeader.EnableOrderHint {
+		if errorResilientMode && sh.EnableOrderHint {
 			for i := 0; i < shared.NUM_REF_FRAMES; i++ {
-				ref_order_hint[i] = b.F(u.State.SequenceHeader.OrderHintBits)
+				ref_order_hint[i] = b.F(sh.OrderHintBits)
 
 				if ref_order_hint[i] != u.RefOrderHint[i] {
 					RefValid[i] = 0
@@ -333,7 +332,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	} else {
 
 		var frameRefsShortSignaling bool
-		if !u.State.SequenceHeader.EnableOrderHint {
+		if !sh.EnableOrderHint {
 			frameRefsShortSignaling = false
 		} else {
 			frameRefsShortSignaling = util.Bool(b.F(1))
@@ -350,8 +349,8 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 				u.RefFrameIdx[i] = b.F(3)
 			}
 
-			if u.State.SequenceHeader.FrameIdNumbersPresent {
-				n := u.State.SequenceHeader.DeltaFrameIdLengthMinusTwo + 2
+			if sh.FrameIdNumbersPresent {
+				n := sh.DeltaFrameIdLengthMinusTwo + 2
 				deltaFrameIdMinusOne := b.F(n)
 				DeltaFrameId := deltaFrameIdMinusOne + 1
 				expectedFrameId[i] = (u.CurrentFrameId + (1 << idLen) - DeltaFrameId) % (1 << idLen)
@@ -375,7 +374,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 		u.readInterpolationFilter(b)
 		u.IsMotionModeSwitchable = util.Bool(b.F(1))
 
-		if errorResilientMode || !u.State.SequenceHeader.EnableRefFrameMvs {
+		if errorResilientMode || !sh.EnableRefFrameMvs {
 			useRefFrameMvs = false
 
 		} else {
@@ -388,7 +387,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 			refFrame := shared.LAST_FRAME + 1
 			hint := u.RefOrderHint[u.RefFrameIdx[i]]
 			u.OrderHints[refFrame] = hint
-			if !u.State.SequenceHeader.EnableOrderHint {
+			if !sh.EnableOrderHint {
 				RefFrameSignBias[refFrame] = false
 			} else {
 				RefFrameSignBias[refFrame] = u.GetRelativeDist(hint, u.OrderHint) > 0
@@ -396,7 +395,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 		}
 	}
 
-	if u.State.SequenceHeader.ReducedStillPictureHeader || disableCdfUpdate {
+	if sh.ReducedStillPictureHeader || disableCdfUpdate {
 		u.DisableFrameEndUpdateCdf = true
 	} else {
 		u.DisableFrameEndUpdateCdf = util.Bool(b.F(1))
@@ -414,9 +413,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 		u.motionFieldEstimation()
 	}
 
-	tileInfo, resultState := tileinfo.NewTileInfo(b, u.State.newTileInfoState())
-	u.TileInfo = tileInfo
-	u.State.update(resultState)
+	u.TileInfo = tileinfo.NewTileInfo(sh, s, b)
 
 	u.quantizationParams(b)
 	u.segmentationParams(b)
@@ -462,7 +459,7 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 	u.frameReferenceMode(b)
 	u.skipModeParams(b)
 
-	if u.FrameIsIntra || errorResilientMode || !u.State.SequenceHeader.EnableWarpedMotion {
+	if u.FrameIsIntra || errorResilientMode || !sh.EnableWarpedMotion {
 		u.AllowWarpedMotion = false
 	} else {
 		u.AllowWarpedMotion = util.Bool(b.F(1))
@@ -475,8 +472,8 @@ func (u *UncompressedHeader) build(b *bitstream.BitStream) {
 }
 
 // mark_ref_frames( idLen)
-func (u *UncompressedHeader) markRefFrames(idLen int) {
-	diffLen := u.State.SequenceHeader.DeltaFrameIdLengthMinusTwo + 2
+func (u *UncompressedHeader) markRefFrames(idLen int, sh sequenceheader.SequenceHeader) {
+	diffLen := sh.DeltaFrameIdLengthMinusTwo + 2
 
 	for i := 0; i < shared.NUM_REF_FRAMES; i++ {
 		if u.CurrentFrameId > (1 << diffLen) {
@@ -501,28 +498,28 @@ func (u *UncompressedHeader) frameSizeWithRefs() {
 }
 
 // frame_size()
-func (u *UncompressedHeader) frameSize(b *bitstream.BitStream) {
+func (u *UncompressedHeader) frameSize(b *bitstream.BitStream, s *state.State, sh sequenceheader.SequenceHeader) {
 	if u.FrameSizeOverrideFlag {
-		n := u.State.SequenceHeader.FrameWidthBitsMinusOne + 1
+		n := sh.FrameWidthBitsMinusOne + 1
 		frameWidthMinusOne := b.F(n)
 
-		n = u.State.SequenceHeader.FrameHeightBitsMinusOne + 1
+		n = sh.FrameHeightBitsMinusOne + 1
 		frameHeightMinusOne := b.F(n)
 
 		u.FrameWidth = frameWidthMinusOne + 1
 		u.FrameHeight = frameHeightMinusOne + 1
 	} else {
-		u.FrameWidth = u.State.SequenceHeader.MaxFrameWidthMinusOne + 1
-		u.FrameHeight = u.State.SequenceHeader.MaxFrameHeightMinusOne + 1
+		u.FrameWidth = sh.MaxFrameWidthMinusOne + 1
+		u.FrameHeight = sh.MaxFrameHeightMinusOne + 1
 	}
 
-	u.superResParams(b)
-	u.computeImageSize()
+	u.superResParams(b, sh)
+	u.computeImageSize(s)
 }
 
 // superres_params()
-func (u *UncompressedHeader) superResParams(b *bitstream.BitStream) {
-	if u.State.SequenceHeader.EnableSuperRes {
+func (u *UncompressedHeader) superResParams(b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
+	if sh.EnableSuperRes {
 		u.UseSuperRes = util.Bool(b.F(1))
 	} else {
 		u.UseSuperRes = false
@@ -540,9 +537,9 @@ func (u *UncompressedHeader) superResParams(b *bitstream.BitStream) {
 }
 
 // compute_image_size()
-func (u *UncompressedHeader) computeImageSize() {
-	u.State.MiCols = 2 * ((u.FrameWidth + 7) >> 3)
-	u.State.MiRows = 2 * ((u.FrameHeight + 7) >> 3)
+func (u *UncompressedHeader) computeImageSize(s *state.State) {
+	s.MiCols = 2 * ((u.FrameWidth + 7) >> 3)
+	s.MiRows = 2 * ((u.FrameHeight + 7) >> 3)
 }
 
 // render_size()
@@ -572,48 +569,48 @@ func (u *UncompressedHeader) readInterpolationFilter(b *bitstream.BitStream) {
 }
 
 // get_relative_dist()
-func (u *UncompressedHeader) GetRelativeDist(a int, b int) int {
+func (u *UncompressedHeader) GetRelativeDist(a int, b int, sh sequenceheader.SequenceHeader) int {
 	if !u.EnableOrderHint {
 		return 0
 	}
 
 	diff := a - b
-	m := 1 << (u.State.SequenceHeader.OrderHintBits - 1)
+	m := 1 << (sh.OrderHintBits - 1)
 	diff = (diff & (m - 1)) - (diff & m)
 
 	return diff
 }
 
 // setup_past_independence()
-func (u *UncompressedHeader) setupPastIndependence() {
+func (u *UncompressedHeader) setupPastIndependence(s *state.State) {
 	for i := 0; i < shared.MAX_SEGMENTS; i++ {
 		for j := 0; j < shared.SEG_LVL_MAX; j++ {
-			u.State.FeatureData[i][j] = 0
-			u.State.FeatureEnabled[i][j] = 0
+			s.FeatureData[i][j] = 0
+			s.FeatureEnabled[i][j] = 0
 		}
 	}
 
-	u.State.PrevSegmentIds = make([][]int, u.State.MiRows)
-	for i := range u.State.PrevSegmentIds {
-		u.State.PrevSegmentIds[i] = make([]int, u.State.MiCols)
+	s.PrevSegmentIds = make([][]int, s.MiRows)
+	for i := range s.PrevSegmentIds {
+		s.PrevSegmentIds[i] = make([]int, s.MiCols)
 	}
 
-	for row := 0; row < u.State.MiRows; row++ {
-		for col := 0; col < u.State.MiCols; col++ {
-			u.State.PrevSegmentIds[row][col] = 0
+	for row := 0; row < s.MiRows; row++ {
+		for col := 0; col < s.MiCols; col++ {
+			s.PrevSegmentIds[row][col] = 0
 		}
 	}
 
 	for ref := shared.LAST_FRAME; ref <= shared.ALTREF_FRAME; ref++ {
-		u.State.GmType[ref] = shared.IDENTITY
+		s.GmType[ref] = shared.IDENTITY
 	}
 
 	for ref := shared.LAST_FRAME; ref <= shared.ALTREF_FRAME; ref++ {
 		for i := 0; i <= 5; i++ {
 			if (i % 3) == 2 {
-				u.State.PrevGmParams[ref][i] = 1 << shared.WARPEDMODEL_PREC_BITS
+				s.PrevGmParams[ref][i] = 1 << shared.WARPEDMODEL_PREC_BITS
 			} else {
-				u.State.PrevGmParams[ref][i] = 0
+				s.PrevGmParams[ref][i] = 0
 			}
 		}
 	}
@@ -649,14 +646,14 @@ func (u *UncompressedHeader) tileInfo() {
 }
 
 // quantization_params()
-func (u *UncompressedHeader) quantizationParams(b *bitstream.BitStream) {
+func (u *UncompressedHeader) quantizationParams(b *bitstream.BitStream, sh *sequenceheader.SequenceHeader) {
 	u.BaseQIdx = b.F(8)
 
 	u.DeltaQYDc = u.readDeltaQ(b)
 
 	var diffUvDelta bool
-	if u.State.SequenceHeader.ColorConfig.NumPlanes > 1 {
-		if u.State.SequenceHeader.ColorConfig.SeparateUvDeltaQ {
+	if sh.ColorConfig.NumPlanes > 1 {
+		if sh.ColorConfig.SeparateUvDeltaQ {
 			diffUvDelta = util.Bool(b.F(1))
 		} else {
 			diffUvDelta = false
@@ -685,7 +682,7 @@ func (u *UncompressedHeader) quantizationParams(b *bitstream.BitStream) {
 		u.Qmy = b.F(4)
 		u.Qmu = b.F(4)
 
-		if !u.State.SequenceHeader.ColorConfig.SeparateUvDeltaQ {
+		if !sh.ColorConfig.SeparateUvDeltaQ {
 			u.Qmv = u.Qmu
 		} else {
 			u.Qmv = b.F(4)
@@ -704,7 +701,7 @@ func (u *UncompressedHeader) readDeltaQ(b *bitstream.BitStream) int {
 }
 
 // segmentation_params
-func (u *UncompressedHeader) segmentationParams(b *bitstream.BitStream) {
+func (u *UncompressedHeader) segmentationParams(b *bitstream.BitStream, s *state.State) {
 	u.SegmentationEnabled = util.Bool(b.F(1))
 	if u.SegmentationEnabled {
 		if u.PrimaryRefFrame == shared.PRIMARY_REF_NONE {
@@ -725,7 +722,7 @@ func (u *UncompressedHeader) segmentationParams(b *bitstream.BitStream) {
 				for j := 0; j < shared.SEG_LVL_MAX; j++ {
 					featureValue := 0
 					featureEnabled := b.F(1)
-					u.State.FeatureEnabled[i][j] = featureEnabled
+					s.FeatureEnabled[i][j] = featureEnabled
 					clippedValue := 0
 
 					if featureEnabled == 1 {
@@ -740,15 +737,15 @@ func (u *UncompressedHeader) segmentationParams(b *bitstream.BitStream) {
 
 						}
 					}
-					u.State.FeatureData[i][j] = clippedValue
+					s.FeatureData[i][j] = clippedValue
 				}
 			}
 		}
 	} else {
 		for i := 0; i < shared.MAX_SEGMENTS; i++ {
 			for j := 0; j < shared.SEG_LVL_MAX; i++ {
-				u.State.FeatureEnabled[i][j] = 0
-				u.State.FeatureData[i][j] = 0
+				s.FeatureEnabled[i][j] = 0
+				s.FeatureData[i][j] = 0
 			}
 
 		}
@@ -758,7 +755,7 @@ func (u *UncompressedHeader) segmentationParams(b *bitstream.BitStream) {
 
 	for i := 0; i < shared.MAX_SEGMENTS; i++ {
 		for j := 0; j < shared.SEG_LVL_MAX; j++ {
-			if u.State.FeatureEnabled[i][j] == 1 {
+			if s.FeatureEnabled[i][j] == 1 {
 				u.LastActiveSegId = i
 
 				if j >= shared.SEG_LVL_REF_FRAME {
@@ -813,33 +810,33 @@ func (u *UncompressedHeader) loadPreviousSegementIds() {
 }
 
 // get_qindex( ignoreDeltaQ, segmentId )
-func (u *UncompressedHeader) getQIndex(ignoreDeltaQ int, segmentId int) int {
-	if u.segFeatureActiveIdx(segmentId, shared.SEG_LVL_ALT_Q) {
-		data := u.State.FeatureData[segmentId][shared.SEG_LVL_ALT_Q]
+func (u *UncompressedHeader) getQIndex(ignoreDeltaQ int, segmentId int, s *state.State) int {
+	if u.segFeatureActiveIdx(segmentId, shared.SEG_LVL_ALT_Q, s) {
+		data := s.FeatureData[segmentId][shared.SEG_LVL_ALT_Q]
 		qindex := u.BaseQIdx + data
 
 		if ignoreDeltaQ == 0 && u.DeltaQPresent {
-			qindex = u.State.CurrentQIndex
+			qindex = s.CurrentQIndex
 		}
 
 		return util.Clip3(0, 255, qindex)
 	}
 
 	if ignoreDeltaQ == 0 && u.DeltaQPresent {
-		return u.State.CurrentQIndex
+		return s.CurrentQIndex
 	}
 
 	return u.BaseQIdx
 }
 
 // seg_feature_active_idx( idx, feature )
-func (u *UncompressedHeader) segFeatureActiveIdx(idx int, feature int) bool {
-	return u.SegmentationEnabled && util.Bool(u.State.FeatureEnabled[idx][feature])
+func (u *UncompressedHeader) segFeatureActiveIdx(idx int, feature int, s *state.State) bool {
+	return u.SegmentationEnabled && util.Bool(s.FeatureEnabled[idx][feature])
 
 }
 
 // loop_filter_params()
-func (u *UncompressedHeader) loopFilterParams(b *bitstream.BitStream) {
+func (u *UncompressedHeader) loopFilterParams(b *bitstream.BitStream, sh *sequenceheader.SequenceHeader) {
 	if u.CodedLossless || u.AllowIntraBc {
 		u.LoopFilterLevel[0] = 0
 		u.LoopFilterLevel[1] = 1
@@ -861,7 +858,7 @@ func (u *UncompressedHeader) loopFilterParams(b *bitstream.BitStream) {
 	u.LoopFilterLevel[0] = b.F(6)
 	u.LoopFilterLevel[1] = b.F(6)
 
-	if u.State.SequenceHeader.ColorConfig.NumPlanes > 1 {
+	if sh.ColorConfig.NumPlanes > 1 {
 		if util.Bool(u.LoopFilterLevel[0]) || util.Bool(u.LoopFilterLevel[1]) {
 			u.LoopFilterLevel[2] = b.F(6)
 			u.LoopFilterLevel[3] = b.F(6)
@@ -892,8 +889,8 @@ func (u *UncompressedHeader) loopFilterParams(b *bitstream.BitStream) {
 }
 
 // cdef_params( )
-func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream) {
-	if u.CodedLossless || u.AllowIntraBc || !u.State.SequenceHeader.EnableCdef {
+func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream, sh *sequenceheader.SequenceHeader) {
+	if u.CodedLossless || u.AllowIntraBc || !sh.EnableCdef {
 		u.CdefYPriStrength = make([]int, 1)
 		u.CdefYSecStrength = make([]int, 1)
 		u.CdefUVPriStrength = make([]int, 1)
@@ -923,7 +920,7 @@ func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream) {
 			u.CdefYSecStrength[i] += 1
 		}
 
-		if u.State.SequenceHeader.ColorConfig.NumPlanes > 1 {
+		if sh.ColorConfig.NumPlanes > 1 {
 			u.CdefUVPriStrength[i] = b.F(4)
 			u.CdefUVSecStrength[i] = b.F(2)
 			if u.CdefUVSecStrength[i] == 3 {
@@ -935,8 +932,8 @@ func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream) {
 }
 
 // lr_params()
-func (u *UncompressedHeader) lrParams(b *bitstream.BitStream) {
-	if u.AllLossless || u.AllowIntraBc || !u.State.SequenceHeader.EnableRestoration {
+func (u *UncompressedHeader) lrParams(b *bitstream.BitStream, sh *sequenceheader.SequenceHeader) {
+	if u.AllLossless || u.AllowIntraBc || !sh.EnableRestoration {
 		u.FrameRestorationType[0] = shared.RESTORE_NONE
 		u.FrameRestorationType[1] = shared.RESTORE_NONE
 		u.FrameRestorationType[2] = shared.RESTORE_NONE
@@ -946,7 +943,7 @@ func (u *UncompressedHeader) lrParams(b *bitstream.BitStream) {
 
 	u.UsesLr = false
 	usesChromaLr := false
-	for i := 0; i < u.State.SequenceHeader.ColorConfig.NumPlanes; i++ {
+	for i := 0; i < sh.ColorConfig.NumPlanes; i++ {
 		lrType := b.F(2)
 		u.FrameRestorationType[i] = shared.REMAP_LR_TYPE[lrType]
 		if u.FrameRestorationType[i] != shared.RESTORE_NONE {
@@ -959,7 +956,7 @@ func (u *UncompressedHeader) lrParams(b *bitstream.BitStream) {
 
 	var lrUnitShift int
 	if u.UsesLr {
-		if u.State.SequenceHeader.Use128x128SuperBlock {
+		if sh.Use128x128SuperBlock {
 			lrUnitShift = b.F(1)
 			lrUnitShift++
 		} else {
@@ -973,7 +970,7 @@ func (u *UncompressedHeader) lrParams(b *bitstream.BitStream) {
 		u.LoopRestorationSize[0] = shared.RESTORATION_TILESIZE_MAX >> (2 - lrUnitShift)
 
 		var lrUvShift int
-		if u.State.SequenceHeader.ColorConfig.SubsamplingX && u.State.SequenceHeader.ColorConfig.SubsamplingY && usesChromaLr {
+		if sh.ColorConfig.SubsamplingX && sh.ColorConfig.SubsamplingY && usesChromaLr {
 			lrUvShift = b.F(1)
 		} else {
 			lrUvShift = 0
@@ -1010,7 +1007,7 @@ func (u *UncompressedHeader) frameReferenceMode(b *bitstream.BitStream) {
 }
 
 // skip_mode_params()
-func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream) {
+func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
 	var skipModeAllowed = 0
 	var forwardHint int
 	var backwardHint int
@@ -1023,13 +1020,13 @@ func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream) {
 		for i := 0; i < shared.REFS_PER_FRAME; i++ {
 			refHint := u.RefOrderHint[u.RefFrameIdx[i]]
 
-			if u.GetRelativeDist(refHint, u.OrderHint) < 0 {
-				if forwardIdx < 0 || u.GetRelativeDist(refHint, forwardHint) > 0 {
+			if u.GetRelativeDist(refHint, u.OrderHint, sh) < 0 {
+				if forwardIdx < 0 || u.GetRelativeDist(refHint, forwardHint, sh) > 0 {
 					forwardIdx = i
 					forwardHint = refHint
 				}
-			} else if u.GetRelativeDist(refHint, u.OrderHint) > 0 {
-				if backwardIdx < 0 || u.GetRelativeDist(refHint, backwardHint) > 0 {
+			} else if u.GetRelativeDist(refHint, u.OrderHint, sh) > 0 {
+				if backwardIdx < 0 || u.GetRelativeDist(refHint, backwardHint, sh) > 0 {
 					backwardIdx = i
 					backwardHint = refHint
 				}
@@ -1047,8 +1044,8 @@ func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream) {
 			var secondForwardHint int
 			for i := 0; i < shared.REFS_PER_FRAME; i++ {
 				refHint := u.RefOrderHint[u.RefFrameIdx[i]]
-				if u.GetRelativeDist(refHint, forwardHint) < 0 {
-					if secondForwardIdx < 0 || u.GetRelativeDist(refHint, secondForwardHint) > 0 {
+				if u.GetRelativeDist(refHint, forwardHint, sh) < 0 {
+					if secondForwardIdx < 0 || u.GetRelativeDist(refHint, secondForwardHint, sh) > 0 {
 						secondForwardIdx = i
 						secondForwardHint = refHint
 					}
@@ -1072,9 +1069,9 @@ func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream) {
 	}
 }
 
-func (u *UncompressedHeader) globalMotionParams(b *bitstream.BitStream) {
+func (u *UncompressedHeader) globalMotionParams(b *bitstream.BitStream, s *state.State) {
 	for ref := shared.LAST_FRAME; ref <= shared.ALTREF_FRAME; ref++ {
-		u.State.GmType[ref] = shared.IDENTITY
+		s.GmType[ref] = shared.IDENTITY
 		for i := 0; i < 6; i++ {
 			if i%3 == 2 {
 				u.GmParams[ref][i] = 1 << shared.WARPEDMODEL_PREC_BITS
@@ -1109,12 +1106,12 @@ func (u *UncompressedHeader) globalMotionParams(b *bitstream.BitStream) {
 		} else {
 			typ = shared.IDENTITY
 		}
-		u.State.GmType[ref] = typ
+		s.GmType[ref] = typ
 	}
 
 }
 
-func (u *UncompressedHeader) readGlobalParam(typ int, ref int, idx int, b *bitstream.BitStream) {
+func (u *UncompressedHeader) readGlobalParam(typ int, ref int, idx int, b *bitstream.BitStream, s *state.State) {
 	absBits := shared.GM_ABS_ALPHA_BITS
 	precBits := shared.GM_ALPHA_PREC_BITS
 
@@ -1145,7 +1142,7 @@ func (u *UncompressedHeader) readGlobalParam(typ int, ref int, idx int, b *bitst
 	}
 
 	mx := 1 << absBits
-	r := (u.State.PrevGmParams[ref][idx] >> precDiff) - sub
+	r := (s.PrevGmParams[ref][idx] >> precDiff) - sub
 	u.GmParams[ref][idx] = (u.decodeSignedSubexpWithRef(mx, r, b) << precDiff) + round
 }
 
@@ -1188,8 +1185,8 @@ func (u *UncompressedHeader) decodeSubexp(numSyms int, b *bitstream.BitStream) i
 }
 
 // film_grain_params()
-func (u *UncompressedHeader) filmGrainParams(b *bitstream.BitStream) {
-	if !u.State.SequenceHeader.FilmGrainParamsPresent || (!u.ShowFrame && !u.ShowableFrame) {
+func (u *UncompressedHeader) filmGrainParams(b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
+	if !sh.FilmGrainParamsPresent || (!u.ShowFrame && !u.ShowableFrame) {
 		u.resetGrainParams()
 		return
 	}
@@ -1226,7 +1223,7 @@ func (u *UncompressedHeader) filmGrainParams(b *bitstream.BitStream) {
 
 	}
 
-	if u.State.SequenceHeader.ColorConfig.MonoChrome {
+	if sh.ColorConfig.MonoChrome {
 		u.ChromaScalingFromLuna = false
 	} else {
 		u.ChromaScalingFromLuna = util.Bool(b.F(1))
@@ -1234,7 +1231,7 @@ func (u *UncompressedHeader) filmGrainParams(b *bitstream.BitStream) {
 
 	var numCbPoints int
 	var numCrPoints int
-	if u.State.SequenceHeader.ColorConfig.MonoChrome || u.ChromaScalingFromLuna || (u.State.SequenceHeader.ColorConfig.SubsamplingX && u.State.SequenceHeader.ColorConfig.SubsamplingY && numYPoints == 0) {
+	if sh.ColorConfig.MonoChrome || u.ChromaScalingFromLuna || (sh.ColorConfig.SubsamplingX && sh.ColorConfig.SubsamplingY && numYPoints == 0) {
 		numCbPoints = 0
 		numCrPoints = 0
 	} else {
@@ -1340,8 +1337,8 @@ func (u *UncompressedHeader) DecodeFrameWrapup() {
 }
 
 // temporal_point_info()
-func (u *UncompressedHeader) TemporalPointInfo(b *bitstream.BitStream) {
-	n := u.State.SequenceHeader.DecoderModelInfo.FramePresentationTimeLengthMinusOne + 1
+func (u *UncompressedHeader) TemporalPointInfo(sh sequenceheader.SequenceHeader, b *bitstream.BitStream) {
+	n := sh.DecoderModelInfo.FramePresentationTimeLengthMinusOne + 1
 	u.FramePresentationTime = b.F(n)
 }
 
