@@ -2,6 +2,7 @@ package sequenceheader
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
@@ -91,9 +92,8 @@ type OperatingParametersInfo struct {
 }
 
 // sequence_header_obu()
-func NewSequenceHeader(b *bitstream.BitStream) (SequenceHeader, State) {
+func NewSequenceHeader(b *bitstream.BitStream, state *state.State) SequenceHeader {
 	s := SequenceHeader{}
-	state := State{}
 
 	s.SeqProfile = b.F(3)
 	s.StillPicture = b.F(1) != 0
@@ -243,7 +243,7 @@ func NewSequenceHeader(b *bitstream.BitStream) (SequenceHeader, State) {
 	s.ColorConfig = NewColorConfig(b, s.SeqProfile)
 	s.FilmGrainParamsPresent = b.F(1) != 0
 
-	return s, state
+	return s
 }
 
 func NewTimingInfo(b *bitstream.BitStream) TimingInfo {

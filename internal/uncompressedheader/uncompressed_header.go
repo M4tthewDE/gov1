@@ -254,7 +254,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 	if sh.FrameIdNumbersPresent {
 		u.PrevFrameId = u.CurrentFrameId
 		u.CurrentFrameId = b.F(idLen)
-		u.markRefFrames(idLen)
+		u.markRefFrames(idLen, sh)
 	} else {
 		u.CurrentFrameId = 0
 	}
@@ -323,7 +323,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 	expectedFrameId := []int{}
 
 	if u.FrameIsIntra {
-		u.frameSize(b)
+		u.frameSize(b, s, sh)
 		u.renderSize(b)
 
 		if util.Bool(u.AllowScreenContentTools) && u.UpscaledWidth == u.FrameWidth {
@@ -360,7 +360,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 		if u.FrameSizeOverrideFlag && !errorResilientMode {
 			u.frameSizeWithRefs()
 		} else {
-			u.frameSize(b)
+			u.frameSize(b, s, sh)
 			u.renderSize(b)
 
 		}
@@ -390,7 +390,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 			if !sh.EnableOrderHint {
 				RefFrameSignBias[refFrame] = false
 			} else {
-				RefFrameSignBias[refFrame] = u.GetRelativeDist(hint, u.OrderHint) > 0
+				RefFrameSignBias[refFrame] = u.GetRelativeDist(hint, u.OrderHint, sh) > 0
 			}
 		}
 	}
@@ -403,7 +403,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 
 	if u.PrimaryRefFrame == shared.PRIMARY_REF_NONE {
 		initNonCoeffCdfs()
-		u.setupPastIndependence()
+		u.setupPastIndependence(s)
 	} else {
 		u.loadCdfs(u.RefFrameIdx[u.PrimaryRefFrame])
 		u.loadPrevious()
@@ -415,8 +415,8 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 
 	u.TileInfo = tileinfo.NewTileInfo(sh, s, b)
 
-	u.quantizationParams(b)
-	u.segmentationParams(b)
+	u.quantizationParams(b, sh)
+	u.segmentationParams(b, s)
 	u.deltaQParams(b)
 	u.deltaLfParams(b)
 
@@ -430,7 +430,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 	u.CodedLossless = true
 
 	for segmentId := 0; segmentId < shared.MAX_SEGMENTS; segmentId++ {
-		qIndex := u.getQIndex(1, segmentId)
+		qIndex := u.getQIndex(1, segmentId, s)
 		u.LosslessArray[segmentId] = qIndex == 0 && u.DeltaQYDc == 0 && u.DeltaQUAc == 0 && u.DeltaQUDc == 0 && u.DeltaQVAc == 0 && u.DeltaQVDc == 0
 
 		if !u.LosslessArray[segmentId] {
@@ -452,12 +452,12 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 
 	u.AllLossless = u.CodedLossless && (u.FrameWidth == u.UpscaledWidth)
 
-	u.loopFilterParams(b)
-	u.cdefParams(b)
-	u.lrParams(b)
+	u.loopFilterParams(b, sh)
+	u.cdefParams(b, sh)
+	u.lrParams(b, sh)
 	u.readTxMode(b)
 	u.frameReferenceMode(b)
-	u.skipModeParams(b)
+	u.skipModeParams(b, sh)
 
 	if u.FrameIsIntra || errorResilientMode || !sh.EnableWarpedMotion {
 		u.AllowWarpedMotion = false
@@ -467,8 +467,8 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 
 	u.ReducedTxSet = util.Bool(b.F(1))
 
-	u.globalMotionParams(b)
-	u.filmGrainParams(b)
+	u.globalMotionParams(b, s)
+	u.filmGrainParams(b, sh)
 }
 
 // mark_ref_frames( idLen)
@@ -646,7 +646,7 @@ func (u *UncompressedHeader) tileInfo() {
 }
 
 // quantization_params()
-func (u *UncompressedHeader) quantizationParams(b *bitstream.BitStream, sh *sequenceheader.SequenceHeader) {
+func (u *UncompressedHeader) quantizationParams(b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
 	u.BaseQIdx = b.F(8)
 
 	u.DeltaQYDc = u.readDeltaQ(b)
@@ -836,7 +836,7 @@ func (u *UncompressedHeader) segFeatureActiveIdx(idx int, feature int, s *state.
 }
 
 // loop_filter_params()
-func (u *UncompressedHeader) loopFilterParams(b *bitstream.BitStream, sh *sequenceheader.SequenceHeader) {
+func (u *UncompressedHeader) loopFilterParams(b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
 	if u.CodedLossless || u.AllowIntraBc {
 		u.LoopFilterLevel[0] = 0
 		u.LoopFilterLevel[1] = 1
@@ -889,7 +889,7 @@ func (u *UncompressedHeader) loopFilterParams(b *bitstream.BitStream, sh *sequen
 }
 
 // cdef_params( )
-func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream, sh *sequenceheader.SequenceHeader) {
+func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
 	if u.CodedLossless || u.AllowIntraBc || !sh.EnableCdef {
 		u.CdefYPriStrength = make([]int, 1)
 		u.CdefYSecStrength = make([]int, 1)
@@ -932,7 +932,7 @@ func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream, sh *sequencehead
 }
 
 // lr_params()
-func (u *UncompressedHeader) lrParams(b *bitstream.BitStream, sh *sequenceheader.SequenceHeader) {
+func (u *UncompressedHeader) lrParams(b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
 	if u.AllLossless || u.AllowIntraBc || !sh.EnableRestoration {
 		u.FrameRestorationType[0] = shared.RESTORE_NONE
 		u.FrameRestorationType[1] = shared.RESTORE_NONE
