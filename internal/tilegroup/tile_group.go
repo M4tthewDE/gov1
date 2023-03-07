@@ -3,6 +3,7 @@ package tilegroup
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
@@ -231,7 +232,7 @@ type TileGroup struct {
 	BckWeight int
 }
 
-func NewTileGroup(sz int, b *bitstream.BitStream, state State) TileGroup {
+func NewTileGroup(sz int, b *bitstream.BitStream, state *state.State) TileGroup {
 	t := TileGroup{}
 	t.State = state
 	t.build(sz, b)
