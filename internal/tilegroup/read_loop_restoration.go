@@ -2,42 +2,45 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // read_lr( r, c, bSize )
-func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream) {
-	if t.State.UncompressedHeader.AllowIntraBc {
+func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) {
+	if uh.AllowIntraBc {
 		return
 	}
 
-	w := t.State.Num4x4BlocksWide[bSize]
-	h := t.State.Num4x4BlocksHigh[bSize]
+	w := state.Num4x4BlocksWide[bSize]
+	h := state.Num4x4BlocksHigh[bSize]
 
-	for plane := 0; plane < t.State.SequenceHeader.ColorConfig.NumPlanes; plane++ {
-		if t.State.UncompressedHeader.FrameRestorationType[plane] != shared.RESTORE_NONE {
+	for plane := 0; plane < sh.ColorConfig.NumPlanes; plane++ {
+		if uh.FrameRestorationType[plane] != shared.RESTORE_NONE {
 			subX := 0
 			subY := 0
 
-			if t.State.SequenceHeader.ColorConfig.SubsamplingX {
+			if sh.ColorConfig.SubsamplingX {
 				subX = 1
 			}
 
-			if t.State.SequenceHeader.ColorConfig.SubsamplingY {
+			if sh.ColorConfig.SubsamplingY {
 				subY = 1
 			}
 
-			unitSize := t.State.LoopRestorationSize[plane]
-			unitRows := util.CountUnitsInFrame(unitSize, util.Round2(t.State.UncompressedHeader.FrameHeight, subY))
-			unitCols := util.CountUnitsInFrame(unitSize, util.Round2(t.State.UpscaledWidth, subX))
+			unitSize := state.LoopRestorationSize[plane]
+			unitRows := util.CountUnitsInFrame(unitSize, util.Round2(uh.FrameHeight, subY))
+			unitCols := util.CountUnitsInFrame(unitSize, util.Round2(state.UpscaledWidth, subX))
 			unitRowStart := (r*(MI_SIZE>>subY) + unitSize - 1) / unitSize
 			unitRowEnd := util.Min(unitRows, ((r+h)*(MI_SIZE>>subY)+unitSize-1)/unitSize)
 
 			var numerator int
 			var denominator int
-			if t.State.UncompressedHeader.UseSuperRes {
-				numerator = (MI_SIZE >> subX) * t.State.UncompressedHeader.SuperResDenom
+			if uh.UseSuperRes {
+				numerator = (MI_SIZE >> subX) * uh.SuperResDenom
 				denominator = unitSize * shared.SUPERRES_NUM
 			} else {
 				numerator = MI_SIZE >> subX
@@ -48,7 +51,7 @@ func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream) {
 
 			for unitRow := unitRowStart; unitRow < unitRowEnd; unitRow++ {
 				for unitCol := unitColStart; unitCol < unitColEnd; unitCol++ {
-					t.readLrUnit(plane, unitRow, unitCol, b)
+					t.readLrUnit(plane, unitRow, unitCol, b, uh)
 				}
 			}
 		}
@@ -56,15 +59,15 @@ func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream) {
 }
 
 // read_lr_unit(plane, unitRow, unitCol)
-func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, b *bitstream.BitStream) {
+func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
 	var restorationType int
-	if t.State.UncompressedHeader.FrameRestorationType[plane] == shared.RESTORE_WIENER {
+	if uh.FrameRestorationType[plane] == shared.RESTORE_WIENER {
 		useWiener := b.S()
 		restorationType = shared.RESTORE_NONE
 		if useWiener == 1 {
 			restorationType = shared.RESTORE_WIENER
 		}
-	} else if t.State.UncompressedHeader.FrameRestorationType[plane] == shared.RESTORE_SGRPROJ {
+	} else if uh.FrameRestorationType[plane] == shared.RESTORE_SGRPROJ {
 		useSgrproj := b.S()
 		restorationType = shared.RESTORE_NONE
 		if useSgrproj == 1 {

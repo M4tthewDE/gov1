@@ -2,11 +2,13 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // palette_mode_info()
-func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream) {
+func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader) {
 	// TODO: this is used for initilization of has_palette_y I think
 	//bSizeCtx := Mi_Width_Log2[p.MiSize] + Mi_Height_Log2[p.MiSize] - 2
 
@@ -16,7 +18,7 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream) {
 		if util.Bool(hasPaletteY) {
 			paletteSizeYMinus2 := b.S()
 			t.PaletteSizeY = paletteSizeYMinus2 + 2
-			cacheN := t.getPaletteCache(0)
+			cacheN := t.getPaletteCache(0, state)
 			idx := 0
 
 			for i := 0; i < cacheN && idx < t.PaletteSizeY; i++ {
@@ -29,13 +31,13 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream) {
 			}
 
 			if idx < t.PaletteSizeY {
-				t.PaletteColorsY[idx] = b.L(t.State.SequenceHeader.ColorConfig.BitDepth)
+				t.PaletteColorsY[idx] = b.L(sh.ColorConfig.BitDepth)
 				idx++
 			}
 
 			var paletteBits int
 			if idx < t.PaletteSizeY {
-				minBits := t.State.SequenceHeader.ColorConfig.BitDepth - 1
+				minBits := sh.ColorConfig.BitDepth - 1
 				paletteNumExtraBitsY := b.L(2)
 				paletteBits = minBits + paletteNumExtraBitsY
 			}
@@ -43,8 +45,8 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream) {
 			for idx < t.PaletteSizeY {
 				paletteDeltaY := b.L(paletteBits)
 				paletteDeltaY++
-				t.PaletteColorsY[idx] = util.Clip1(t.PaletteColorsY[idx-1]+paletteDeltaY, t.State.SequenceHeader.ColorConfig.BitDepth)
-				rangE := (1 << t.State.SequenceHeader.ColorConfig.BitDepth) - t.PaletteColorsY[idx] - 1
+				t.PaletteColorsY[idx] = util.Clip1(t.PaletteColorsY[idx-1]+paletteDeltaY, sh.ColorConfig.BitDepth)
+				rangE := (1 << sh.ColorConfig.BitDepth) - t.PaletteColorsY[idx] - 1
 				paletteBits = util.Min(paletteBits, util.CeilLog2(rangE))
 				idx++
 			}
@@ -57,7 +59,7 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream) {
 		if util.Bool(hasPaletteUv) {
 			paletteSizeUvMinus2 := b.S()
 			t.PaletteSizeUV = paletteSizeUvMinus2 + 2
-			cacheN := t.getPaletteCache(1)
+			cacheN := t.getPaletteCache(1, state)
 			idx := 0
 
 			for i := 0; i < cacheN && idx < t.PaletteSizeUV; i++ {
@@ -70,21 +72,21 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream) {
 			}
 
 			if idx < t.PaletteSizeUV {
-				t.PaletteColorsU[idx] = b.L(t.State.SequenceHeader.ColorConfig.BitDepth)
+				t.PaletteColorsU[idx] = b.L(sh.ColorConfig.BitDepth)
 				idx++
 			}
 
 			var paletteBits int
 			if idx < t.PaletteSizeUV {
-				minBits := t.State.SequenceHeader.ColorConfig.BitDepth - 3
+				minBits := sh.ColorConfig.BitDepth - 3
 				paletteNumExtraBitsU := b.L(2)
 				paletteBits = minBits + paletteNumExtraBitsU
 			}
 
 			for idx < t.PaletteSizeUV {
 				paletteDeltaU := b.L(paletteBits)
-				t.PaletteColorsU[idx] = util.Clip1(t.PaletteColorsU[idx-1]+paletteDeltaU, t.State.SequenceHeader.ColorConfig.BitDepth)
-				rangE := (1 << t.State.SequenceHeader.ColorConfig.BitDepth) - t.PaletteColorsU[idx] - 1
+				t.PaletteColorsU[idx] = util.Clip1(t.PaletteColorsU[idx-1]+paletteDeltaU, sh.ColorConfig.BitDepth)
+				rangE := (1 << sh.ColorConfig.BitDepth) - t.PaletteColorsU[idx] - 1
 				paletteBits = util.Min(paletteBits, util.CeilLog2(rangE))
 				idx++
 			}
@@ -93,11 +95,11 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream) {
 			deltaEncodePaletteColorsv := b.L(1)
 
 			if util.Bool(deltaEncodePaletteColorsv) {
-				minBits := t.State.SequenceHeader.ColorConfig.BitDepth - 4
-				maxVal := 1 << t.State.SequenceHeader.ColorConfig.BitDepth
+				minBits := sh.ColorConfig.BitDepth - 4
+				maxVal := 1 << sh.ColorConfig.BitDepth
 				paletteNumExtraBitsv := b.L(2)
 				paletteBits = minBits + paletteNumExtraBitsv
-				t.PaletteColorsV[0] = b.L(t.State.SequenceHeader.ColorConfig.BitDepth)
+				t.PaletteColorsV[0] = b.L(sh.ColorConfig.BitDepth)
 
 				for idx := 1; idx < t.PaletteSizeUV; idx++ {
 					paletteDeltaV := b.L(paletteBits)
@@ -115,11 +117,11 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream) {
 					if val >= maxVal {
 						val -= maxVal
 					}
-					t.PaletteColorsV[idx] = util.Clip1(val, t.State.SequenceHeader.ColorConfig.BitDepth)
+					t.PaletteColorsV[idx] = util.Clip1(val, sh.ColorConfig.BitDepth)
 				}
 			} else {
 				for idx := 0; idx < t.PaletteSizeUV; idx++ {
-					t.PaletteColorsV[idx] = b.L(t.State.SequenceHeader.ColorConfig.BitDepth)
+					t.PaletteColorsV[idx] = b.L(sh.ColorConfig.BitDepth)
 				}
 			}
 		}
@@ -127,16 +129,16 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream) {
 }
 
 // get_palette_cache( plane )
-func (t *TileGroup) getPaletteCache(plane int) int {
+func (t *TileGroup) getPaletteCache(plane int, state *state.State) int {
 	aboveN := 0
 
-	if util.Bool((t.State.MiRow * MI_SIZE) % 64) {
-		aboveN = t.PaletteSizes[plane][t.State.MiRow-1][t.State.MiCol]
+	if util.Bool((state.MiRow * MI_SIZE) % 64) {
+		aboveN = t.PaletteSizes[plane][state.MiRow-1][state.MiCol]
 	}
 
 	leftN := 0
-	if t.State.AvailL {
-		leftN = t.PaletteSizes[plane][t.State.MiRow][t.State.MiCol-1]
+	if state.AvailL {
+		leftN = t.PaletteSizes[plane][state.MiRow][state.MiCol-1]
 	}
 
 	aboveIdx := 0
@@ -144,8 +146,8 @@ func (t *TileGroup) getPaletteCache(plane int) int {
 	n := 0
 
 	for aboveIdx < aboveN && leftIdx < leftN {
-		aboveC := t.PaletteColors[plane][t.State.MiRow-1][t.State.MiCol][aboveIdx]
-		leftC := t.PaletteColors[plane][t.State.MiRow][t.State.MiCol-1][leftIdx]
+		aboveC := t.PaletteColors[plane][state.MiRow-1][state.MiCol][aboveIdx]
+		leftC := t.PaletteColors[plane][state.MiRow][state.MiCol-1][leftIdx]
 
 		if leftC < aboveC {
 			if n == 0 || leftC != t.PaletteCache[n-1] {
@@ -166,7 +168,7 @@ func (t *TileGroup) getPaletteCache(plane int) int {
 	}
 
 	for aboveIdx < aboveN {
-		val := t.PaletteColors[plane][t.State.MiRow-1][t.State.MiCol][aboveIdx]
+		val := t.PaletteColors[plane][state.MiRow-1][state.MiCol][aboveIdx]
 		aboveIdx++
 		if n == 0 || val != t.PaletteCache[n-1] {
 			t.PaletteCache[n] = val

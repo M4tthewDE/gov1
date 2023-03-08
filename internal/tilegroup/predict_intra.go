@@ -1,81 +1,83 @@
 package tilegroup
 
 import (
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // 7.11.2 Intra prediction process
 // predict_intra( plane, x, y, haveLeft, haveAbove, haveAboveRight, haveBelowLeft, mode, log2W, log2H )
-func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbove bool, haveAboveRight int, haveBelowLeft int, mode int, log2W int, log2H int) {
+func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbove bool, haveAboveRight int, haveBelowLeft int, mode int, log2W int, log2H int, state *state.State, sh sequenceheader.SequenceHeader) {
 	w := 1 << log2W
 	h := 1 << log2H
-	maxX := (t.State.MiCols * MI_SIZE) - 1
-	maxY := (t.State.MiRows * MI_SIZE) - 1
+	maxX := (state.MiCols * MI_SIZE) - 1
+	maxY := (state.MiRows * MI_SIZE) - 1
 
 	if plane > 0 {
-		maxX = ((t.State.MiCols * MI_SIZE) >> util.Int(t.State.SequenceHeader.ColorConfig.SubsamplingX)) - 1
-		maxY = ((t.State.MiRows * MI_SIZE) >> util.Int(t.State.SequenceHeader.ColorConfig.SubsamplingY)) - 1
+		maxX = ((state.MiCols * MI_SIZE) >> util.Int(sh.ColorConfig.SubsamplingX)) - 1
+		maxY = ((state.MiRows * MI_SIZE) >> util.Int(sh.ColorConfig.SubsamplingY)) - 1
 	}
 
 	for i := 0; i < w+h-1; i++ {
 		if util.Int(haveAbove) == 0 && util.Int(haveLeft) == 1 {
-			t.AboveRow[i] = t.State.CurrFrame[plane][y][x-1]
+			t.AboveRow[i] = state.CurrFrame[plane][y][x-1]
 		} else if util.Int(haveAbove) == 0 && util.Int(haveLeft) == 0 {
-			t.AboveRow[i] = (1 << (t.State.SequenceHeader.ColorConfig.BitDepth - 1)) - 1
+			t.AboveRow[i] = (1 << (sh.ColorConfig.BitDepth - 1)) - 1
 
 		} else {
 			aboveLimit := util.Min(maxX, x+w-1)
 			if util.Bool(haveAboveRight) {
 				aboveLimit = util.Min(maxX, x+2*w-1)
 			}
-			t.AboveRow[i] = t.State.CurrFrame[plane][y-1][util.Min(aboveLimit, x+i)]
+			t.AboveRow[i] = state.CurrFrame[plane][y-1][util.Min(aboveLimit, x+i)]
 		}
 	}
 
 	for i := 0; i < w+h-1; i++ {
 		if util.Int(haveLeft) == 0 && util.Int(haveAbove) == 1 {
-			t.LeftCol[i] = t.State.CurrFrame[plane][y-1][x]
+			t.LeftCol[i] = state.CurrFrame[plane][y-1][x]
 		} else if util.Int(haveLeft) == 0 && util.Int(haveAbove) == 0 {
-			t.AboveRow[i] = (1 << (t.State.SequenceHeader.ColorConfig.BitDepth - 1)) + 1
+			t.AboveRow[i] = (1 << (sh.ColorConfig.BitDepth - 1)) + 1
 
 		} else {
 			leftLimit := util.Min(maxY, y+h-1)
 			if util.Bool(haveBelowLeft) {
 				leftLimit = util.Min(maxY, y+2*h-1)
 			}
-			t.AboveRow[i] = t.State.CurrFrame[plane][util.Min(leftLimit, y+i)][x-1]
+			t.AboveRow[i] = state.CurrFrame[plane][util.Min(leftLimit, y+i)][x-1]
 		}
 	}
 
 	if util.Int(haveAbove) == 1 && util.Int(haveLeft) == 1 {
-		t.AboveRow[len(t.AboveRow)-1] = t.State.CurrFrame[plane][y-1][x-1]
+		t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y-1][x-1]
 	} else if util.Int(haveAbove) == 1 {
-		t.AboveRow[len(t.AboveRow)-1] = t.State.CurrFrame[plane][y-1][x]
+		t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y-1][x]
 	} else if util.Int(haveLeft) == 1 {
-		t.AboveRow[len(t.AboveRow)-1] = t.State.CurrFrame[plane][y][x-1]
+		t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y][x-1]
 	} else {
-		t.AboveRow[len(t.AboveRow)-1] = 1 << (t.State.SequenceHeader.ColorConfig.BitDepth - 1)
+		t.AboveRow[len(t.AboveRow)-1] = 1 << (sh.ColorConfig.BitDepth - 1)
 	}
 
 	t.LeftCol[len(t.LeftCol)-1] = t.AboveRow[len(t.AboveRow)-1]
 
 	var pred [][]int
 	if plane == 0 && util.Bool(t.UseFilterIntra) {
-		pred = t.recursiveIntraPredictionProcess(w, h)
+		pred = t.recursiveIntraPredictionProcess(w, h, sh)
 	} else if t.isDirectionalMode(mode) {
-		pred = t.directionalIntraPredictionProcess(plane, x, y, util.Int(haveLeft), util.Int(haveAbove), mode, w, h, maxX, maxY)
+		pred = t.directionalIntraPredictionProcess(plane, x, y, util.Int(haveLeft), util.Int(haveAbove), mode, w, h, maxX, maxY, state, sh)
 	} else if mode == SMOOTH_PRED || mode == SMOOTH_V_PRED || mode == SMOOTH_H_PRED {
 		pred = t.smoothIntraPredictionProcess(mode, log2W, log2H, w, h)
 	} else if mode == DC_PRED {
-		pred = t.dcIntraPredictionProcess(haveLeft, haveAbove, log2W, log2H, w, h)
+		pred = t.dcIntraPredictionProcess(haveLeft, haveAbove, log2W, log2H, w, h, sh)
 	} else {
 		pred = t.basicIntraPredictionProcess(w, h)
 	}
 
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {
-			t.State.CurrFrame[plane][y+i][x+j] = pred[i][j]
+			state.CurrFrame[plane][y+i][x+j] = pred[i][j]
 		}
 	}
 }
@@ -105,10 +107,9 @@ func (t *TileGroup) basicIntraPredictionProcess(w int, h int) [][]int {
 }
 
 // 7.11.2.3. Recursive intra prediction process
-func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int) [][]int {
+func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int, sh sequenceheader.SequenceHeader) [][]int {
 	w4 := w >> 2
 	h2 := h >> 1
-
 	var pred [][]int
 	for i2 := 0; i2 <= h2-1; i2++ {
 		for j4 := 0; j4 <= w4-1; j4++ {
@@ -139,7 +140,7 @@ func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int) [][]int {
 					for i := 0; i <= 6; i++ {
 						pr += Intra_Filter_Taps[t.FilterIntraMode][(i1<<2)+j1][i] * p[i]
 					}
-					pred[(i2<<1)+i1][(j4<<2)+j1] = util.Clip1(util.Round2Signed(pr, INTRA_FILTER_SCALE_BITS), t.State.SequenceHeader.ColorConfig.BitDepth)
+					pred[(i2<<1)+i1][(j4<<2)+j1] = util.Clip1(util.Round2Signed(pr, INTRA_FILTER_SCALE_BITS), sh.ColorConfig.BitDepth)
 				}
 
 			}
@@ -150,7 +151,7 @@ func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int) [][]int {
 }
 
 // 7.11.2.4. Directional intra prediction process
-func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, haveLeft int, haveAbove int, mode int, w int, h int, maxX int, maxY int) [][]int {
+func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, haveLeft int, haveAbove int, mode int, w int, h int, maxX int, maxY int, state *state.State, sh sequenceheader.SequenceHeader) [][]int {
 	var pred [][]int
 
 	angleDelta := t.AngleDeltaUV
@@ -162,14 +163,14 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 	upsampleAbove := false
 	upsampleLeft := false
 
-	if util.Int(t.State.SequenceHeader.EnableIntraEdgeFilter) == 1 {
+	if util.Int(sh.EnableIntraEdgeFilter) == 1 {
 		var filterType int
 		if pAngle != 90 && pAngle != 180 {
 			if pAngle > 90 && pAngle < 180 && (w+h) >= 24 {
 				t.LeftCol[len(t.LeftCol)] = t.filterCornerProcess()
 				t.AboveRow[len(t.AboveRow)] = t.filterCornerProcess()
 			}
-			filterType = util.Int(t.getFilterType(plane))
+			filterType = util.Int(t.getFilterType(plane, state, sh))
 
 			if haveAbove == 1 {
 				strength := t.intraEdgeFilterStrengthSelectionProcess(w, h, filterType, pAngle-90)
@@ -201,7 +202,7 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 		numPx := w + sumPart
 
 		if upsampleAbove {
-			t.intraEdgeUpsampleProcess(numPx, false)
+			t.intraEdgeUpsampleProcess(numPx, false, sh)
 		}
 
 		upsampleLeft = t.intraEdgeUpsampleSelectionProcess(w, h, filterType, pAngle-180)
@@ -213,7 +214,7 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 		numPx = h + sumPart
 
 		if upsampleLeft {
-			t.intraEdgeUpsampleProcess(numPx, true)
+			t.intraEdgeUpsampleProcess(numPx, true, sh)
 		}
 
 	}
@@ -294,7 +295,7 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 }
 
 // 7.11.2.5 DC intra prediction process
-func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2W int, log2H int, w int, h int) [][]int {
+func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2W int, log2H int, w int, h int, sh sequenceheader.SequenceHeader) [][]int {
 	var pred [][]int
 	if haveLeft && haveAbove {
 		for i := 0; i < h; i++ {
@@ -318,7 +319,7 @@ func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2
 				for k := 0; k < h; k++ {
 					sum += t.LeftCol[k]
 				}
-				leftAvg := util.Clip1((sum+(h>>1))>>log2H, t.State.SequenceHeader.ColorConfig.BitDepth)
+				leftAvg := util.Clip1((sum+(h>>1))>>log2H, sh.ColorConfig.BitDepth)
 				pred[i][j] = leftAvg
 			}
 		}
@@ -326,7 +327,7 @@ func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2
 	} else if !haveLeft && !haveAbove {
 		for i := 0; i < h; i++ {
 			for j := 0; j < w; j++ {
-				pred[i][j] = 1 << (t.State.SequenceHeader.ColorConfig.BitDepth - 1)
+				pred[i][j] = 1 << (sh.ColorConfig.BitDepth - 1)
 			}
 		}
 
@@ -427,48 +428,48 @@ func (t *TileGroup) filterCornerProcess() int {
 }
 
 // 7.11.2.8. Intra filter type process
-func (t *TileGroup) getFilterType(plane int) bool {
+func (t *TileGroup) getFilterType(plane int, state *state.State, sh sequenceheader.SequenceHeader) bool {
 	aboveSmooth := false
 	leftSmooth := false
 
-	condition := t.State.AvailUChroma
+	condition := state.AvailUChroma
 	if plane == 0 {
-		condition = t.State.AvailU
+		condition = state.AvailU
 	}
 
 	if condition {
-		r := t.State.MiRow - 1
-		c := t.State.MiCol
+		r := state.MiRow - 1
+		c := state.MiCol
 
 		if plane > 0 {
-			if t.State.SequenceHeader.ColorConfig.SubsamplingX && util.Bool(t.State.MiCol&1) {
+			if sh.ColorConfig.SubsamplingX && util.Bool(state.MiCol&1) {
 				c++
 			}
-			if t.State.SequenceHeader.ColorConfig.SubsamplingY && util.Bool(t.State.MiRow&1) {
+			if sh.ColorConfig.SubsamplingY && util.Bool(state.MiRow&1) {
 				r--
 			}
 		}
-		aboveSmooth = t.isSmooth(r, c, plane)
+		aboveSmooth = t.isSmooth(r, c, plane, state)
 	}
 
-	condition = t.State.AvailLChroma
+	condition = state.AvailLChroma
 	if plane == 0 {
-		condition = t.State.AvailL
+		condition = state.AvailL
 	}
 
 	if condition {
-		r := t.State.MiRow
-		c := t.State.MiCol - 1
+		r := state.MiRow
+		c := state.MiCol - 1
 
 		if plane > 0 {
-			if t.State.SequenceHeader.ColorConfig.SubsamplingX && util.Bool(t.State.MiCol&1) {
+			if sh.ColorConfig.SubsamplingX && util.Bool(state.MiCol&1) {
 				c--
 			}
-			if t.State.SequenceHeader.ColorConfig.SubsamplingY && util.Bool(t.State.MiRow&1) {
+			if sh.ColorConfig.SubsamplingY && util.Bool(state.MiRow&1) {
 				r++
 			}
 		}
-		aboveSmooth = t.isSmooth(r, c, plane)
+		aboveSmooth = t.isSmooth(r, c, plane, state)
 	}
 
 	return aboveSmooth || leftSmooth
@@ -553,7 +554,7 @@ func (t *TileGroup) intraEdgeUpsampleSelectionProcess(w int, h int, filterType i
 }
 
 // 7.11.2.11 Intra edge upsample process
-func (t *TileGroup) intraEdgeUpsampleProcess(numPx int, dir bool) {
+func (t *TileGroup) intraEdgeUpsampleProcess(numPx int, dir bool, sh sequenceheader.SequenceHeader) {
 	// does this actually modify those arrays?
 	var buf []int
 	if !dir {
@@ -572,7 +573,7 @@ func (t *TileGroup) intraEdgeUpsampleProcess(numPx int, dir bool) {
 	buf[len(buf)-2] = dup[0]
 	for i := 0; i < numPx; i++ {
 		s := -dup[i] + (9 * dup[i+1]) + (9 * dup[i+2]) - dup[i+3]
-		s = util.Clip1(util.Round2(s, 4), t.State.SequenceHeader.ColorConfig.BitDepth)
+		s = util.Clip1(util.Round2(s, 4), sh.ColorConfig.BitDepth)
 		buf[2*i-1] = s
 		buf[2*i] = dup[i+2]
 	}
@@ -609,12 +610,12 @@ func (t *TileGroup) intraEdgeFilterProcess(sz int, strength int, left int) {
 }
 
 // is_smooth( row, col, plane )
-func (t *TileGroup) isSmooth(row int, col int, plane int) bool {
+func (t *TileGroup) isSmooth(row int, col int, plane int, state *state.State) bool {
 	var mode int
 	if plane == 0 {
 		mode = t.YModes[row][col]
 	} else {
-		if t.State.RefFrames[row][col][0] > shared.INTRA_FRAME {
+		if state.RefFrames[row][col][0] > shared.INTRA_FRAME {
 			return false
 		}
 		mode = t.UVModes[row][col]

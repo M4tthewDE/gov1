@@ -2,23 +2,26 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 	"github.com/m4tthewde/gov1/internal/wedgemask"
 )
 
 // inter_block_mode_info()
-func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream) {
+func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) {
 	t.PaletteSizeY = 0
 	t.PaletteSizeUV = 0
-	t.readRefFrames(b)
+	t.readRefFrames(b, state, uh)
 
-	isCompound := t.State.RefFrame[1] > shared.INTRA_FRAME
-	t.findMvStack(util.Int(isCompound))
+	isCompound := state.RefFrame[1] > shared.INTRA_FRAME
+	t.findMvStack(util.Int(isCompound), state, uh)
 
 	if util.Bool(t.SkipMode) {
 		t.YMode = shared.NEAREST_NEARESTMV
-	} else if t.segFeatureActive(shared.SEG_LVL_SKIP) || t.segFeatureActive(shared.SEG_LVL_GLOBALMV) {
+	} else if t.segFeatureActive(shared.SEG_LVL_SKIP, uh, state) || t.segFeatureActive(shared.SEG_LVL_GLOBALMV, uh, state) {
 		t.YMode = shared.GLOBALMV
 	} else if isCompound {
 		compoundMode := b.S()
@@ -68,48 +71,48 @@ func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream) {
 		}
 	}
 
-	t.assignMv(util.Int(isCompound), b)
-	t.readInterIntraMode(isCompound, b)
-	t.readMotionMode(isCompound, b)
-	t.readCompoundType(isCompound, b)
+	t.assignMv(util.Int(isCompound), b, state, sh, uh)
+	t.readInterIntraMode(isCompound, b, state, sh)
+	t.readMotionMode(isCompound, b, uh, state)
+	t.readCompoundType(isCompound, b, state, sh)
 
-	if t.State.UncompressedHeader.InterpolationFilter == shared.SWITCHABLE {
+	if uh.InterpolationFilter == shared.SWITCHABLE {
 		x := 1
-		if t.State.SequenceHeader.EnableDualFilter {
+		if sh.EnableDualFilter {
 			x = 2
 		}
 		for dir := 0; dir < x; dir++ {
-			if t.needsInterpFilter() {
+			if t.needsInterpFilter(state) {
 				t.InterpFilter[dir] = b.S()
 			} else {
 				t.InterpFilter[dir] = shared.EIGHTTAP
 			}
 		}
 
-		if !t.State.SequenceHeader.EnableDualFilter {
+		if !sh.EnableDualFilter {
 			t.InterpFilter[1] = t.InterpFilter[0]
 		}
 	} else {
 		for dir := 0; dir < 2; dir++ {
-			t.InterpFilter[dir] = t.State.UncompressedHeader.InterpolationFilter
+			t.InterpFilter[dir] = uh.InterpolationFilter
 		}
 	}
 }
 
 // read_ref_frames()
-func (t *TileGroup) readRefFrames(b *bitstream.BitStream) {
+func (t *TileGroup) readRefFrames(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	if util.Bool(t.SkipMode) {
-		t.State.RefFrame[0] = t.State.UncompressedHeader.SkipModeFrame[0]
-		t.State.RefFrame[1] = t.State.UncompressedHeader.SkipModeFrame[1]
-	} else if t.segFeatureActive(shared.SEG_LVL_REF_FRAME) {
-		t.State.RefFrame[0] = t.State.FeatureData[t.SegmentId][shared.SEG_LVL_REF_FRAME]
-		t.State.RefFrame[1] = shared.NONE
+		state.RefFrame[0] = uh.SkipModeFrame[0]
+		state.RefFrame[1] = uh.SkipModeFrame[1]
+	} else if t.segFeatureActive(shared.SEG_LVL_REF_FRAME, uh, state) {
+		state.RefFrame[0] = state.FeatureData[t.SegmentId][shared.SEG_LVL_REF_FRAME]
+		state.RefFrame[1] = shared.NONE
 	} else {
-		bw4 := t.State.Num4x4BlocksWide[t.State.MiSize]
-		bh4 := t.State.Num4x4BlocksHigh[t.State.MiSize]
+		bw4 := state.Num4x4BlocksWide[state.MiSize]
+		bh4 := state.Num4x4BlocksHigh[state.MiSize]
 
 		var compMode int
-		if t.State.UncompressedHeader.ReferenceSelect && util.Min(bw4, bh4) >= 2 {
+		if uh.ReferenceSelect && util.Min(bw4, bh4) >= 2 {
 			compMode = b.S()
 		} else {
 			compMode = SINGLE_REFERENCE
@@ -120,23 +123,23 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream) {
 			if compRefType == UNIDIR_COMP_REFERENCE {
 				uniCompRef := b.S()
 				if util.Bool(uniCompRef) {
-					t.State.RefFrame[0] = shared.BWDREF_FRAME
-					t.State.RefFrame[1] = shared.ALTREF_FRAME
+					state.RefFrame[0] = shared.BWDREF_FRAME
+					state.RefFrame[1] = shared.ALTREF_FRAME
 				} else {
 					uniCompRefP1 := b.S()
 					if util.Bool(uniCompRefP1) {
 						uniCompRefP2 := b.S()
 
 						if util.Bool(uniCompRefP2) {
-							t.State.RefFrame[0] = shared.LAST_FRAME
-							t.State.RefFrame[1] = shared.GOLDEN_FRAME
+							state.RefFrame[0] = shared.LAST_FRAME
+							state.RefFrame[1] = shared.GOLDEN_FRAME
 						} else {
-							t.State.RefFrame[0] = shared.LAST_FRAME
-							t.State.RefFrame[1] = shared.LAST3_FRAME
+							state.RefFrame[0] = shared.LAST_FRAME
+							state.RefFrame[1] = shared.LAST3_FRAME
 						}
 					} else {
-						t.State.RefFrame[0] = shared.LAST_FRAME
-						t.State.RefFrame[1] = shared.LAST2_FRAME
+						state.RefFrame[0] = shared.LAST_FRAME
+						state.RefFrame[1] = shared.LAST2_FRAME
 
 					}
 				}
@@ -146,18 +149,18 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream) {
 					compRefP1 := b.S()
 
 					if util.Bool(compRefP1) {
-						t.State.RefFrame[0] = shared.LAST2_FRAME
+						state.RefFrame[0] = shared.LAST2_FRAME
 					} else {
-						t.State.RefFrame[0] = shared.LAST_FRAME
+						state.RefFrame[0] = shared.LAST_FRAME
 
 					}
 				} else {
 					compRefP2 := b.S()
 
 					if util.Bool(compRefP2) {
-						t.State.RefFrame[0] = shared.GOLDEN_FRAME
+						state.RefFrame[0] = shared.GOLDEN_FRAME
 					} else {
-						t.State.RefFrame[0] = shared.LAST3_FRAME
+						state.RefFrame[0] = shared.LAST3_FRAME
 
 					}
 
@@ -168,13 +171,13 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream) {
 					compBwdrefP1 := b.S()
 
 					if util.Bool(compBwdrefP1) {
-						t.State.RefFrame[1] = shared.ALTREF2_FRAME
+						state.RefFrame[1] = shared.ALTREF2_FRAME
 					} else {
-						t.State.RefFrame[1] = shared.BWDREF_FRAME
+						state.RefFrame[1] = shared.BWDREF_FRAME
 
 					}
 				} else {
-					t.State.RefFrame[1] = shared.ALTREF_FRAME
+					state.RefFrame[1] = shared.ALTREF_FRAME
 				}
 			}
 		} else {
@@ -184,63 +187,63 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream) {
 				if singleRefP2 == 0 {
 					singleRefP6 := b.S()
 					if util.Bool(singleRefP6) {
-						t.State.RefFrame[0] = shared.ALTREF2_FRAME
+						state.RefFrame[0] = shared.ALTREF2_FRAME
 					} else {
-						t.State.RefFrame[0] = shared.BWDREF_FRAME
+						state.RefFrame[0] = shared.BWDREF_FRAME
 
 					}
 				} else {
-					t.State.RefFrame[0] = shared.ALTREF_FRAME
+					state.RefFrame[0] = shared.ALTREF_FRAME
 				}
 			} else {
 				singleRefP3 := b.S()
 				if util.Bool(singleRefP3) {
 					singleRefP5 := b.S()
 					if util.Bool(singleRefP5) {
-						t.State.RefFrame[0] = shared.GOLDEN_FRAME
+						state.RefFrame[0] = shared.GOLDEN_FRAME
 					} else {
-						t.State.RefFrame[0] = shared.LAST3_FRAME
+						state.RefFrame[0] = shared.LAST3_FRAME
 					}
 				} else {
 					singleRefP4 := b.S()
 					if util.Bool(singleRefP4) {
-						t.State.RefFrame[0] = shared.LAST2_FRAME
+						state.RefFrame[0] = shared.LAST2_FRAME
 					} else {
-						t.State.RefFrame[0] = shared.LAST_FRAME
+						state.RefFrame[0] = shared.LAST_FRAME
 					}
 				}
 			}
-			t.State.RefFrame[1] = shared.NONE
+			state.RefFrame[1] = shared.NONE
 		}
 	}
 }
 
 // read_motion_mode( isCompound )
-func (t *TileGroup) readMotionMode(isCompound bool, b *bitstream.BitStream) {
+func (t *TileGroup) readMotionMode(isCompound bool, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, state *state.State) {
 	if util.Bool(t.SkipMode) {
 		t.MotionMode = SIMPLE
 		return
 	}
 
-	if !t.State.UncompressedHeader.IsMotionModeSwitchable {
+	if !uh.IsMotionModeSwitchable {
 		t.MotionMode = SIMPLE
 		return
 	}
 
-	if util.Min(t.Block_Width[t.State.MiSize], t.Block_Height[t.State.MiSize]) < 8 {
+	if util.Min(t.Block_Width[state.MiSize], t.Block_Height[state.MiSize]) < 8 {
 		t.MotionMode = SIMPLE
 		return
 	}
 
-	if !t.State.UncompressedHeader.ForceIntegerMv && (t.YMode == shared.GLOBALMV || t.YMode == shared.GLOBAL_GLOBALMV) {
-		if t.State.GmType[t.State.RefFrame[0]] > shared.TRANSLATION {
+	if !uh.ForceIntegerMv && (t.YMode == shared.GLOBALMV || t.YMode == shared.GLOBAL_GLOBALMV) {
+		if state.GmType[state.RefFrame[0]] > shared.TRANSLATION {
 			t.MotionMode = SIMPLE
 			return
 		}
 	}
 
-	t.findWarpSamples()
-	if t.State.UncompressedHeader.ForceIntegerMv || t.NumSamples == 0 || !t.State.UncompressedHeader.AllowWarpedMotion || t.isScaled(t.State.RefFrame[0]) {
+	t.findWarpSamples(state)
+	if uh.ForceIntegerMv || t.NumSamples == 0 || !uh.AllowWarpedMotion || t.isScaled(state.RefFrame[0], uh) {
 		useObmc := b.S()
 		if util.Bool(useObmc) {
 			t.MotionMode = OBMC
@@ -255,67 +258,67 @@ func (t *TileGroup) readMotionMode(isCompound bool, b *bitstream.BitStream) {
 
 // TODO: consider separate file for this procedure
 // find_warp_samples() 7.10.4.
-func (t *TileGroup) findWarpSamples() {
+func (t *TileGroup) findWarpSamples(state *state.State) {
 	t.NumSamples = 0
 	t.NumSamplesScanned = 0
 
-	w4 := t.State.Num4x4BlocksWide[t.State.MiSize]
-	h4 := t.State.Num4x4BlocksHigh[t.State.MiSize]
+	w4 := state.Num4x4BlocksWide[state.MiSize]
+	h4 := state.Num4x4BlocksHigh[state.MiSize]
 
 	doTopLeft := 1
 	doTopRight := 1
 
-	if t.State.AvailU {
-		srcSize := t.State.MiSizes[t.State.MiRow-1][t.State.MiCol]
-		srcW := t.State.Num4x4BlocksWide[srcSize]
+	if state.AvailU {
+		srcSize := state.MiSizes[state.MiRow-1][state.MiCol]
+		srcW := state.Num4x4BlocksWide[srcSize]
 
 		if w4 <= srcW {
-			colOffset := -(t.State.MiCol & (srcW - 1))
+			colOffset := -(state.MiCol & (srcW - 1))
 			if colOffset < 0 {
 				doTopLeft = 0
 			}
 			if colOffset+srcW > w4 {
 				doTopRight = 0
 			}
-			t.addSample(-1, 0)
+			t.addSample(-1, 0, state)
 		} else {
 			var miStep int
-			for i := 0; i < util.Min(w4, t.State.MiCols-t.State.MiCol); i += miStep {
-				srcSize = t.State.MiSizes[t.State.MiRow-1][t.State.MiCol+i]
-				srcW = t.State.Num4x4BlocksWide[srcSize]
+			for i := 0; i < util.Min(w4, state.MiCols-state.MiCol); i += miStep {
+				srcSize = state.MiSizes[state.MiRow-1][state.MiCol+i]
+				srcW = state.Num4x4BlocksWide[srcSize]
 				miStep = util.Min(w4, srcW)
-				t.addSample(-1, i)
+				t.addSample(-1, i, state)
 			}
 		}
 	}
-	if t.State.AvailL {
-		srcSize := t.State.MiSizes[t.State.MiRow][t.State.MiCol-1]
-		srcH := t.State.Num4x4BlocksHigh[srcSize]
+	if state.AvailL {
+		srcSize := state.MiSizes[state.MiRow][state.MiCol-1]
+		srcH := state.Num4x4BlocksHigh[srcSize]
 
 		if h4 <= srcH {
-			rowOffset := -(t.State.MiRow & (srcH - 1))
+			rowOffset := -(state.MiRow & (srcH - 1))
 			if rowOffset < 0 {
 				doTopLeft = 0
 			}
-			t.addSample(0, -1)
+			t.addSample(0, -1, state)
 		} else {
 			var miStep int
-			for i := 0; i < util.Min(h4, t.State.MiRows-t.State.MiRow); i += miStep {
-				srcSize = t.State.MiSizes[t.State.MiRow+i][t.State.MiCol-1]
-				srcH = t.State.Num4x4BlocksHigh[srcSize]
+			for i := 0; i < util.Min(h4, state.MiRows-state.MiRow); i += miStep {
+				srcSize = state.MiSizes[state.MiRow+i][state.MiCol-1]
+				srcH = state.Num4x4BlocksHigh[srcSize]
 				miStep = util.Min(h4, srcH)
-				t.addSample(i, -1)
+				t.addSample(i, -1, state)
 			}
 		}
 	}
 
 	if util.Bool(doTopLeft) {
-		t.addSample(-1, -1)
+		t.addSample(-1, -1, state)
 	}
 
 	if util.Bool(doTopRight) {
 		if util.Max(w4, h4) <= 16 {
-			t.addSample(-1, w4)
+			t.addSample(-1, w4, state)
 		}
 	}
 
@@ -326,39 +329,39 @@ func (t *TileGroup) findWarpSamples() {
 }
 
 // add_sample 7.10.4.2.
-func (t *TileGroup) addSample(deltaRow int, deltaCol int) {
+func (t *TileGroup) addSample(deltaRow int, deltaCol int, state *state.State) {
 	if t.NumSamplesScanned >= LEAST_SQUARES_SAMPLES_MAX {
 		return
 	}
 
-	mvRow := t.State.MiRow + deltaRow
-	mvCol := t.State.MiCol + deltaCol
+	mvRow := state.MiRow + deltaRow
+	mvCol := state.MiCol + deltaCol
 
-	if !t.isInside(mvRow, mvCol) {
+	if !t.isInside(mvRow, mvCol, state) {
 		return
 	}
 
 	// TODO: how do we know if something has not been writte to?
-	if t.State.RefFrames[mvRow][mvCol][0] == 0 {
+	if state.RefFrames[mvRow][mvCol][0] == 0 {
 		return
 	}
 
-	if t.State.RefFrames[mvRow][mvCol][0] != t.State.RefFrame[0] {
+	if state.RefFrames[mvRow][mvCol][0] != state.RefFrame[0] {
 		return
 	}
 
-	if t.State.RefFrames[mvRow][mvCol][1] != shared.NONE {
+	if state.RefFrames[mvRow][mvCol][1] != shared.NONE {
 		return
 	}
 
-	candSz := t.State.MiSizes[mvRow][mvCol]
-	candW4 := t.State.Num4x4BlocksWide[candSz]
-	candH4 := t.State.Num4x4BlocksHigh[candSz]
+	candSz := state.MiSizes[mvRow][mvCol]
+	candW4 := state.Num4x4BlocksWide[candSz]
+	candH4 := state.Num4x4BlocksHigh[candSz]
 	candRow := mvRow & ^(candH4 - 1)
 	candCol := mvCol & ^(candW4 - 1)
 	midY := candRow*4 + candH4*2 - 1
 	midX := candCol*4 + candW4*2 - 1
-	threshold := util.Clip3(16, 112, util.Max(t.Block_Width[t.State.MiSize], t.Block_Height[t.State.MiSize]))
+	threshold := util.Clip3(16, 112, util.Max(t.Block_Width[state.MiSize], t.Block_Height[state.MiSize]))
 	mvDiffRow := util.Abs(t.Mvs[candRow][candCol][0][0] - t.Mv[0][0])
 	mvDiffCol := util.Abs(t.Mvs[candRow][candCol][0][1] - t.Mv[0][1])
 	valid := (mvDiffRow + mvDiffCol) <= threshold
@@ -384,22 +387,22 @@ func (t *TileGroup) addSample(deltaRow int, deltaCol int) {
 }
 
 // needs_interp_filter()
-func (t *TileGroup) needsInterpFilter() bool {
-	large := util.Min(t.Block_Width[t.State.MiSize], t.Block_Height[t.State.MiSize]) >= 8
+func (t *TileGroup) needsInterpFilter(state *state.State) bool {
+	large := util.Min(t.Block_Width[state.MiSize], t.Block_Height[state.MiSize]) >= 8
 
 	if util.Bool(t.SkipMode) || t.MotionMode == LOCALWARP {
 		return false
 	} else if large && t.YMode == shared.GLOBALMV {
-		return t.State.GmType[t.State.RefFrame[0]] == shared.TRANSLATION
+		return state.GmType[state.RefFrame[0]] == shared.TRANSLATION
 	} else if large && t.YMode == shared.GLOBAL_GLOBALMV {
-		return t.State.GmType[t.State.RefFrame[0]] == shared.TRANSLATION || t.State.GmType[1] == shared.TRANSLATION
+		return state.GmType[state.RefFrame[0]] == shared.TRANSLATION || state.GmType[1] == shared.TRANSLATION
 	} else {
 		return true
 	}
 }
 
 // read_compound_type( isCompound )
-func (t *TileGroup) readCompoundType(isCompound bool, b *bitstream.BitStream) {
+func (t *TileGroup) readCompoundType(isCompound bool, b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader) {
 	t.CompGroupIdx = 0
 	t.CompoundIdx = 1
 	if util.Bool(t.SkipMode) {
@@ -408,13 +411,13 @@ func (t *TileGroup) readCompoundType(isCompound bool, b *bitstream.BitStream) {
 	}
 
 	if isCompound {
-		n := wedgemask.Wedge_Bits[t.State.MiSize]
-		if t.State.SequenceHeader.EnableMaskedCompound {
+		n := wedgemask.Wedge_Bits[state.MiSize]
+		if sh.EnableMaskedCompound {
 			t.CompGroupIdx = b.S()
 		}
 
 		if t.CompGroupIdx == 0 {
-			if t.State.SequenceHeader.EnableJntComp {
+			if sh.EnableJntComp {
 				t.CompoundIdx = b.S()
 				if util.Bool(t.CompoundIdx) {
 					t.CompoundType = COMPOUND_AVERAGE
@@ -454,13 +457,13 @@ func (t *TileGroup) readCompoundType(isCompound bool, b *bitstream.BitStream) {
 }
 
 // read_interintra_mode( isCompound )
-func (t *TileGroup) readInterIntraMode(isCompound bool, b *bitstream.BitStream) {
-	if util.Bool(t.SkipMode) && t.State.SequenceHeader.EnableInterIntraCompound && !isCompound && t.State.MiSize > +shared.BLOCK_8X8 && t.State.MiSize <= shared.BLOCK_32X32 {
+func (t *TileGroup) readInterIntraMode(isCompound bool, b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader) {
+	if util.Bool(t.SkipMode) && sh.EnableInterIntraCompound && !isCompound && state.MiSize > +shared.BLOCK_8X8 && state.MiSize <= shared.BLOCK_32X32 {
 		t.InterIntra = b.S()
 
 		if util.Bool(t.InterIntra) {
 			t.InterIntraMode = b.S()
-			t.State.RefFrame[1] = shared.INTRA_FRAME
+			state.RefFrame[1] = shared.INTRA_FRAME
 			t.AngleDeltaY = 0
 			t.AngleDeltaUV = 0
 			t.UseFilterIntra = 0

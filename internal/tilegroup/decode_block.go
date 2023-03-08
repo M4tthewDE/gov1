@@ -2,66 +2,69 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // decode_block( r, c, subSize)
-func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStream) {
-	t.State.MiRow = r
-	t.State.MiCol = c
-	t.State.MiSize = subSize
-	bw4 := t.State.Num4x4BlocksWide[subSize]
-	bh4 := t.State.Num4x4BlocksHigh[subSize]
+func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
+	state.MiRow = r
+	state.MiCol = c
+	state.MiSize = subSize
+	bw4 := state.Num4x4BlocksWide[subSize]
+	bh4 := state.Num4x4BlocksHigh[subSize]
 
-	if bh4 == 1 && t.State.SequenceHeader.ColorConfig.SubsamplingY && (t.State.MiRow&1) == 0 {
+	if bh4 == 1 && sh.ColorConfig.SubsamplingY && (state.MiRow&1) == 0 {
 		t.HasChroma = false
-	} else if bw4 == 1 && t.State.SequenceHeader.ColorConfig.SubsamplingX && (t.State.MiCol&1) == 0 {
+	} else if bw4 == 1 && sh.ColorConfig.SubsamplingX && (state.MiCol&1) == 0 {
 		t.HasChroma = false
 	} else {
-		t.HasChroma = t.State.SequenceHeader.ColorConfig.NumPlanes > 1
+		t.HasChroma = sh.ColorConfig.NumPlanes > 1
 	}
 
-	t.State.AvailU = t.isInside(r-1, c)
-	t.State.AvailL = t.isInside(r, c-1)
-	t.State.AvailUChroma = t.State.AvailU
-	t.State.AvailLChroma = t.State.AvailL
+	state.AvailU = t.isInside(r-1, c, state)
+	state.AvailL = t.isInside(r, c-1, state)
+	state.AvailUChroma = state.AvailU
+	state.AvailLChroma = state.AvailL
 
 	if t.HasChroma {
-		if t.State.SequenceHeader.ColorConfig.SubsamplingY && bh4 == 1 {
-			t.State.AvailUChroma = t.isInside(r-2, c)
+		if sh.ColorConfig.SubsamplingY && bh4 == 1 {
+			state.AvailUChroma = t.isInside(r-2, c, state)
 		}
-		if t.State.SequenceHeader.ColorConfig.SubsamplingX && bw4 == 1 {
-			t.State.AvailLChroma = t.isInside(r, c-2)
+		if sh.ColorConfig.SubsamplingX && bw4 == 1 {
+			state.AvailLChroma = t.isInside(r, c-2, state)
 		}
 	} else {
-		t.State.AvailUChroma = false
-		t.State.AvailLChroma = false
+		state.AvailUChroma = false
+		state.AvailLChroma = false
 	}
 
-	t.modeInfo(b)
-	t.paletteTokens(b)
-	t.readBlockTxSize(b)
+	t.modeInfo(b, uh, sh, state)
+	t.paletteTokens(b, state, sh)
+	t.readBlockTxSize(b, state, uh)
 
-	if util.Bool(t.State.Skip) {
-		t.resetBlockContext(bw4, bh4, b)
+	if util.Bool(state.Skip) {
+		t.resetBlockContext(bw4, bh4, b, state, sh)
 	}
 
-	isCompound := t.State.RefFrame[1] > shared.INTRA_FRAME
+	isCompound := state.RefFrame[1] > shared.INTRA_FRAME
 
 	for y := 0; y < bh4; y++ {
 		for x := 0; x < bw4; x++ {
 			t.YModes[r+y][c+x] = t.YMode
 
-			if t.State.RefFrame[0] == shared.INTRA_FRAME && t.HasChroma {
+			if state.RefFrame[0] == shared.INTRA_FRAME && t.HasChroma {
 				t.UVModes[r+y][c+x] = t.UVMode
 			}
 
 			for refList := 0; refList < 2; refList++ {
-				t.State.RefFrames[r+y][c+x][refList] = t.State.RefFrame[refList]
+				state.RefFrames[r+y][c+x][refList] = state.RefFrame[refList]
 			}
 
-			if util.Bool(t.State.IsInter) {
+			if util.Bool(state.IsInter) {
 				if !util.Bool(t.useIntrabc) {
 					t.CompGroupIdxs[r+y][c+x] = t.CompGroupIdx
 					t.CompoundIdxs[r+y][c+x] = t.CompoundIdx
@@ -76,34 +79,34 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStrea
 		}
 	}
 
-	t.computePrediction()
+	t.computePrediction(state, sh, uh)
 }
 
 // mode_info()
-func (t *TileGroup) modeInfo(b *bitstream.BitStream) {
-	if t.State.UncompressedHeader.FrameIsIntra {
-		t.intraFrameModeInfo(b)
+func (t *TileGroup) modeInfo(b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader, state *state.State) {
+	if uh.FrameIsIntra {
+		t.intraFrameModeInfo(b, uh, state, sh)
 	} else {
-		t.interFrameModeInfo(b)
+		t.interFrameModeInfo(b, state, uh, sh)
 	}
 }
 
 // reset_block_context( bw4, bh4 )
-func (t *TileGroup) resetBlockContext(bw4 int, bh4 int, b *bitstream.BitStream) {
+func (t *TileGroup) resetBlockContext(bw4 int, bh4 int, b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader) {
 	for plane := 0; plane < 1+2*util.Int(t.HasChroma); plane++ {
 		subX := 0
 		subY := 0
 		if plane > 0 {
-			subX = util.Int(t.State.SequenceHeader.ColorConfig.SubsamplingX)
-			subY = util.Int(t.State.SequenceHeader.ColorConfig.SubsamplingY)
+			subX = util.Int(sh.ColorConfig.SubsamplingX)
+			subY = util.Int(sh.ColorConfig.SubsamplingY)
 		}
 
-		for i := t.State.MiCol >> subX; i < ((t.State.MiCol + bw4) >> subX); i++ {
+		for i := state.MiCol >> subX; i < ((state.MiCol + bw4) >> subX); i++ {
 			t.AboveLevelContext[plane][i] = 0
 			t.AboveDcContext[plane][i] = 0
 		}
 
-		for i := t.State.MiRow >> subY; i < ((t.State.MiRow + bh4) >> subY); i++ {
+		for i := state.MiRow >> subY; i < ((state.MiRow + bh4) >> subY); i++ {
 			t.LeftLevelContext[plane][i] = 0
 			t.LeftDcContext[plane][i] = 0
 		}

@@ -2,12 +2,15 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
+	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // assign_mv( isCompound )
-func (t *TileGroup) assignMv(isCompound int, b *bitstream.BitStream) {
+func (t *TileGroup) assignMv(isCompound int, b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
 	for i := 0; i < 1+isCompound; i++ {
 		var compMode int
 		if util.Bool(t.useIntrabc) {
@@ -23,14 +26,14 @@ func (t *TileGroup) assignMv(isCompound int, b *bitstream.BitStream) {
 			}
 			if t.PredMv[0][0] == 0 && t.PredMv[0][1] == 0 {
 				var sbSize int
-				if t.State.SequenceHeader.Use128x128SuperBlock {
+				if sh.Use128x128SuperBlock {
 					sbSize = shared.BLOCK_128X128
 				} else {
 					sbSize = shared.BLOCK_64X64
 				}
-				sbSize4 := t.State.Num4x4BlocksHigh[sbSize]
+				sbSize4 := state.Num4x4BlocksHigh[sbSize]
 
-				if t.State.MiRow-sbSize4 < t.State.MiRowStart {
+				if state.MiRow-sbSize4 < state.MiRowStart {
 					t.PredMv[0][0] = 0
 					t.PredMv[0][1] = -(sbSize4*MI_SIZE + INTRABC_DELAY_PIXELS) * 8
 				} else {
@@ -57,7 +60,7 @@ func (t *TileGroup) assignMv(isCompound int, b *bitstream.BitStream) {
 		}
 
 		if compMode == shared.NEWMV {
-			t.readMv(i, b)
+			t.readMv(i, b, uh)
 		} else {
 			t.Mv[i] = t.PredMv[i]
 		}
@@ -65,7 +68,7 @@ func (t *TileGroup) assignMv(isCompound int, b *bitstream.BitStream) {
 }
 
 // read_mv( ref )
-func (t *TileGroup) readMv(ref int, b *bitstream.BitStream) {
+func (t *TileGroup) readMv(ref int, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
 	var diffMv []int
 	diffMv[0] = 0
 	diffMv[1] = 0
@@ -79,11 +82,11 @@ func (t *TileGroup) readMv(ref int, b *bitstream.BitStream) {
 	mvJoint := b.S()
 
 	if mvJoint == MV_JOINT_HZVNZ || mvJoint == MV_JOINT_HNZVNZ {
-		diffMv[0] = t.readMvComponent(0, b)
+		diffMv[0] = t.readMvComponent(0, b, uh)
 	}
 
 	if mvJoint == MV_JOINT_HNZVZ || mvJoint == MV_JOINT_HNZVNZ {
-		diffMv[1] = t.readMvComponent(1, b)
+		diffMv[1] = t.readMvComponent(1, b, uh)
 	}
 
 	t.Mv[ref][0] = t.PredMv[ref][0] + diffMv[0]
@@ -91,7 +94,7 @@ func (t *TileGroup) readMv(ref int, b *bitstream.BitStream) {
 }
 
 // read_mv_component( comp )
-func (t *TileGroup) readMvComponent(comp int, b *bitstream.BitStream) int {
+func (t *TileGroup) readMvComponent(comp int, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
 	mvSign := b.S()
 	mvClass := b.S()
 
@@ -100,14 +103,14 @@ func (t *TileGroup) readMvComponent(comp int, b *bitstream.BitStream) int {
 		mvClass0Bit := b.S()
 
 		var mvClass0Fr int
-		if t.State.UncompressedHeader.ForceIntegerMv {
+		if uh.ForceIntegerMv {
 			mvClass0Fr = 3
 		} else {
 			mvClass0Fr = b.S()
 		}
 
 		var mvClass0Hp int
-		if t.State.UncompressedHeader.AllowHighPrecisionMv {
+		if uh.AllowHighPrecisionMv {
 			mvClass0Hp = b.S()
 		} else {
 			mvClass0Hp = 1
@@ -125,13 +128,13 @@ func (t *TileGroup) readMvComponent(comp int, b *bitstream.BitStream) int {
 
 		var mvFr int
 		var mvHp int
-		if t.State.UncompressedHeader.ForceIntegerMv {
+		if uh.ForceIntegerMv {
 			mvFr = 3
 		} else {
 			mvFr = b.S()
 		}
 
-		if t.State.UncompressedHeader.AllowHighPrecisionMv {
+		if uh.AllowHighPrecisionMv {
 			mvHp = b.S()
 		} else {
 			mvHp = 1
