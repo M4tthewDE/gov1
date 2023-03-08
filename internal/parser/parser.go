@@ -36,7 +36,7 @@ func (p *Parser) frameUnit(sz int) {
 		obuLength := p.bitStream.Leb128()
 		sz -= p.bitStream.Leb128Bytes
 
-		logger.Logger.Info("Parsing obu...", zap.Int("sz", sz))
+		logger.Logger.Info("Starting obu parsing process...", zap.Int("sz", sz))
 
 		state := state.State{}
 		_ = obu.NewObu(obuLength, &state, p.bitStream)
@@ -48,6 +48,7 @@ func (p *Parser) frameUnit(sz int) {
 
 // bitstream( )
 func (p *Parser) bitstream() {
+	logger.Logger.Info("Starting bitstream...")
 	for p.bitStream.MoreDataInBistream() {
 		temporalUnitSize := p.bitStream.Leb128()
 		p.temporalUnit(temporalUnitSize)

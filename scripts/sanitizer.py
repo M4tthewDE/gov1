@@ -1,14 +1,14 @@
 #!/bin/python
 
-import sys
-
 # sanitizes copied arrays from the av1 spec
 
+
 def main():
-    data = sys.argv[1]
+    data = '''    '''
+
     data = data[data.find("{"):]
     data = data.replace("{{", "{")
-    data = data.replace("}}", "}")
+    data = data.replace("}}", "},")
     data = data.replace("},},", "},")
     data = data.replace(",,", ",")
     numbers = data.split()
@@ -16,9 +16,9 @@ def main():
     for n in numbers:
         if not "{" in n and not "}" in n:
             if not n.endswith(','):
-                print(n[int(len(n)/2):] + ",")
+                print(n[int(len(n)/2):] + ",", end ='')
             else:
-                print(n[int(len(n)/2):])
+                print(n[int(len(n)/2):], end='')
         else:
             print(n)
 

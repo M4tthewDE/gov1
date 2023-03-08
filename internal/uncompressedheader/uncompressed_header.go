@@ -422,7 +422,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 
 	if u.PrimaryRefFrame == shared.PRIMARY_REF_NONE {
 
-		u.initCoeffCdfs()
+		u.initCoeffCdfs(s)
 	} else {
 		u.loadPreviousSegementIds()
 	}
@@ -798,11 +798,6 @@ func (u *UncompressedHeader) deltaLfParams(b *bitstream.BitStream) {
 			u.DeltaLfMulti = b.F(1)
 		}
 	}
-}
-
-// init_coeff_cdfs()
-func (u *UncompressedHeader) initCoeffCdfs() {
-	// TODO: implement when needed, not quiet known when these values will be needed yet
 }
 
 func (u *UncompressedHeader) loadPreviousSegementIds() {

@@ -284,7 +284,7 @@ func (t *TileGroup) build(sz int, b *bitstream.BitStream, state *state.State, uh
 		state.MiColStart = state.MiColStarts[tileCol]
 		state.MiColEnd = state.MiColStarts[tileCol+1]
 		state.CurrentQIndex = uh.BaseQIdx
-		t.initSymbol(tileSize)
+		t.initSymbol(tileSize, b, state)
 		t.decodeTile(b, state, sh, uh)
 		t.exitSymbol(b, state, uh)
 	}
@@ -335,7 +335,16 @@ func (t *TileGroup) framEndUpdateCdf() {
 }
 
 // init_symbol( sz )
-func (t *TileGroup) initSymbol(sz int) {
+func (t *TileGroup) initSymbol(sz int, b *bitstream.BitStream, state *state.State) {
+	numBits := util.Min(sz*8, 15)
+	buf := b.F(numBits)
+	paddedBuf := buf << (16 - numBits)
+
+	state.SymbolValue = ((1 << 15) - 1) ^ paddedBuf
+	state.SymbolRange = 1 << 15
+	state.SymbolMaxBits = 8*sz - 15
+	state.TileIntraFrameYModeCdf = uncompressedheader.DEFAULT_INTRA_FRAME_Y_MODE_CDF
+
 	panic("not implemented init_symbol( sz )")
 }
 
