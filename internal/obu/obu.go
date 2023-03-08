@@ -3,11 +3,13 @@ package obu
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/header"
+	"github.com/m4tthewde/gov1/internal/logger"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/tilegroup"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
+	"go.uber.org/zap"
 )
 
 type ObuType int
@@ -48,7 +50,11 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 			return
 		}
 	}
+
+	logger.Logger.Info("Parsing obu...", zap.Int("type", h.Type))
+
 	var sh sequenceheader.SequenceHeader
+	var uh uncompressedheader.UncompressedHeader
 
 	switch h.Type {
 	case header.OBU_SEQUENCE_HEADER:
@@ -56,11 +62,11 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 	case header.OBU_TEMPORAL_DELIMITER:
 		state.SeenFrameHeader = false
 	case header.OBU_FRAME_HEADER:
-		o.ParseFrameHeader(b, state, h, sh)
+		uh = o.ParseFrameHeader(b, state, h, sh)
 	case header.OBU_REDUNDANT_FRAME_HEADER:
 		o.ParseFrameHeader(b, state, h, sh)
 	case header.OBU_FRAME:
-		o.newFrame(o.Size, b, state, h, sh)
+		o.newFrame(o.Size, b, state, h, sh, uh)
 	case header.OBU_PADDING:
 		o.paddingObu(b)
 	default:
@@ -79,7 +85,7 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 
 // TODO: remove size, should be included in struct
 // frame_obu( sz )
-func (o *Obu) newFrame(sz int, b *bitstream.BitStream, state *state.State, h header.Header, sh sequenceheader.SequenceHeader) {
+func (o *Obu) newFrame(sz int, b *bitstream.BitStream, state *state.State, h header.Header, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
 	startBitPos := b.Position
 
 	o.ParseFrameHeader(b, state, h, sh)
@@ -90,13 +96,13 @@ func (o *Obu) newFrame(sz int, b *bitstream.BitStream, state *state.State, h hea
 	headerBytes := (endBitPos - startBitPos) / 8
 	sz -= headerBytes
 
-	_ = tilegroup.NewTileGroup(sz, b, state)
+	_ = tilegroup.NewTileGroup(sz, b, state, uh, sh)
 }
 
 // frame_header_obu()
-func (o *Obu) ParseFrameHeader(b *bitstream.BitStream, state *state.State, h header.Header, sh sequenceheader.SequenceHeader) {
+func (o *Obu) ParseFrameHeader(b *bitstream.BitStream, state *state.State, h header.Header, sh sequenceheader.SequenceHeader) uncompressedheader.UncompressedHeader {
 	if state.SeenFrameHeader {
-		FrameHeaderCopy()
+		return FrameHeaderCopy()
 	} else {
 		state.SeenFrameHeader = true
 
@@ -109,12 +115,15 @@ func (o *Obu) ParseFrameHeader(b *bitstream.BitStream, state *state.State, h hea
 			state.TileNum = 0
 			state.SeenFrameHeader = true
 		}
+
+		return uncompressedHeader
 	}
 }
 
 // frame_header_copy()
-func FrameHeaderCopy() {
+func FrameHeaderCopy() uncompressedheader.UncompressedHeader {
 	panic("not implemented")
+	return uncompressedheader.UncompressedHeader{}
 }
 
 // padding_obu( )

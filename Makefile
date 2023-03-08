@@ -7,5 +7,5 @@ e2e:
 build:
 	go build ./...
 
-test-e2e:
+debug-e2e:
 	dlv test github.com/m4tthewde/gov1/internal/parser

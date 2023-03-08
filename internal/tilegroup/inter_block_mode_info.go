@@ -21,7 +21,7 @@ func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 
 	if util.Bool(t.SkipMode) {
 		t.YMode = shared.NEAREST_NEARESTMV
-	} else if t.segFeatureActive(shared.SEG_LVL_SKIP) || t.segFeatureActive(shared.SEG_LVL_GLOBALMV) {
+	} else if t.segFeatureActive(shared.SEG_LVL_SKIP, uh, state) || t.segFeatureActive(shared.SEG_LVL_GLOBALMV, uh, state) {
 		t.YMode = shared.GLOBALMV
 	} else if isCompound {
 		compoundMode := b.S()
@@ -104,7 +104,7 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream, state *state.State, uh
 	if util.Bool(t.SkipMode) {
 		state.RefFrame[0] = uh.SkipModeFrame[0]
 		state.RefFrame[1] = uh.SkipModeFrame[1]
-	} else if t.segFeatureActive(shared.SEG_LVL_REF_FRAME) {
+	} else if t.segFeatureActive(shared.SEG_LVL_REF_FRAME, uh, state) {
 		state.RefFrame[0] = state.FeatureData[t.SegmentId][shared.SEG_LVL_REF_FRAME]
 		state.RefFrame[1] = shared.NONE
 	} else {
@@ -243,7 +243,7 @@ func (t *TileGroup) readMotionMode(isCompound bool, b *bitstream.BitStream, uh u
 	}
 
 	t.findWarpSamples(state)
-	if uh.ForceIntegerMv || t.NumSamples == 0 || !uh.AllowWarpedMotion || t.isScaled(state.RefFrame[0]) {
+	if uh.ForceIntegerMv || t.NumSamples == 0 || !uh.AllowWarpedMotion || t.isScaled(state.RefFrame[0], uh) {
 		useObmc := b.S()
 		if util.Bool(useObmc) {
 			t.MotionMode = OBMC
@@ -337,7 +337,7 @@ func (t *TileGroup) addSample(deltaRow int, deltaCol int, state *state.State) {
 	mvRow := state.MiRow + deltaRow
 	mvCol := state.MiCol + deltaCol
 
-	if !t.isInside(mvRow, mvCol) {
+	if !t.isInside(mvRow, mvCol, state) {
 		return
 	}
 

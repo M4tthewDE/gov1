@@ -2,15 +2,17 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // palette_tokens()
-func (t *TileGroup) paletteTokens(b *bitstream.BitStream) {
-	blockHeight := t.Block_Height[t.State.MiSize]
-	blockWidth := t.Block_Width[t.State.MiSize]
-	onscreenHeight := util.Min(blockHeight, (t.State.MiRows-t.State.MiRow)*MI_SIZE)
-	onscreenWidth := util.Min(blockWidth, (t.State.MiCols-t.State.MiCol)*MI_SIZE)
+func (t *TileGroup) paletteTokens(b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader) {
+	blockHeight := t.Block_Height[state.MiSize]
+	blockWidth := t.Block_Width[state.MiSize]
+	onscreenHeight := util.Min(blockHeight, (state.MiRows-state.MiRow)*MI_SIZE)
+	onscreenWidth := util.Min(blockWidth, (state.MiCols-state.MiCol)*MI_SIZE)
 
 	if util.Bool(t.PaletteSizeY) {
 		colorIndexMapY := b.Ns(t.PaletteSizeY)
@@ -38,10 +40,10 @@ func (t *TileGroup) paletteTokens(b *bitstream.BitStream) {
 	if util.Bool(t.PaletteSizeUV) {
 		colorIndexMapUv := b.Ns(t.PaletteSizeUV)
 		t.ColorMapUV[0][0] = colorIndexMapUv
-		blockHeight = blockHeight >> util.Int(t.State.SequenceHeader.ColorConfig.SubsamplingY)
-		blockWidth = blockWidth >> util.Int(t.State.SequenceHeader.ColorConfig.SubsamplingX)
-		onscreenHeight = onscreenHeight >> util.Int(t.State.SequenceHeader.ColorConfig.SubsamplingX)
-		onscreenWidth = onscreenWidth >> util.Int(t.State.SequenceHeader.ColorConfig.SubsamplingX)
+		blockHeight = blockHeight >> util.Int(sh.ColorConfig.SubsamplingY)
+		blockWidth = blockWidth >> util.Int(sh.ColorConfig.SubsamplingX)
+		onscreenHeight = onscreenHeight >> util.Int(sh.ColorConfig.SubsamplingX)
+		onscreenWidth = onscreenWidth >> util.Int(sh.ColorConfig.SubsamplingX)
 
 		if blockWidth < 4 {
 			blockWidth += 2

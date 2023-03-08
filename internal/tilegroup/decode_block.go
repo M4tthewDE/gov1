@@ -25,26 +25,26 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStrea
 		t.HasChroma = sh.ColorConfig.NumPlanes > 1
 	}
 
-	state.AvailU = t.isInside(r-1, c)
-	state.AvailL = t.isInside(r, c-1)
+	state.AvailU = t.isInside(r-1, c, state)
+	state.AvailL = t.isInside(r, c-1, state)
 	state.AvailUChroma = state.AvailU
 	state.AvailLChroma = state.AvailL
 
 	if t.HasChroma {
 		if sh.ColorConfig.SubsamplingY && bh4 == 1 {
-			state.AvailUChroma = t.isInside(r-2, c)
+			state.AvailUChroma = t.isInside(r-2, c, state)
 		}
 		if sh.ColorConfig.SubsamplingX && bw4 == 1 {
-			state.AvailLChroma = t.isInside(r, c-2)
+			state.AvailLChroma = t.isInside(r, c-2, state)
 		}
 	} else {
 		state.AvailUChroma = false
 		state.AvailLChroma = false
 	}
 
-	t.modeInfo(b, uh)
-	t.paletteTokens(b)
-	t.readBlockTxSize(b)
+	t.modeInfo(b, uh, sh, state)
+	t.paletteTokens(b, state, sh)
+	t.readBlockTxSize(b, state, uh)
 
 	if util.Bool(state.Skip) {
 		t.resetBlockContext(bw4, bh4, b, state, sh)
@@ -79,15 +79,15 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStrea
 		}
 	}
 
-	t.computePrediction(state, sh)
+	t.computePrediction(state, sh, uh)
 }
 
 // mode_info()
-func (t *TileGroup) modeInfo(b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) modeInfo(b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader, state *state.State) {
 	if uh.FrameIsIntra {
-		t.intraFrameModeInfo(b)
+		t.intraFrameModeInfo(b, uh, state, sh)
 	} else {
-		t.interFrameModeInfo(b)
+		t.interFrameModeInfo(b, state, uh, sh)
 	}
 }
 

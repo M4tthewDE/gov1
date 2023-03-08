@@ -70,7 +70,7 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 		t.PaletteSizeUV = 0
 
 		if state.MiSize >= shared.BLOCK_8X8 && t.Block_Width[state.MiSize] <= 64 && t.Block_Height[state.MiSize] <= 64 && util.Bool(uh.AllowScreenContentTools) {
-			t.paletteModeInfo(b)
+			t.paletteModeInfo(b, state, sh)
 		}
 		t.filterIntraModeInfo(b, sh, state)
 	}

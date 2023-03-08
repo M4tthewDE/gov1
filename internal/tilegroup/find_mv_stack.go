@@ -50,7 +50,7 @@ func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, state *state.St
 		mvRow := state.MiRow + deltaRow
 		mvCol := state.MiCol + deltaCol + i
 
-		if !t.isInside(mvRow, mvCol) {
+		if !t.isInside(mvRow, mvCol, state) {
 			break
 		}
 

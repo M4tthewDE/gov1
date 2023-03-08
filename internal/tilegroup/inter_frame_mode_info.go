@@ -41,7 +41,7 @@ func (t *TileGroup) interFrameModeInfo(b *bitstream.BitStream, state *state.Stat
 	if util.Bool(t.SkipMode) {
 		t.Skip = 1
 	} else {
-		t.readSkip(b)
+		t.readSkip(b, uh, state)
 	}
 
 	if !util.Bool(uh.SegIdPreSkip) {
@@ -49,26 +49,26 @@ func (t *TileGroup) interFrameModeInfo(b *bitstream.BitStream, state *state.Stat
 	}
 
 	t.Lossless = uh.LosslessArray[t.SegmentId]
-	t.readCdef(b)
-	t.readDeltaQIndex(b)
-	t.readDeltaLf(b)
+	t.readCdef(b, uh, sh, state)
+	t.readDeltaQIndex(b, sh, uh, state)
+	t.readDeltaLf(b, sh, uh, state)
 	state.ReadDeltas = false
-	t.readIsInter(b, state)
+	t.readIsInter(b, state, uh)
 
 	if util.Bool(t.IsInter) {
 		t.interBlockModeInfo(b, state, uh, sh)
 	} else {
-		t.intraBlockModeInfo(b, state, uh)
+		t.intraBlockModeInfo(b, state, uh, sh)
 	}
 }
 
 // intra_block_mode_info()
-func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) {
 	state.RefFrame[0] = shared.INTRA_FRAME
 	state.RefFrame[1] = shared.NONE
 	yMode := b.S()
 	t.YMode = yMode
-	t.intraAngleInfoY(b)
+	t.intraAngleInfoY(b, state)
 
 	if t.HasChroma {
 		uvMode := b.S()
@@ -78,7 +78,7 @@ func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 			t.readCflAlphas(b)
 		}
 
-		t.intraAngleInfoUv(b)
+		t.intraAngleInfoUv(b, state)
 	}
 
 	t.PaletteSizeY = 0
@@ -87,10 +87,10 @@ func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 		t.Block_Width[state.MiSize] <= 64 &&
 		t.Block_Height[state.MiSize] <= 64 &&
 		util.Bool(uh.AllowScreenContentTools) {
-		t.paletteModeInfo(b)
+		t.paletteModeInfo(b, state, sh)
 	}
 
-	t.filterIntraModeInfo(b)
+	t.filterIntraModeInfo(b, sh, state)
 }
 
 // inter_segment_id( preSkip )
@@ -113,7 +113,7 @@ func (t *TileGroup) interSegmentId(preSkip int, b *bitstream.BitStream, uh uncom
 					for i := 0; i < state.Num4x4BlocksHigh[state.MiSize]; i++ {
 						t.AboveSegPredContext[state.MiRow+i] = segIdPredicted
 					}
-					t.readSegmentId(b)
+					t.readSegmentId(b, uh, state)
 					return
 				}
 			}
@@ -123,7 +123,7 @@ func (t *TileGroup) interSegmentId(preSkip int, b *bitstream.BitStream, uh uncom
 				if util.Bool(segIdPredicted) {
 					t.SegmentId = predictedSegmentId
 				} else {
-					t.readSegmentId(b)
+					t.readSegmentId(b, uh, state)
 				}
 
 				for i := 0; i < state.Num4x4BlocksWide[state.MiSize]; i++ {
@@ -134,7 +134,7 @@ func (t *TileGroup) interSegmentId(preSkip int, b *bitstream.BitStream, uh uncom
 				}
 
 			} else {
-				t.readSegmentId(b)
+				t.readSegmentId(b, uh, state)
 			}
 		} else {
 			t.SegmentId = predictedSegmentId
@@ -163,7 +163,7 @@ func (t *TileGroup) getSegmentId(state *state.State) int {
 
 // read_skip_mode()
 func (t *TileGroup) readSkipMode(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
-	if t.segFeatureActive(shared.SEG_LVL_SKIP) || t.segFeatureActive(shared.SEG_LVL_REF_FRAME) || t.segFeatureActive(shared.SEG_LVL_GLOBALMV) || !util.Bool(uh.SkipModePresent) || t.Block_Width[state.MiSize] < 8 || t.Block_Height[state.MiSize] < 8 {
+	if t.segFeatureActive(shared.SEG_LVL_SKIP, uh, state) || t.segFeatureActive(shared.SEG_LVL_REF_FRAME, uh, state) || t.segFeatureActive(shared.SEG_LVL_GLOBALMV, uh, state) || !util.Bool(uh.SkipModePresent) || t.Block_Width[state.MiSize] < 8 || t.Block_Height[state.MiSize] < 8 {
 		t.SkipMode = 0
 	} else {
 		t.SkipMode = b.S()
@@ -171,12 +171,12 @@ func (t *TileGroup) readSkipMode(b *bitstream.BitStream, state *state.State, uh 
 }
 
 // read_is_inter()
-func (t *TileGroup) readIsInter(b *bitstream.BitStream, state *state.State) {
+func (t *TileGroup) readIsInter(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	if util.Bool(t.SkipMode) {
 		t.IsInter = 1
-	} else if t.segFeatureActive(shared.SEG_LVL_REF_FRAME) {
+	} else if t.segFeatureActive(shared.SEG_LVL_REF_FRAME, uh, state) {
 		t.IsInter = util.Int(state.FeatureData[t.SegmentId][shared.SEG_LVL_REF_FRAME] != shared.INTRA_FRAME)
-	} else if t.segFeatureActive(shared.SEG_LVL_GLOBALMV) {
+	} else if t.segFeatureActive(shared.SEG_LVL_GLOBALMV, uh, state) {
 		t.IsInter = 0
 	} else {
 		t.IsInter = b.S()

@@ -14,8 +14,8 @@ func (t *TileGroup) decodePartition(r int, c int, bSize int, b *bitstream.BitStr
 		return
 	}
 
-	state.AvailU = t.isInside(r-1, c)
-	state.AvailL = t.isInside(r, c-1)
+	state.AvailU = t.isInside(r-1, c, state)
+	state.AvailL = t.isInside(r, c-1, state)
 	num4x4 := state.Num4x4BlocksWide[bSize]
 	halfBlock4x4 := num4x4 >> 1
 	quarterBlock4x4 := halfBlock4x4 >> 1

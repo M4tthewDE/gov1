@@ -4,11 +4,12 @@ import (
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // compute_prediction()
-func (t *TileGroup) computePrediction(state *state.State, sh sequenceheader.SequenceHeader) {
+func (t *TileGroup) computePrediction(state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
 	sbMask := 15
 	if sh.Use128x128SuperBlock {
 		sbMask = 31
@@ -18,7 +19,7 @@ func (t *TileGroup) computePrediction(state *state.State, sh sequenceheader.Sequ
 	subBlockMiCol := state.MiCol & sbMask
 
 	for plane := 0; plane < 1+util.Int(t.HasChroma)*2; plane++ {
-		planeSz := t.getPlaneResidualSize(state.MiSize, plane)
+		planeSz := t.getPlaneResidualSize(state.MiSize, plane, sh)
 		num4x4W := state.Num4x4BlocksWide[planeSz]
 		num4x4H := state.Num4x4BlocksHigh[planeSz]
 		log2W := shared.MI_SIZE_LOG2 + shared.MI_WIDTH_LOG2[planeSz]
@@ -53,7 +54,7 @@ func (t *TileGroup) computePrediction(state *state.State, sh sequenceheader.Sequ
 				haveLeft = state.AvailL
 				haveAbove = state.AvailU
 			}
-			t.predictIntra(plane, baseX, baseY, haveLeft, haveAbove, state.BlockDecoded[plane][(subBlockMiRow>>subY)-1][(subBlockMiCol>>subX)+num4x4W], state.BlockDecoded[plane][(subBlockMiRow>>subY)+num4x4H][(subBlockMiCol>>subX)-1], mode, log2W, log2H)
+			t.predictIntra(plane, baseX, baseY, haveLeft, haveAbove, state.BlockDecoded[plane][(subBlockMiRow>>subY)-1][(subBlockMiCol>>subX)+num4x4W], state.BlockDecoded[plane][(subBlockMiRow>>subY)+num4x4H][(subBlockMiCol>>subX)-1], mode, log2W, log2H, state, sh)
 		}
 
 		if util.Bool(t.IsInter) {
@@ -79,7 +80,7 @@ func (t *TileGroup) computePrediction(state *state.State, sh sequenceheader.Sequ
 			for y := 0; y < num4x4H; y += predH {
 				c := 0
 				for x := 0; x < num4x4W; x += predW {
-					t.predictInter(plane, baseX+x, baseY+y, predW, predH, candRow+r, candCol+c)
+					t.predictInter(plane, baseX+x, baseY+y, predW, predH, candRow+r, candCol+c, state, uh, sh)
 				}
 			}
 		}
