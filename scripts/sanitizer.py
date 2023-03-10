@@ -39,11 +39,13 @@ def main():
 
         i += 1
         if balance < 0:
-            print(i)
+            print("ERROR: NEGATIVE BALANCE ACHIEVED AT i ", i)
             break;
 
-    print(result[12753:12800])
-    print("BALANCE:", balance)
+    if balance != 0:
+        print("ERROR: UNEVEN BALANCE:", balance)
+    else:
+        print("-------------------------------- END OUTPUT -------------------------")
 
 if __name__ == '__main__':
     print("-------------------------------- OUTPUT -------------------------")
