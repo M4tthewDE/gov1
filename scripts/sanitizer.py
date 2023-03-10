@@ -5,11 +5,6 @@
 
 def main():
     data = '''    
-    { 11981198,, 3276832768,, 00 },},
-{{ 20702070,, 3276832768,, 00 },},
-{{ 91669166,, 3276832768,, 00 },},
-{{ 74997499,, 3276832768,, 00 },},
-{{ 2247522475,, 3276832768,, 00 }}
     '''
 
     data = data[data.find("{"):]
@@ -19,14 +14,36 @@ def main():
     data = data.replace(",,", ",")
     numbers = data.split()
 
+    result = ""
     for n in numbers:
         if not "{" in n and not "}" in n:
             if not n.endswith(','):
                 print(n[int(len(n)/2):] + ",", end ='')
+                result = result + n[int(len(n)/2):] + ","
             else:
                 print(n[int(len(n)/2):], end='')
+                result = result + n[int(len(n)/2):]
         else:
             print(n)
+            result = result + n + '\n'
+
+    #print(result)
+
+    i = 0
+    balance = 0
+    for c in result:
+        if c == '{':
+            balance += 1
+        if c == '}':
+            balance -= 1
+
+        i += 1
+        if balance < 0:
+            print(i)
+            break;
+
+    print(result[12753:12800])
+    print("BALANCE:", balance)
 
 if __name__ == '__main__':
     print("-------------------------------- OUTPUT -------------------------")
