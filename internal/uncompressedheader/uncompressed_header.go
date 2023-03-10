@@ -402,7 +402,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 	}
 
 	if u.PrimaryRefFrame == shared.PRIMARY_REF_NONE {
-		initNonCoeffCdfs()
+		initNonCoeffCdfs(s)
 		u.setupPastIndependence(s)
 	} else {
 		u.loadCdfs(u.RefFrameIdx[u.PrimaryRefFrame])

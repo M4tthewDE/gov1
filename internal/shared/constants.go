@@ -240,3 +240,6 @@ var REMAP_LR_TYPE = []int{
 }
 
 const RESTORATION_TILESIZE_MAX = 256
+
+const MV_CONTEXTS = 2
+const FRAME_LF_COUNT = 4
