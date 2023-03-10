@@ -1,6 +1,7 @@
 #!/bin/python
 
 # sanitizes copied arrays from the av1 spec
+# this only happens in firefox afaik. Just use chrome instead please :)
 
 
 def main():
