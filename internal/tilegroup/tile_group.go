@@ -202,10 +202,11 @@ type TileGroup struct {
 	InterTxSizes [][]int
 	TxSize       int
 
-	AboveLevelContext [][]int
-	AboveDcContext    [][]int
-	LeftLevelContext  [][]int
-	LeftDcContext     [][]int
+	AboveLevelContext  [][]int
+	AboveDcContext     [][]int
+	LeftLevelContext   [][]int
+	LeftDcContext      [][]int
+	LeftSegPredContext []int
 
 	CompGroupIdxs [][]int
 	CompoundIdxs  [][]int
@@ -463,7 +464,6 @@ func (t *TileGroup) clearAboveContext(state *state.State) {
 	t.AboveSegPredContext = make([]int, 3)
 
 	for i := 0; i < 3; i++ {
-		// TODO: append to the nested arrays, not the top level one
 		t.AboveLevelContext[i] = make([]int, state.MiCols)
 		t.AboveDcContext[i] = make([]int, state.MiCols)
 	}
@@ -477,9 +477,24 @@ func (t *TileGroup) clearAboveContext(state *state.State) {
 	}
 }
 
-// clear_left_context( x )
-func (t *TileGroup) clearLeftContext() {
-	panic("not implemented: clear_left_context()")
+// clear_left_context( )
+func (t *TileGroup) clearLeftContext(state *state.State) {
+	t.LeftLevelContext = make([][]int, 3)
+	t.LeftDcContext = make([][]int, 3)
+	t.LeftSegPredContext = make([]int, 3)
+
+	for i := 0; i < 3; i++ {
+		t.LeftLevelContext[i] = make([]int, state.MiRows)
+		t.LeftDcContext[i] = make([]int, state.MiRows)
+	}
+
+	for i := 0; i < state.MiRows; i++ {
+		for plane := 0; plane <= 2; plane++ {
+			t.LeftLevelContext[plane][i] = 0
+			t.LeftDcContext[plane][i] = 0
+			t.LeftSegPredContext[i] = 0
+		}
+	}
 }
 
 // decode_tile()
@@ -508,7 +523,7 @@ func (t *TileGroup) decodeTile(b *bitstream.BitStream, state *state.State, sh se
 	sbSize4 := state.Num4x4BlocksWide[sbSize]
 
 	for r := state.MiRowStart; r < state.MiRowEnd; r += sbSize4 {
-		t.clearLeftContext()
+		t.clearLeftContext(state)
 
 		for c := state.MiColStart; c < state.MiColEnd; c += sbSize4 {
 			state.ReadDeltas = uh.DeltaQPresent
