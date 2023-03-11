@@ -458,8 +458,24 @@ func (t *TileGroup) exitSymbol(b *bitstream.BitStream, state *state.State, uh un
 }
 
 // clear_above_context()
-func (t *TileGroup) clearAboveContext() {
-	panic("not implemented: clear_above_context()")
+func (t *TileGroup) clearAboveContext(state *state.State) {
+	t.AboveLevelContext = make([][]int, 3)
+	t.AboveDcContext = make([][]int, 3)
+	t.AboveSegPredContext = make([]int, 3)
+
+	for i := 0; i < 3; i++ {
+		// TODO: append to the nested arrays, not the top level one
+		t.AboveLevelContext[i] = make([]int, state.MiCols)
+		t.AboveDcContext[i] = make([]int, state.MiCols)
+	}
+
+	for i := 0; i < state.MiCols; i++ {
+		for plane := 0; plane <= 2; plane++ {
+			t.AboveLevelContext[plane][i] = 0
+			t.AboveDcContext[plane][i] = 0
+			t.AboveSegPredContext[i] = 0
+		}
+	}
 }
 
 // clear_left_context( x )
@@ -469,7 +485,7 @@ func (t *TileGroup) clearLeftContext() {
 
 // decode_tile()
 func (t *TileGroup) decodeTile(b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
-	t.clearAboveContext()
+	t.clearAboveContext(state)
 
 	for i := 0; i < FRAME_LF_COUNT; i++ {
 		state.DeltaLF[i] = 0
