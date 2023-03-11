@@ -234,9 +234,9 @@ func (t *TileGroup) readDeltaLf(b *bitstream.BitStream, sh sequenceheader.Sequen
 
 		if util.Bool(uh.DeltaLfMulti) {
 			if sh.ColorConfig.NumPlanes > 1 {
-				frameLfCount = FRAME_LF_COUNT
+				frameLfCount = shared.FRAME_LF_COUNT
 			} else {
-				frameLfCount = FRAME_LF_COUNT - 2
+				frameLfCount = shared.FRAME_LF_COUNT - 2
 			}
 		}
 

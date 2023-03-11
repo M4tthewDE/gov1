@@ -29,7 +29,7 @@ type State struct {
 	MiRowEnd               int
 	BlockWidth             []int
 	BlockHeight            []int
-	Num4x4BlocksWide       []int
+	Num4x4BlocksWide       [shared.BLOCK_128X128]int
 	Num4x4BlocksHigh       []int
 	SeenFrameHeader        bool
 	RenderWidth            int
@@ -41,7 +41,7 @@ type State struct {
 	MiRow                  int
 	MiSize                 int
 	MiSizes                [][]int
-	DeltaLF                []int
+	DeltaLF                [shared.FRAME_LF_COUNT]int
 	RefLrWiener            [][][]int
 	ReadDeltas             bool
 	Cdef                   cdef.Cdef

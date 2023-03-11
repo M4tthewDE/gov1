@@ -9,7 +9,6 @@ import (
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
-const FRAME_LF_COUNT = 4
 const WIENER_COEFFS = 3
 
 const PARTITION_NONE = 0
@@ -487,7 +486,7 @@ func (t *TileGroup) clearLeftContext() {
 func (t *TileGroup) decodeTile(b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
 	t.clearAboveContext(state)
 
-	for i := 0; i < FRAME_LF_COUNT; i++ {
+	for i := 0; i < shared.FRAME_LF_COUNT; i++ {
 		state.DeltaLF[i] = 0
 	}
 
