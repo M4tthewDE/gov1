@@ -60,7 +60,7 @@ func (t *TileGroup) assignMv(isCompound int, b *bitstream.BitStream, state *stat
 		}
 
 		if compMode == shared.NEWMV {
-			t.readMv(i, b, uh)
+			t.readMv(i, b, uh, state)
 		} else {
 			t.Mv[i] = t.PredMv[i]
 		}
@@ -68,7 +68,7 @@ func (t *TileGroup) assignMv(isCompound int, b *bitstream.BitStream, state *stat
 }
 
 // read_mv( ref )
-func (t *TileGroup) readMv(ref int, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) readMv(ref int, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, state *state.State) {
 	var diffMv []int
 	diffMv[0] = 0
 	diffMv[1] = 0
@@ -79,14 +79,14 @@ func (t *TileGroup) readMv(ref int, b *bitstream.BitStream, uh uncompressedheade
 		t.MvCtx = 0
 	}
 
-	mvJoint := b.S()
+	mvJoint := ReadSymbol(state.TileMvJointCdf[t.MvCtx], state, b, uh)
 
 	if mvJoint == MV_JOINT_HZVNZ || mvJoint == MV_JOINT_HNZVNZ {
-		diffMv[0] = t.readMvComponent(0, b, uh)
+		diffMv[0] = t.readMvComponent(0, b, uh, state)
 	}
 
 	if mvJoint == MV_JOINT_HNZVZ || mvJoint == MV_JOINT_HNZVNZ {
-		diffMv[1] = t.readMvComponent(1, b, uh)
+		diffMv[1] = t.readMvComponent(1, b, uh, state)
 	}
 
 	t.Mv[ref][0] = t.PredMv[ref][0] + diffMv[0]
@@ -94,24 +94,24 @@ func (t *TileGroup) readMv(ref int, b *bitstream.BitStream, uh uncompressedheade
 }
 
 // read_mv_component( comp )
-func (t *TileGroup) readMvComponent(comp int, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
-	mvSign := b.S()
-	mvClass := b.S()
+func (t *TileGroup) readMvComponent(comp int, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, state *state.State) int {
+	mvSign := ReadSymbol(state.TileMvSignCdf[t.MvCtx][comp], state, b, uh)
+	mvClass := ReadSymbol(state.TileMvClassCdf[t.MvCtx][comp], state, b, uh)
 
 	var mag int
 	if mvClass == MV_CLASS_0 {
-		mvClass0Bit := b.S()
+		mvClass0Bit := ReadSymbol(state.TileMvClass0BitCdf[t.MvCtx][comp], state, b, uh)
 
 		var mvClass0Fr int
 		if uh.ForceIntegerMv {
 			mvClass0Fr = 3
 		} else {
-			mvClass0Fr = b.S()
+			mvClass0Fr = ReadSymbol(state.TileMvClass0FrCdf[t.MvCtx][comp][mvClass0Bit], state, b, uh)
 		}
 
 		var mvClass0Hp int
 		if uh.AllowHighPrecisionMv {
-			mvClass0Hp = b.S()
+			mvClass0Hp = ReadSymbol(state.TileMvClass0HpCdf[t.MvCtx][comp], state, b, uh)
 		} else {
 			mvClass0Hp = 1
 		}
@@ -120,7 +120,7 @@ func (t *TileGroup) readMvComponent(comp int, b *bitstream.BitStream, uh uncompr
 	} else {
 		d := 0
 		for i := 0; i < mvClass; i++ {
-			mvBit := b.S()
+			mvBit := ReadSymbol(state.TileMvBitCdf[t.MvCtx][comp][i], state, b, uh)
 			d |= mvBit << 1
 		}
 
@@ -131,11 +131,11 @@ func (t *TileGroup) readMvComponent(comp int, b *bitstream.BitStream, uh uncompr
 		if uh.ForceIntegerMv {
 			mvFr = 3
 		} else {
-			mvFr = b.S()
+			mvFr = ReadSymbol(state.TileMvFrCdf[t.MvCtx][comp], state, b, uh)
 		}
 
 		if uh.AllowHighPrecisionMv {
-			mvHp = b.S()
+			mvHp = ReadSymbol(state.TileMvHpCdf[t.MvCtx][comp], state, b, uh)
 		} else {
 			mvHp = 1
 		}

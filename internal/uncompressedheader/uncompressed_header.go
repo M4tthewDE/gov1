@@ -92,6 +92,7 @@ type UncompressedHeader struct {
 	SkipModeFrame              []int
 	SkipModePresent            int
 	SegQMLevel                 [3][shared.MAX_SEGMENTS]int
+	DisableCdfUpdate           bool
 
 	LoopFilterDeltaEnabled bool
 	LoopFilterDeltaUpdate  int
@@ -229,7 +230,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 		}
 	}
 
-	disableCdfUpdate := util.Bool(b.F(1))
+	u.DisableCdfUpdate = util.Bool(b.F(1))
 
 	if sh.SeqForceScreenContentTools == 2 {
 		u.AllowScreenContentTools = b.F(1)
@@ -395,7 +396,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 		}
 	}
 
-	if sh.ReducedStillPictureHeader || disableCdfUpdate {
+	if sh.ReducedStillPictureHeader || u.DisableCdfUpdate {
 		u.DisableFrameEndUpdateCdf = true
 	} else {
 		u.DisableFrameEndUpdateCdf = util.Bool(b.F(1))

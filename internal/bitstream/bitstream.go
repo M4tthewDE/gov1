@@ -142,9 +142,8 @@ func (b *BitStream) NS(n int) int {
 	return (v << 1) - m + extraBit
 }
 
-// S()
 func (b *BitStream) S() int {
-	panic("not implemented: S()")
+	panic("not implemented: L()")
 	return 0
 }
 

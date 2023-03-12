@@ -10,6 +10,12 @@ import (
 	"github.com/m4tthewde/gov1/internal/wedgemask"
 )
 
+var COMPOUND_MODE_CTX_MAP = [][]int{
+	{0, 1, 1, 1, 1},
+	{1, 2, 3, 4, 4},
+	{4, 4, 5, 6, 7},
+}
+
 // inter_block_mode_info()
 func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) {
 	t.PaletteSizeY = 0
@@ -25,6 +31,7 @@ func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 		t.YMode = shared.GLOBALMV
 	} else if isCompound {
 		compoundMode := b.S()
+
 		t.YMode = shared.NEAREST_NEARESTMV + compoundMode
 	} else {
 		newMv := b.S()

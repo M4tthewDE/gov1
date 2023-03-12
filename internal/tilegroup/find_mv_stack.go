@@ -30,7 +30,7 @@ func (t *TileGroup) findMvStack(isCompound int, state *state.State, uh uncompres
 	// 6.
 	t.scanRowProcess(-1, isCompound, state, uh)
 
-	// TODO: I feel like something is missing here
+	// TODO: I feel like something is missing here. There is!
 }
 
 func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
