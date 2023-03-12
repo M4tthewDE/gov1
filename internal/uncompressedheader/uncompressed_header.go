@@ -111,6 +111,7 @@ type UncompressedHeader struct {
 
 	FrameRestorationType [3]int
 	UsesLr               bool
+	UseRefFrameMvs       bool
 
 	ApplyGrain            bool
 	GrainSeed             int
@@ -300,7 +301,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 	RefValid := []int{}
 	ref_order_hint := []int{}
 
-	useRefFrameMvs := false
+	u.UseRefFrameMvs = false
 	var refreshFrameFlags int
 
 	if u.FrameType == 3 || u.FrameType == 0 || u.ShowFrame {
@@ -376,10 +377,10 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 		u.IsMotionModeSwitchable = util.Bool(b.F(1))
 
 		if errorResilientMode || !sh.EnableRefFrameMvs {
-			useRefFrameMvs = false
+			u.UseRefFrameMvs = false
 
 		} else {
-			useRefFrameMvs = util.Bool(b.F(1))
+			u.UseRefFrameMvs = util.Bool(b.F(1))
 		}
 
 		RefFrameSignBias := []bool{}
@@ -410,7 +411,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 		u.loadPrevious()
 	}
 
-	if useRefFrameMvs {
+	if u.UseRefFrameMvs {
 		u.motionFieldEstimation()
 	}
 

@@ -144,13 +144,21 @@ type TileGroup struct {
 	NumMvFound          int
 	NewMvCount          int
 	GlobalMvs           [][]int
+	MotionFieldMvs      [][][][]int
 	Block_Width         []int
 	Block_Height        []int
 	IsInters            [][]int
 	Mv                  [][]int
 	Mvs                 [][][][]int
 	FoundMatch          int
+	TotalMatches        int
+	CloseMatches        int
 	RefStackMv          [][][]int
+	RefIdCount          []int
+	RefIdMvs            [][][]int
+	RefDiffCount        []int
+	RefDiffMvs          [][][]int
+	RefFrameSignBias    []int
 	WeightStack         []int
 	AngleDeltaY         int
 	AngleDeltaUV        int
@@ -230,6 +238,9 @@ type TileGroup struct {
 
 	FwdWeight int
 	BckWeight int
+
+	ZeroMvContext int
+	DrlCtxStack   []int
 }
 
 func NewTileGroup(sz int, b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) TileGroup {
