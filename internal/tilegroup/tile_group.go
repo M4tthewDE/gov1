@@ -179,8 +179,8 @@ type TileGroup struct {
 	IsInter             int
 	MotionMode          int
 	CompoundType        int
-	LeftRefFrame        []int
-	AboveRefFrame       []int
+	LeftRefFrame        [2]int
+	AboveRefFrame       [2]int
 	LeftIntra           bool
 	AboveIntra          bool
 	LeftSingle          bool
