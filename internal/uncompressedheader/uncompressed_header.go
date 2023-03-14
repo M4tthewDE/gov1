@@ -432,7 +432,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 	u.CodedLossless = true
 
 	for segmentId := 0; segmentId < shared.MAX_SEGMENTS; segmentId++ {
-		qIndex := u.getQIndex(1, segmentId, s)
+		qIndex := u.GetQIndex(1, segmentId, s)
 		u.LosslessArray[segmentId] = qIndex == 0 && u.DeltaQYDc == 0 && u.DeltaQUAc == 0 && u.DeltaQUDc == 0 && u.DeltaQVAc == 0 && u.DeltaQVDc == 0
 
 		if !u.LosslessArray[segmentId] {

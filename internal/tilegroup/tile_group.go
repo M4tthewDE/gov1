@@ -246,9 +246,11 @@ type TileGroup struct {
 	MaxLumaH int
 	MaxLumaW int
 
-	Quant   []int
-	Dequant [][]int
-	TxType  int
+	Quant       []int
+	Dequant     [][]int
+	TxType      int
+	PlaneTxType int
+	TxTypes     [][]int
 }
 
 func NewTileGroup(sz int, b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) TileGroup {

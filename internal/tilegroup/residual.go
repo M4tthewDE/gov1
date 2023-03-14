@@ -1,9 +1,11 @@
 package tilegroup
 
 import (
+	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
@@ -67,7 +69,7 @@ var TX_HEIGHT_LOG2 = []int{
 }
 
 // transform_block(plane, baseX, baseY, txSz, x, y)
-func (t *TileGroup) transformBlock(plane int, baseX int, baseY int, txSz int, x int, y int, sh sequenceheader.SequenceHeader, state *state.State) {
+func (t *TileGroup) transformBlock(plane int, baseX int, baseY int, txSz int, x int, y int, sh sequenceheader.SequenceHeader, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
 	startX := baseX + 4*x
 	startY := baseY + 4*y
 
@@ -146,7 +148,11 @@ func (t *TileGroup) transformBlock(plane int, baseX int, baseY int, txSz int, x 
 	}
 
 	if !util.Bool(t.Skip) {
-		eob := coeffs
+		eob := t.coeffs(plane, startX, startY, txSz, b, uh, state, sh)
+		if eob > 0 {
+			t.reconstruct()
+
+		}
 	}
 }
 
