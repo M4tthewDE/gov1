@@ -129,7 +129,15 @@ func (t *TileGroup) readSkip(b *bitstream.BitStream, uh uncompressedheader.Uncom
 	if (uh.SegIdPreSkip == 1) && t.segFeatureActive(shared.SEG_LVL_SKIP, uh, state) {
 		t.Skip = 1
 	} else {
-		t.Skip = b.S()
+		ctx := 0
+		if state.AvailU {
+			ctx += t.SkipModes[state.MiRow-1][state.MiCol]
+		}
+		if state.AvailL {
+			ctx += t.SkipModes[state.MiRow][state.MiCol-1]
+		}
+
+		t.Skip = ReadSymbol(state.TileSkipCdf[ctx], state, b, uh)
 	}
 }
 

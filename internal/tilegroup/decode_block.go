@@ -80,6 +80,7 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStrea
 	}
 
 	t.computePrediction(state, sh, uh)
+
 }
 
 // mode_info()

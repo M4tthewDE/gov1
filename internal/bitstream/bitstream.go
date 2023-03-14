@@ -143,7 +143,7 @@ func (b *BitStream) NS(n int) int {
 }
 
 func (b *BitStream) S() int {
-	panic("not implemented: L()")
+	panic("not implemented: S()")
 	return 0
 }
 

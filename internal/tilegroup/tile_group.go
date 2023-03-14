@@ -133,6 +133,7 @@ type TileGroup struct {
 	SegmentIds          [][]int
 	Lossless            bool
 	Skip                int
+	SkipModes           [][]int
 	YMode               int
 	YModes              [][]int
 	UVMode              int
@@ -241,6 +242,13 @@ type TileGroup struct {
 
 	ZeroMvContext int
 	DrlCtxStack   []int
+
+	MaxLumaH int
+	MaxLumaW int
+
+	Quant   []int
+	Dequant [][]int
+	TxType  int
 }
 
 func NewTileGroup(sz int, b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) TileGroup {

@@ -807,7 +807,7 @@ func (u *UncompressedHeader) loadPreviousSegementIds() {
 }
 
 // get_qindex( ignoreDeltaQ, segmentId )
-func (u *UncompressedHeader) getQIndex(ignoreDeltaQ int, segmentId int, s *state.State) int {
+func (u *UncompressedHeader) GetQIndex(ignoreDeltaQ int, segmentId int, s *state.State) int {
 	if u.segFeatureActiveIdx(segmentId, shared.SEG_LVL_ALT_Q, s) {
 		data := s.FeatureData[segmentId][shared.SEG_LVL_ALT_Q]
 		qindex := u.BaseQIdx + data
