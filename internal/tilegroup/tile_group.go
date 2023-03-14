@@ -349,7 +349,7 @@ func (t *TileGroup) framEndUpdateCdf() {
 func (t *TileGroup) initSymbol(sz int, b *bitstream.BitStream, state *state.State) {
 	numBits := util.Min(sz*8, 15)
 	buf := b.F(numBits)
-	paddedBuf := buf << (16 - numBits)
+	paddedBuf := buf << (15 - numBits)
 
 	state.SymbolValue = ((1 << 15) - 1) ^ paddedBuf
 	state.SymbolRange = 1 << 15

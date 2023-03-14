@@ -9,19 +9,26 @@ import (
 
 // read_symbol()
 func ReadSymbol(cdf []int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
+	N := len(cdf) - 1
+
+	// precondition
+	if N < 1 || cdf[N-1] != 1<<15 {
+		panic("Violated precondition")
+	}
+
 	cur := state.SymbolRange
 	symbol := -1
 
-	N := len(cdf) - 1
 	var prev int
+	var f int
 	for {
 		symbol++
 		prev = cur
-		f := (1 << 15) - cdf[symbol]
-		cur := ((state.SymbolRange >> 8) * (f >> EC_PROB_SHIFT)) >> (7 - EC_PROB_SHIFT)
+		f = (1 << 15) - cdf[symbol]
+		cur = ((state.SymbolRange >> 8) * (f >> EC_PROB_SHIFT)) >> (7 - EC_PROB_SHIFT)
 		cur += EC_MIN_PROB * (N - symbol - 1)
 
-		if state.SymbolValue < cur {
+		if state.SymbolValue >= cur {
 			break
 		}
 	}
