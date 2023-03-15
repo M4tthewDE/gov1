@@ -9,12 +9,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
-func (t *TileGroup) residual(sh sequenceheader.SequenceHeader, state *state.State) {
-	sbMask := 15
-	if sh.Use128x128SuperBlock {
-		sbMask = 31
-	}
-
+func (t *TileGroup) residual(sh sequenceheader.SequenceHeader, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
 	widthChunks := util.Max(1, state.BlockWidth[state.MiSize]>>6)
 	heightChunks := util.Max(1, state.BlockHeight[state.MiSize]>>6)
 
@@ -27,8 +22,6 @@ func (t *TileGroup) residual(sh sequenceheader.SequenceHeader, state *state.Stat
 		for chunkX := 0; chunkX < widthChunks; chunkX++ {
 			miRowChunk := state.MiRow + (chunkY << 4)
 			miColChunk := state.MiCol + (chunkX << 4)
-			sbuBlockMiRow := miRowChunk & sbMask
-			sbuBlockMiCol := miColChunk & sbMask
 
 			for plane := 0; plane < 1+util.Int(t.HasChroma)*2; plane++ {
 				txSz := TX_4X4
@@ -53,7 +46,26 @@ func (t *TileGroup) residual(sh sequenceheader.SequenceHeader, state *state.Stat
 				baseY := (miRowChunk >> subY) * MI_SIZE
 
 				if util.Bool(t.IsInter) && !t.Lossless && !util.Bool(plane) {
+					t.transformTree(baseX, baseY, num4x4W*4, num4x4H*4, state, sh, b, uh)
+				} else {
+					baseXBlock := (state.MiCol >> subX) * MI_SIZE
+					baseYBlock := (state.MiRow >> subY) * MI_SIZE
 
+					for y := 0; y < num4x4H; y += stepY {
+						for x := 0; x < num4x4W; x += stepX {
+							t.transformBlock(plane,
+								baseXBlock,
+								baseYBlock,
+								txSz, x+((chunkX<<4)>>subX),
+								y+((chunkY<<4)>>subY),
+								sh,
+								state,
+								b,
+								uh,
+							)
+						}
+
+					}
 				}
 			}
 		}
@@ -150,8 +162,14 @@ func (t *TileGroup) transformBlock(plane int, baseX int, baseY int, txSz int, x 
 	if !util.Bool(t.Skip) {
 		eob := t.coeffs(plane, startX, startY, txSz, b, uh, state, sh)
 		if eob > 0 {
-			t.reconstruct()
+			t.reconstruct(plane, startX, startY, txSz, sh, uh, state)
+		}
+	}
 
+	for i := 0; i < stepY; i++ {
+		for j := 0; j < stepY; j++ {
+			t.LoopFilterTxSizes[plane][(row>>subY)+i][(col>>subX + j)] = txSz
+			state.BlockDecoded[plane][(subBlockMiRow>>subY)+i][(subBlockMiCol>>subX)+j] = 1
 		}
 	}
 }
@@ -228,7 +246,7 @@ func (t *TileGroup) predictChromaFromLuma(plane int, startX int, startY int, txS
 }
 
 // transform_tree( startX, startY, w, h )
-func (t *TileGroup) transformTree(startX int, startY int, w int, h int, state *state.State) {
+func (t *TileGroup) transformTree(startX int, startY int, w int, h int, state *state.State, sh sequenceheader.SequenceHeader, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
 	maxX := state.MiCols * MI_SIZE
 	maxY := state.MiRows * MI_SIZE
 	if startX >= maxX || startY >= maxY {
@@ -241,7 +259,20 @@ func (t *TileGroup) transformTree(startX int, startY int, w int, h int, state *s
 	lumaH := Tx_Height[lumaTxSz]
 	if w <= lumaW && h <= lumaH {
 		txSz := findTxSize(w, h)
-
+		t.transformBlock(0, startX, startY, txSz, 0, 0, sh, state, b, uh)
+	} else {
+		if w > h {
+			t.transformTree(startX, startY, w/2, h, state, sh, b, uh)
+			t.transformTree(startX+w/2, startY, w/2, h, state, sh, b, uh)
+		} else if w < h {
+			t.transformTree(startX, startY, w, h/2, state, sh, b, uh)
+			t.transformTree(startX, startY+h/2, w, h/2, state, sh, b, uh)
+		} else {
+			t.transformTree(startX, startY, w/2, h/2, state, sh, b, uh)
+			t.transformTree(startX+w/2, startY, w/2, h/2, state, sh, b, uh)
+			t.transformTree(startX, startY+h/2, w/2, h/2, state, sh, b, uh)
+			t.transformTree(startX+w/2, startY+h/2, w/2, h/2, state, sh, b, uh)
+		}
 	}
 }
 

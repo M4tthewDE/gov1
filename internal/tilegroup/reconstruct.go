@@ -9,19 +9,19 @@ import (
 
 // 7.12.3 Reconstruct process
 func (t *TileGroup) reconstruct(plane int, x int, y int, txSz int, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader, state *state.State) {
-	var qDenom int
+	var dqDenom int
 	if txSz == TX_32X32 ||
 		txSz == TX_16X32 ||
 		txSz == TX_32X16 ||
 		txSz == TX_16X64 ||
 		txSz == TX_64X16 {
-		qDenom = 2
+		dqDenom = 2
 	} else if txSz == TX_64X64 ||
 		txSz == TX_32X64 ||
 		txSz == TX_64X32 {
-		qDenom = 4
+		dqDenom = 4
 	} else {
-		qDenom = 1
+		dqDenom = 1
 	}
 
 	log2W := TX_WIDTH_LOG2[txSz]
@@ -45,7 +45,7 @@ func (t *TileGroup) reconstruct(plane int, x int, y int, txSz int, sh sequencehe
 		t.PlaneTxType == ADST_FLIPADST ||
 		t.PlaneTxType == H_FLIPADST ||
 		t.PlaneTxType == FLIPADST_FLIPADST {
-		flipUD = true
+		flipLR = true
 	}
 
 	for i := 0; i < th; i++ {
@@ -60,10 +60,44 @@ func (t *TileGroup) reconstruct(plane int, x int, y int, txSz int, sh sequencehe
 
 			var q2 int
 			if uh.UsingQMatrix && t.PlaneTxType < IDTX && uh.SegQMLevel[plane][t.SegmentId] < 15 {
-				qt := util.Round2(q * Quantizer_Matrix)
+				q2 = util.Round2(q*Quantizer_Matrix[uh.SegQMLevel[plane][t.SegmentId]][util.Int(plane > 0)][Qm_Offset[txSz]+i*tw+j], 5)
+			} else {
+				q2 = q
 			}
+
+			dq := t.Quant[i*tw+j] * q2
+			sign := 1
+			if dq < 0 {
+				sign = -1
+			}
+			dq2 := sign * (util.Abs(dq) & 0xFFFFFF) / dqDenom
+			t.Dequant[i][j] = util.Clip3(-(1 << (7 + sh.ColorConfig.BitDepth)), (1<<(7+sh.ColorConfig.BitDepth))-1, dq2)
+
 		}
 	}
+
+	t.InverseTranform(txSz, sh)
+
+	for i := 0; i < h; i++ {
+		for j := 0; j < w; j++ {
+			xx := j
+			if flipLR {
+				xx = w - j - 1
+			}
+
+			yy := i
+			if flipUD {
+				yy = h - i - 1
+			}
+
+			state.CurrFrame[plane][y+yy][x+xx] = util.Clip1(state.CurrFrame[plane][y+yy][x+xx]+t.Residual[i][j], sh.ColorConfig.BitDepth)
+		}
+	}
+}
+
+var Qm_Offset = []int{
+	0, 16, 80, 336, 336, 1360, 1392, 1424, 1552, 1680, 2192,
+	336, 336, 2704, 2768, 2832, 3088, 1680, 2192,
 }
 
 // get_dc_quant( plane )

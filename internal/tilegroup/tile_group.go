@@ -133,6 +133,7 @@ type TileGroup struct {
 	SegmentIds          [][]int
 	Lossless            bool
 	Skip                int
+	Skips               [][]int
 	SkipModes           [][]int
 	YMode               int
 	YModes              [][]int
@@ -210,6 +211,7 @@ type TileGroup struct {
 
 	InterTxSizes [][]int
 	TxSize       int
+	TxSizes      [][]int
 
 	AboveLevelContext  [][]int
 	AboveDcContext     [][]int
@@ -246,11 +248,14 @@ type TileGroup struct {
 	MaxLumaH int
 	MaxLumaW int
 
-	Quant       []int
-	Dequant     [][]int
-	TxType      int
-	PlaneTxType int
-	TxTypes     [][]int
+	Quant             []int
+	Dequant           [][]int
+	TxType            int
+	PlaneTxType       int
+	TxTypes           [][]int
+	T                 []int
+	Residual          [][]int
+	LoopFilterTxSizes [][][]int
 }
 
 func NewTileGroup(sz int, b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) TileGroup {

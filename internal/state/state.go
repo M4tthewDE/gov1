@@ -44,6 +44,7 @@ type State struct {
 	MiSize                 int
 	MiSizes                [][]int
 	DeltaLF                [shared.FRAME_LF_COUNT]int
+	DeltaLFs               [][][]int
 	RefLrWiener            [][][]int
 	ReadDeltas             bool
 	Cdef                   cdef.Cdef

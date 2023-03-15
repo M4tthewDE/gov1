@@ -80,7 +80,29 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStrea
 	}
 
 	t.computePrediction(state, sh, uh)
+	t.residual(sh, state, b, uh)
 
+	for y := 0; y < bh4; y++ {
+		for x := 0; x < bw4; x++ {
+			t.IsInters[r+y][c+x] = t.IsInter
+			t.SkipModes[r+y][c+x] = t.SkipMode
+			t.Skips[r+y][c+x] = t.Skip
+			t.TxSizes[r+y][c+x] = t.TxSize
+			state.MiSizes[r+y][c+x] = state.MiSize
+			t.PaletteSizes[0][r+y][c+x] = t.PaletteSizeY
+			t.PaletteSizes[1][r+y][c+x] = t.PaletteSizeUV
+
+			for i := 0; i < t.PaletteSizeY; i++ {
+				t.PaletteColors[0][r+y][c+x][i] = t.PaletteColorsY[i]
+			}
+			for i := 0; i < t.PaletteSizeUV; i++ {
+				t.PaletteColors[1][r+y][c+x][i] = t.PaletteColorsU[i]
+			}
+			for i := 0; i < shared.FRAME_LF_COUNT; i++ {
+				state.DeltaLFs[r+y][c+x][i] = state.DeltaLF[i]
+			}
+		}
+	}
 }
 
 // mode_info()

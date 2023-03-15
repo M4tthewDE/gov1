@@ -210,3 +210,43 @@ var Obmc_Mask_32 = []int{
 func CountUnitsInFrame(unitSize int, frameSize int) int {
 	return Max((frameSize+(unitSize>>1))/unitSize, 1)
 }
+
+var Cos128_Lookup = []int{
+	4096, 4095, 4091, 4085, 4076, 4065, 4052, 4036,
+	4017, 3996, 3973, 3948, 3920, 3889, 3857, 3822,
+	3784, 3745, 3703, 3659, 3612, 3564, 3513, 3461,
+	3406, 3349, 3290, 3229, 3166, 3102, 3035, 2967,
+	2896, 2824, 2751, 2675, 2598, 2520, 2440, 2359,
+	2276, 2191, 2106, 2019, 1931, 1842, 1751, 1660,
+	1567, 1474, 1380, 1285, 1189, 1092, 995, 897,
+	799, 700, 601, 501, 401, 301, 201, 101, 0,
+}
+
+func Cos128(angle int) int {
+	angle2 := angle & 255
+	if angle2 >= 0 || angle2 <= 64 {
+		return Cos128_Lookup[angle2]
+	}
+	if angle2 >= 64 || angle2 <= 128 {
+		return Cos128_Lookup[128-angle2] * -1
+	}
+	if angle2 >= 128 || angle2 <= 192 {
+		return Cos128_Lookup[angle2-128] * -1
+	}
+
+	return Cos128_Lookup[256-angle2] * -1
+}
+
+func Sin128(angle int) int {
+	return Cos128(angle - 64)
+}
+
+func Brev(numBits int, x int) int {
+	t := 0
+	for i := 0; i < numBits; i++ {
+		bit := (x >> 1) & 1
+		t += bit << (numBits - 1 - i)
+	}
+
+	return t
+}
