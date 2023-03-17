@@ -107,10 +107,10 @@ func (t *TileGroup) interSegmentId(preSkip int, b *bitstream.BitStream, uh uncom
 				if util.Bool(t.Skip) {
 					segIdPredicted := 0
 
-					for i := 0; i < state.Num4x4BlocksWide[state.MiSize]; i++ {
+					for i := 0; i < shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]; i++ {
 						t.AboveSegPredContext[state.MiCol+i] = segIdPredicted
 					}
-					for i := 0; i < state.Num4x4BlocksHigh[state.MiSize]; i++ {
+					for i := 0; i < shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]; i++ {
 						t.AboveSegPredContext[state.MiRow+i] = segIdPredicted
 					}
 					t.readSegmentId(b, uh, state)
@@ -126,10 +126,10 @@ func (t *TileGroup) interSegmentId(preSkip int, b *bitstream.BitStream, uh uncom
 					t.readSegmentId(b, uh, state)
 				}
 
-				for i := 0; i < state.Num4x4BlocksWide[state.MiSize]; i++ {
+				for i := 0; i < shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]; i++ {
 					t.AboveSegPredContext[state.MiCol+i] = segIdPredicted
 				}
-				for i := 0; i < state.Num4x4BlocksHigh[state.MiSize]; i++ {
+				for i := 0; i < shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]; i++ {
 					t.AboveSegPredContext[state.MiRow+i] = segIdPredicted
 				}
 
@@ -146,8 +146,8 @@ func (t *TileGroup) interSegmentId(preSkip int, b *bitstream.BitStream, uh uncom
 
 // get_segment_id( )
 func (t *TileGroup) getSegmentId(state *state.State) int {
-	bw4 := state.Num4x4BlocksWide[state.MiSize]
-	bh4 := state.Num4x4BlocksHigh[state.MiSize]
+	bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
+	bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 	xMis := util.Min(state.MiCols-state.MiCol, bw4)
 	yMis := util.Min(state.MiRows-state.MiRow, bh4)
 	seg := 7

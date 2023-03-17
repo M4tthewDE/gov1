@@ -142,8 +142,8 @@ func getWedgeYoff(bsize int, index int, state *state.State) int {
 }
 
 func blockShape(bsize int, state *state.State) int {
-	w4 := state.Num4x4BlocksWide[bsize]
-	h4 := state.Num4x4BlocksHigh[bsize]
+	w4 := shared.NUM_4X4_BLOCKS_WIDE[bsize]
+	h4 := shared.NUM_4X4_BLOCKS_HIGH[bsize]
 	if h4 > w4 {
 		return 0
 	} else if h4 < w4 {

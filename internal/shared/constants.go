@@ -186,6 +186,16 @@ const MI_SIZE_LOG2 = 2
 var MI_WIDTH_LOG2 = []int{0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 0, 2, 1, 3, 2, 4}
 var MI_HEIGHT_LOG2 = []int{0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 2, 0, 3, 1, 4, 2}
 
+var NUM_4X4_BLOCKS_WIDE = []int{
+	1, 1, 2, 2, 2, 4, 4, 4, 8, 8, 8,
+	16, 16, 16, 32, 32, 1, 4, 2, 8, 4, 16,
+}
+
+var NUM_4X4_BLOCKS_HIGH = []int{
+	1, 2, 1, 2, 4, 2, 4, 8, 4, 8, 16,
+	8, 16, 32, 16, 32, 4, 1, 8, 2, 16, 4,
+}
+
 const WARPEDMODEL_PREC_BITS = 16
 const WARPEDMODEL_NONDIAGAFFINE_CLAMP = 1 << 13
 const WARPEDMODEL_TRANS_CLAMP = 1 << 23

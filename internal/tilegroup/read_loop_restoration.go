@@ -15,8 +15,8 @@ func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream, stat
 		return
 	}
 
-	w := state.Num4x4BlocksWide[bSize]
-	h := state.Num4x4BlocksHigh[bSize]
+	w := shared.NUM_4X4_BLOCKS_WIDE[bSize]
+	h := shared.NUM_4X4_BLOCKS_HIGH[bSize]
 
 	for plane := 0; plane < sh.ColorConfig.NumPlanes; plane++ {
 		if uh.FrameRestorationType[plane] != shared.RESTORE_NONE {

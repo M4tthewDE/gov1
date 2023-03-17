@@ -13,8 +13,8 @@ const MV_BORDER = 128
 // 7.10.2. Find MV stack process
 // find_mv_stack( isCompound )
 func (t *TileGroup) findMvStack(isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
-	bw4 := state.Num4x4BlocksWide[state.MiSize]
-	bh4 := state.Num4x4BlocksHigh[state.MiSize]
+	bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
+	bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 
 	// 1.
 	t.NumMvFound = 0
@@ -198,7 +198,7 @@ func (t *TileGroup) setupGlobalMvProcess(refList int, state *state.State, uh unc
 
 // 7.10.2.2 Scan row process
 func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
-	bw4 := state.Num4x4BlocksWide[state.MiSize]
+	bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
 	end4 := util.Min(util.Min(bw4, state.MiCols-state.MiCol), 16)
 	deltaCol := 0
 	useStep16 := bw4 >= 16
@@ -218,7 +218,7 @@ func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, state *state.St
 			break
 		}
 
-		len := util.Min(bw4, state.Num4x4BlocksWide[state.MiSizes[mvRow][mvCol]])
+		len := util.Min(bw4, shared.NUM_4X4_BLOCKS_WIDE[state.MiSizes[mvRow][mvCol]])
 		if util.Abs(deltaRow) > 1 {
 			len = util.Max(2, len)
 		}
@@ -233,7 +233,7 @@ func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, state *state.St
 
 // 7.10.2.3 Scan col process
 func (t *TileGroup) scanColProcess(deltaCol int, isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
-	bh4 := state.Num4x4BlocksHigh[state.MiSize]
+	bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 	end4 := util.Min(util.Min(bh4, state.MiRows-state.MiRow), 16)
 	deltaRow := 0
 	useStep16 := bh4 >= 16
@@ -253,7 +253,7 @@ func (t *TileGroup) scanColProcess(deltaCol int, isCompound int, state *state.St
 			break
 		}
 
-		len := util.Min(bh4, state.Num4x4BlocksHigh[state.MiSizes[mvRow][mvCol]])
+		len := util.Min(bh4, shared.NUM_4X4_BLOCKS_HIGH[state.MiSizes[mvRow][mvCol]])
 		if util.Abs(deltaCol) > 1 {
 			len = util.Max(2, len)
 		}
@@ -280,8 +280,8 @@ func (t *TileGroup) scanPointProcess(deltaRow int, deltaCol int, isCompound int,
 
 // 7.10.2.5 Temporal scan process
 func (t *TileGroup) temporalScanProcess(isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
-	bw4 := state.Num4x4BlocksWide[state.MiSize]
-	bh4 := state.Num4x4BlocksHigh[state.MiSize]
+	bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
+	bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 
 	stepW4 := 2
 	if bw4 >= 16 {
@@ -518,8 +518,8 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 		t.RefDiffCount[list] = 0
 	}
 
-	w4 := util.Min(16, state.Num4x4BlocksWide[state.MiSize])
-	h4 := util.Min(16, state.Num4x4BlocksHigh[state.MiSize])
+	w4 := util.Min(16, shared.NUM_4X4_BLOCKS_WIDE[state.MiSize])
+	h4 := util.Min(16, shared.NUM_4X4_BLOCKS_HIGH[state.MiSize])
 	w4 = util.Min(w4, state.MiCols-state.MiCol)
 	h4 = util.Min(h4, state.MiRows-state.MiRow)
 	num4x4 := util.Min(w4, h4)
@@ -543,9 +543,9 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 
 			t.addExtraMvCandidateProcess(mvRow, mvCol, isCompound, state)
 			if pass == 0 {
-				idx += state.Num4x4BlocksWide[state.MiSizes[mvRow][mvCol]]
+				idx += shared.NUM_4X4_BLOCKS_WIDE[state.MiSizes[mvRow][mvCol]]
 			} else {
-				idx += state.Num4x4BlocksHigh[state.MiSizes[mvRow][mvCol]]
+				idx += shared.NUM_4X4_BLOCKS_HIGH[state.MiSizes[mvRow][mvCol]]
 			}
 		}
 	}
@@ -682,7 +682,7 @@ func (t *TileGroup) contextAndClampingProcess(isCompound int, numNew int, state 
 
 // clamp_mv_row( mvec, border)
 func (t *TileGroup) clampMvRow(mvec int, border int, state *state.State) int {
-	bh4 := state.Num4x4BlocksHigh[state.MiSize]
+	bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 	mbToTopEdge := -((state.MiRow * MI_SIZE) * 8)
 	mbToBottomEdge := ((state.MiRows - bh4 - state.MiRow) * MI_SIZE) * 8
 	return util.Clip3(mbToTopEdge-border, mbToBottomEdge+border, mvec)
@@ -690,7 +690,7 @@ func (t *TileGroup) clampMvRow(mvec int, border int, state *state.State) int {
 
 // clamp_mv_col( mvec, border)
 func (t *TileGroup) clampMvCol(mvec int, border int, state *state.State) int {
-	bw4 := state.Num4x4BlocksWide[state.MiSize]
+	bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
 	mbToLeftEdge := -((state.MiCol * MI_SIZE) * 8)
 	mbToRightEdge := ((state.MiCols - bw4 - state.MiCol) * MI_SIZE) * 8
 	return util.Clip3(mbToLeftEdge-border, mbToRightEdge+border, mvec)

@@ -168,15 +168,15 @@ func (t *TileGroup) readCdef(b *bitstream.BitStream, uh uncompressedheader.Uncom
 		return
 	}
 
-	cdefSize4 := state.Num4x4BlocksWide[shared.BLOCK_64X64]
+	cdefSize4 := shared.NUM_4X4_BLOCKS_WIDE[shared.BLOCK_64X64]
 	cdefMask4 := ^(cdefSize4 - 1)
 	r := state.MiRow & cdefMask4
 	c := state.MiCol & cdefMask4
 
 	if state.Cdef.CdefIdx[r][c] == -1 {
 		state.Cdef.CdefIdx[r][c] = b.L(state.Cdef.CdefBits)
-		w4 := state.Num4x4BlocksWide[state.MiSize]
-		h4 := state.Num4x4BlocksHigh[state.MiSize]
+		w4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
+		h4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 
 		for i := r; i < r+h4; i += cdefSize4 {
 			for j := c; i < c+w4; i += cdefSize4 {

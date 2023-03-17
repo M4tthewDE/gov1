@@ -14,8 +14,8 @@ func (t *TileGroup) decodeBlock(r int, c int, subSize int, b *bitstream.BitStrea
 	state.MiRow = r
 	state.MiCol = c
 	state.MiSize = subSize
-	bw4 := state.Num4x4BlocksWide[subSize]
-	bh4 := state.Num4x4BlocksHigh[subSize]
+	bw4 := shared.NUM_4X4_BLOCKS_WIDE[subSize]
+	bh4 := shared.NUM_4X4_BLOCKS_HIGH[subSize]
 
 	if bh4 == 1 && sh.ColorConfig.SubsamplingY && (state.MiRow&1) == 0 {
 		t.HasChroma = false

@@ -30,9 +30,6 @@ type State struct {
 	BlockWidth        []int
 	BlockHeight       []int
 
-	// this size is just a guess pretty much
-	Num4x4BlocksWide       [shared.BLOCK_128X128]int
-	Num4x4BlocksHigh       [shared.BLOCK_128X128]int
 	SeenFrameHeader        bool
 	RenderWidth            int
 	RenderHeight           int
@@ -55,7 +52,7 @@ type State struct {
 	AvailL                 bool
 	AvailUChroma           bool
 	AvailLChroma           bool
-	RefFrame               []int
+	RefFrame               [2]int
 	RefFrames              [][][]int
 	RefFrameWidth          []int
 	RefFrameHeight         []int

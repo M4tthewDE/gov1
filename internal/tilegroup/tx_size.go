@@ -10,8 +10,8 @@ import (
 
 // read_block_tx_size()
 func (t *TileGroup) readBlockTxSize(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
-	bw4 := state.Num4x4BlocksWide[state.MiSize]
-	bh4 := state.Num4x4BlocksHigh[state.MiSize]
+	bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
+	bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 
 	if uh.TxMode == shared.TX_MODE_SELECT &&
 		state.MiSize > shared.BLOCK_4X4 &&

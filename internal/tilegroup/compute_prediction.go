@@ -20,8 +20,8 @@ func (t *TileGroup) computePrediction(state *state.State, sh sequenceheader.Sequ
 
 	for plane := 0; plane < 1+util.Int(t.HasChroma)*2; plane++ {
 		planeSz := t.getPlaneResidualSize(state.MiSize, plane, sh)
-		num4x4W := state.Num4x4BlocksWide[planeSz]
-		num4x4H := state.Num4x4BlocksHigh[planeSz]
+		num4x4W := shared.NUM_4X4_BLOCKS_WIDE[planeSz]
+		num4x4H := shared.NUM_4X4_BLOCKS_HIGH[planeSz]
 		log2W := shared.MI_SIZE_LOG2 + shared.MI_WIDTH_LOG2[planeSz]
 		log2H := shared.MI_SIZE_LOG2 + shared.MI_HEIGHT_LOG2[planeSz]
 		subX := 0

@@ -546,7 +546,7 @@ func (t *TileGroup) decodeTile(b *bitstream.BitStream, state *state.State, sh se
 		sbSize = shared.BLOCK_128X128
 	}
 
-	sbSize4 := state.Num4x4BlocksWide[sbSize]
+	sbSize4 := shared.NUM_4X4_BLOCKS_WIDE[sbSize]
 
 	for r := state.MiRowStart; r < state.MiRowEnd; r += sbSize4 {
 		t.clearLeftContext(state)

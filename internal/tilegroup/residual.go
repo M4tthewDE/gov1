@@ -32,8 +32,8 @@ func (t *TileGroup) residual(sh sequenceheader.SequenceHeader, state *state.Stat
 				stepX := Tx_Width[txSz] >> 2
 				stepY := Tx_Height[txSz] >> 2
 				planeSz := t.getPlaneResidualSize(miSizeChunk, plane, sh)
-				num4x4W := state.Num4x4BlocksWide[planeSz]
-				num4x4H := state.Num4x4BlocksHigh[planeSz]
+				num4x4W := shared.NUM_4X4_BLOCKS_WIDE[planeSz]
+				num4x4H := shared.NUM_4X4_BLOCKS_HIGH[planeSz]
 
 				subX := 0
 				subY := 0

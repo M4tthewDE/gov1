@@ -31,7 +31,7 @@ func (t *TileGroup) assignMv(isCompound int, b *bitstream.BitStream, state *stat
 				} else {
 					sbSize = shared.BLOCK_64X64
 				}
-				sbSize4 := state.Num4x4BlocksHigh[sbSize]
+				sbSize4 := shared.NUM_4X4_BLOCKS_HIGH[sbSize]
 
 				if state.MiRow-sbSize4 < state.MiRowStart {
 					t.PredMv[0][0] = 0

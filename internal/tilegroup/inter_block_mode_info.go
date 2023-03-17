@@ -115,8 +115,8 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream, state *state.State, uh
 		state.RefFrame[0] = state.FeatureData[t.SegmentId][shared.SEG_LVL_REF_FRAME]
 		state.RefFrame[1] = shared.NONE
 	} else {
-		bw4 := state.Num4x4BlocksWide[state.MiSize]
-		bh4 := state.Num4x4BlocksHigh[state.MiSize]
+		bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
+		bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 
 		var compMode int
 		if uh.ReferenceSelect && util.Min(bw4, bh4) >= 2 {
@@ -269,15 +269,15 @@ func (t *TileGroup) findWarpSamples(state *state.State) {
 	t.NumSamples = 0
 	t.NumSamplesScanned = 0
 
-	w4 := state.Num4x4BlocksWide[state.MiSize]
-	h4 := state.Num4x4BlocksHigh[state.MiSize]
+	w4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
+	h4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 
 	doTopLeft := 1
 	doTopRight := 1
 
 	if state.AvailU {
 		srcSize := state.MiSizes[state.MiRow-1][state.MiCol]
-		srcW := state.Num4x4BlocksWide[srcSize]
+		srcW := shared.NUM_4X4_BLOCKS_WIDE[srcSize]
 
 		if w4 <= srcW {
 			colOffset := -(state.MiCol & (srcW - 1))
@@ -292,7 +292,7 @@ func (t *TileGroup) findWarpSamples(state *state.State) {
 			var miStep int
 			for i := 0; i < util.Min(w4, state.MiCols-state.MiCol); i += miStep {
 				srcSize = state.MiSizes[state.MiRow-1][state.MiCol+i]
-				srcW = state.Num4x4BlocksWide[srcSize]
+				srcW = shared.NUM_4X4_BLOCKS_WIDE[srcSize]
 				miStep = util.Min(w4, srcW)
 				t.addSample(-1, i, state)
 			}
@@ -300,7 +300,7 @@ func (t *TileGroup) findWarpSamples(state *state.State) {
 	}
 	if state.AvailL {
 		srcSize := state.MiSizes[state.MiRow][state.MiCol-1]
-		srcH := state.Num4x4BlocksHigh[srcSize]
+		srcH := shared.NUM_4X4_BLOCKS_HIGH[srcSize]
 
 		if h4 <= srcH {
 			rowOffset := -(state.MiRow & (srcH - 1))
@@ -312,7 +312,7 @@ func (t *TileGroup) findWarpSamples(state *state.State) {
 			var miStep int
 			for i := 0; i < util.Min(h4, state.MiRows-state.MiRow); i += miStep {
 				srcSize = state.MiSizes[state.MiRow+i][state.MiCol-1]
-				srcH = state.Num4x4BlocksHigh[srcSize]
+				srcH = shared.NUM_4X4_BLOCKS_HIGH[srcSize]
 				miStep = util.Min(h4, srcH)
 				t.addSample(i, -1, state)
 			}
@@ -362,8 +362,8 @@ func (t *TileGroup) addSample(deltaRow int, deltaCol int, state *state.State) {
 	}
 
 	candSz := state.MiSizes[mvRow][mvCol]
-	candW4 := state.Num4x4BlocksWide[candSz]
-	candH4 := state.Num4x4BlocksHigh[candSz]
+	candW4 := shared.NUM_4X4_BLOCKS_WIDE[candSz]
+	candH4 := shared.NUM_4X4_BLOCKS_HIGH[candSz]
 	candRow := mvRow & ^(candH4 - 1)
 	candCol := mvCol & ^(candW4 - 1)
 	midY := candRow*4 + candH4*2 - 1

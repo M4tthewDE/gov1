@@ -431,8 +431,8 @@ func (t *TileGroup) warpEstimationProcess(state *state.State) {
 	}
 
 	// TODO: matrix is symmetrical, so an entry is omitted!
-	w4 := state.Num4x4BlocksWide[state.MiSize]
-	h4 := state.Num4x4BlocksHigh[state.MiSize]
+	w4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
+	h4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 	midY := state.MiRow*4 + h4*2 - 1
 	midX := state.MiCol*4 + w4*2 - 1
 	suy := midY * 8
@@ -501,7 +501,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int,
 	if state.AvailU {
 		if t.getPlaneResidualSize(state.MiSize, plane, sh) >= shared.BLOCK_8X8 {
 			pass := 0
-			w4 := state.Num4x4BlocksWide[state.MiSize]
+			w4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
 			x4 := state.MiCol
 			y4 := state.MiRow
 			nCount := 0
@@ -511,7 +511,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int,
 				candRow := state.MiRow - 1
 				candCol := x4 | 1
 				candSz := state.MiSizes[candRow][candCol]
-				step4 := util.Clip3(2, 16, state.Num4x4BlocksWide[candSz])
+				step4 := util.Clip3(2, 16, shared.NUM_4X4_BLOCKS_WIDE[candSz])
 				if state.RefFrames[candRow][candCol][0] > shared.INTRA_FRAME {
 					nCount += 1
 					predW := util.Min(w, (step4*MI_SIZE)>>subX)
@@ -541,7 +541,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int,
 
 	if state.AvailL {
 		pass := 0
-		h4 := state.Num4x4BlocksHigh[state.MiSize]
+		h4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 		x4 := state.MiCol
 		y4 := state.MiRow
 		nCount := 0
@@ -551,7 +551,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int,
 			candCol := state.MiCol - 1
 			candRow := y4 | 1
 			candSz := state.MiSizes[candRow][candCol]
-			step4 := util.Clip3(2, 16, state.Num4x4BlocksHigh[candSz])
+			step4 := util.Clip3(2, 16, shared.NUM_4X4_BLOCKS_HIGH[candSz])
 			if state.RefFrames[candRow][candCol][0] > shared.INTRA_FRAME {
 				nCount += 1
 				predW := util.Min(w>>1, 32>>subX)
