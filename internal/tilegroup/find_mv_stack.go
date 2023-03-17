@@ -1,6 +1,8 @@
 package tilegroup
 
 import (
+	"runtime"
+
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
@@ -527,6 +529,7 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 	for pass := 0; pass < 2; pass++ {
 		idx := 0
 		for idx < num4x4 && t.NumMvFound < 2 {
+			runtime.Breakpoint()
 			var mvRow int
 			var mvCol int
 			if pass == 0 {
@@ -621,6 +624,7 @@ func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound 
 		}
 	} else {
 		for candList := 0; candList < 2; candList++ {
+			runtime.Breakpoint()
 			candRef = state.RefFrames[mvRow][mvCol][candList]
 			if candRef > shared.INTRA_FRAME {
 				candMv = t.Mvs[mvRow][mvCol][candList]

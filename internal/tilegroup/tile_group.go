@@ -154,9 +154,9 @@ type TileGroup struct {
 	TotalMatches        int
 	CloseMatches        int
 	RefStackMv          [][][2]int
-	RefIdCount          []int
+	RefIdCount          [2]int
 	RefIdMvs            [][][2]int
-	RefDiffCount        []int
+	RefDiffCount        [2]int
 	RefDiffMvs          [][][2]int
 	RefFrameSignBias    []int
 	WeightStack         []int
