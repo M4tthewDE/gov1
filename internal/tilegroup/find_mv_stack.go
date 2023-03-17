@@ -1,8 +1,6 @@
 package tilegroup
 
 import (
-	"runtime"
-
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
@@ -506,7 +504,7 @@ func (t *TileGroup) swapStack(i int, j int, isCompound int) {
 
 	for list := 0; list < 1+isCompound; list++ {
 		for comp := 0; comp < 2; comp++ {
-			t.RefStackMv[j][list][comp] = t.RefStackMv[j][list][comp]
+			t.RefStackMv[i][list][comp] = t.RefStackMv[j][list][comp]
 			t.RefStackMv[j][list][comp] = temp
 		}
 
@@ -529,7 +527,6 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 	for pass := 0; pass < 2; pass++ {
 		idx := 0
 		for idx < num4x4 && t.NumMvFound < 2 {
-			runtime.Breakpoint()
 			var mvRow int
 			var mvCol int
 			if pass == 0 {
@@ -600,6 +597,13 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 
 // 7.10.2.13 Add extra mv candidate process
 func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound int, state *state.State) {
+	// Unsure if negative indexing here is intended
+	// if the size of state.RefFrames[] gets increased, it keeps reaching the maximum size
+	// the decoding seems to never stop and enters an infinite loop
+	if mvRow < 0 {
+		mvRow = len(state.RefFrames) - mvRow
+	}
+
 	var candRef int
 	var candMv [2]int
 	if util.Bool(isCompound) {
@@ -624,7 +628,6 @@ func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound 
 		}
 	} else {
 		for candList := 0; candList < 2; candList++ {
-			runtime.Breakpoint()
 			candRef = state.RefFrames[mvRow][mvCol][candList]
 			if candRef > shared.INTRA_FRAME {
 				candMv = t.Mvs[mvRow][mvCol][candList]

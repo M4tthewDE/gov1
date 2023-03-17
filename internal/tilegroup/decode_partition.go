@@ -46,6 +46,7 @@ func (t *TileGroup) decodePartition(r int, c int, bSize int, b *bitstream.BitStr
 	} else {
 		partition = PARTITION_SPLIT
 	}
+
 	subSize := shared.Partition_Subsize[partition][bSize]
 	splitSize := shared.Partition_Subsize[PARTITION_SPLIT][bSize]
 	if partition == PARTITION_NONE {

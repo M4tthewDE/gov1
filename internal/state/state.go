@@ -53,7 +53,7 @@ type State struct {
 	AvailUChroma           bool
 	AvailLChroma           bool
 	RefFrame               [2]int
-	RefFrames              [][][]int
+	RefFrames              [][2][2]int
 	RefFrameWidth          []int
 	RefFrameHeight         []int
 	CurrFrame              [][][]int
