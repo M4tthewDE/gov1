@@ -145,19 +145,19 @@ type TileGroup struct {
 	InterpFilters       [][][]int
 	NumMvFound          int
 	NewMvCount          int
-	GlobalMvs           [][]int
-	MotionFieldMvs      [][][][]int
+	GlobalMvs           [2][2]int
+	MotionFieldMvs      [][][][2]int
 	IsInters            [][]int
-	Mv                  [][]int
-	Mvs                 [][][][]int
+	Mv                  [][2]int
+	Mvs                 [][][][2]int
 	FoundMatch          int
 	TotalMatches        int
 	CloseMatches        int
-	RefStackMv          [][][]int
+	RefStackMv          [][][2]int
 	RefIdCount          []int
-	RefIdMvs            [][][]int
+	RefIdMvs            [][][2]int
 	RefDiffCount        []int
-	RefDiffMvs          [][][]int
+	RefDiffMvs          [][][2]int
 	RefFrameSignBias    []int
 	WeightStack         []int
 	AngleDeltaY         int
@@ -165,7 +165,7 @@ type TileGroup struct {
 	CflAlphaU           int
 	CflAlphaV           int
 	useIntrabc          int
-	PredMv              [][]int
+	PredMv              [][2]int
 	RefMvIdx            int
 	MvCtx               int
 	PaletteSizes        [][][]int

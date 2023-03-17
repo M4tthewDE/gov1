@@ -7,7 +7,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/shared"
 )
 
-func Equals[T comparable](a []T, b []T) bool {
+func Equals[T comparable](a [2]T, b [2]T) bool {
 	if len(a) != len(b) {
 		return false
 	}

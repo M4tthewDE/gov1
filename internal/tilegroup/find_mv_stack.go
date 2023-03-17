@@ -156,7 +156,7 @@ func (t *TileGroup) findMvStack(isCompound int, state *state.State, uh uncompres
 }
 
 // 7.10.2.1 Setup global MV process
-func (t *TileGroup) setupGlobalMvProcess(refList int, state *state.State, uh uncompressedheader.UncompressedHeader) []int {
+func (t *TileGroup) setupGlobalMvProcess(refList int, state *state.State, uh uncompressedheader.UncompressedHeader) [2]int {
 	ref := state.RefFrame[refList]
 
 	var typ int
@@ -169,7 +169,7 @@ func (t *TileGroup) setupGlobalMvProcess(refList int, state *state.State, uh unc
 
 	var xc int
 	var yc int
-	mv := []int{}
+	mv := [2]int{}
 	if ref == shared.INTRA_FRAME || typ == shared.IDENTITY {
 		mv[0] = 0
 		mv[1] = 0
@@ -420,7 +420,7 @@ func (t *TileGroup) searchStackProcess(mvRow int, mvCol int, candList int, weigh
 	candSize := state.MiSizes[mvRow][mvCol]
 	large := util.Min(shared.BLOCK_WIDTH[candSize], shared.BLOCK_HEIGHT[candSize]) >= 8
 
-	var candMv []int
+	var candMv [2]int
 	if (candMode == shared.GLOBALMV || candMode == shared.GLOBAL_GLOBALMV) && (state.GmType[state.RefFrame[0]] > shared.TRANSLATION) && large {
 		candMv = t.GlobalMvs[0]
 	} else {
@@ -454,7 +454,7 @@ func (t *TileGroup) compoundSearchStackProcess(mvRow int, mvCol int, weight int)
 }
 
 // 7.10.2.10. Lower precision process
-func (t *TileGroup) lowerPrecisionProcess(candMv []int, uh uncompressedheader.UncompressedHeader) []int {
+func (t *TileGroup) lowerPrecisionProcess(candMv [2]int, uh uncompressedheader.UncompressedHeader) [2]int {
 	if uh.AllowHighPrecisionMv {
 		return candMv
 	}
@@ -550,7 +550,7 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 		}
 	}
 
-	var combinedMvs [][][]int
+	var combinedMvs [][][2]int
 	if isCompound == 1 {
 		for list := 0; list < 2; list++ {
 			compCount := 0
@@ -598,7 +598,7 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 // 7.10.2.13 Add extra mv candidate process
 func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound int, state *state.State) {
 	var candRef int
-	var candMv []int
+	var candMv [2]int
 	if util.Bool(isCompound) {
 		for candList := 0; candList < 2; candList++ {
 			candRef = state.RefFrames[mvRow][mvCol][candList]
