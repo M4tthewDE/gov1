@@ -188,7 +188,7 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream, state *state.State, uh
 				}
 			}
 		} else {
-			singleRefP1 := b.S()
+			singleRefP1 := t.singleRefP1Symbol(state, b, uh)
 			if util.Bool(singleRefP1) {
 				singleRefP2 := b.S()
 				if singleRefP2 == 0 {
@@ -203,7 +203,7 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream, state *state.State, uh
 					state.RefFrame[0] = shared.ALTREF_FRAME
 				}
 			} else {
-				singleRefP3 := b.S()
+				singleRefP3 := t.singleRefP3Symbol(state, b, uh)
 				if util.Bool(singleRefP3) {
 					singleRefP5 := b.S()
 					if util.Bool(singleRefP5) {
@@ -212,7 +212,7 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream, state *state.State, uh
 						state.RefFrame[0] = shared.LAST3_FRAME
 					}
 				} else {
-					singleRefP4 := b.S()
+					singleRefP4 := t.singleRefP4Symbol(state, b, uh)
 					if util.Bool(singleRefP4) {
 						state.RefFrame[0] = shared.LAST2_FRAME
 					} else {
