@@ -164,8 +164,8 @@ func (t *TileGroup) setupGlobalMvProcess(refList int, state *state.State, uh unc
 		typ = state.GmType[ref]
 	}
 
-	bw := t.Block_Width[state.MiSize]
-	bh := t.Block_Height[state.MiSize]
+	bw := shared.BLOCK_WIDTH[state.MiSize]
+	bh := shared.BLOCK_HEIGHT[state.MiSize]
 
 	var xc int
 	var yc int
@@ -418,7 +418,7 @@ func (t *TileGroup) addRefMvCandidate(mvRow int, mvCol int, isCompound int, weig
 func (t *TileGroup) searchStackProcess(mvRow int, mvCol int, candList int, weight int, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	candMode := t.YModes[mvRow][mvCol]
 	candSize := state.MiSizes[mvRow][mvCol]
-	large := util.Min(t.Block_Width[candSize], t.Block_Height[candSize]) >= 8
+	large := util.Min(shared.BLOCK_WIDTH[candSize], shared.BLOCK_HEIGHT[candSize]) >= 8
 
 	var candMv []int
 	if (candMode == shared.GLOBALMV || candMode == shared.GLOBAL_GLOBALMV) && (state.GmType[state.RefFrame[0]] > shared.TRANSLATION) && large {
@@ -646,8 +646,8 @@ func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound 
 
 // 7.10.2.14 Context and claping process
 func (t *TileGroup) contextAndClampingProcess(isCompound int, numNew int, state *state.State) {
-	bw := t.Block_Width[state.MiSize]
-	bh := t.Block_Height[state.MiSize]
+	bw := shared.BLOCK_WIDTH[state.MiSize]
+	bh := shared.BLOCK_HEIGHT[state.MiSize]
 
 	numLists := 1
 	if util.Bool(isCompound) {

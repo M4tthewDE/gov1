@@ -58,8 +58,8 @@ func (t *TileGroup) computePrediction(state *state.State, sh sequenceheader.Sequ
 		}
 
 		if util.Bool(t.IsInter) {
-			predW := t.Block_Width[state.MiSize] >> subX
-			predH := t.Block_Height[state.MiSize] >> subY
+			predW := shared.BLOCK_WIDTH[state.MiSize] >> subX
+			predH := shared.BLOCK_HEIGHT[state.MiSize] >> subY
 			someUseIntra := false
 
 			for r := 0; r < (num4x4H << subY); r++ {

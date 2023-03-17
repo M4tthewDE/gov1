@@ -196,6 +196,16 @@ var NUM_4X4_BLOCKS_HIGH = []int{
 	8, 16, 32, 16, 32, 4, 1, 8, 2, 16, 4,
 }
 
+var BLOCK_WIDTH = []int{
+	1 * 4, 1 * 4, 2 * 4, 2 * 4, 2 * 4, 4 * 4, 4 * 4, 4 * 4, 8 * 4, 8 * 4, 8 * 4,
+	16 * 4, 16 * 4, 16 * 4, 32 * 4, 32 * 4, 1 * 4, 4 * 4, 2 * 4, 8 * 4, 4 * 4, 16 * 4,
+}
+
+var BLOCK_HEIGHT = []int{
+	1 * 4, 2 * 4, 1 * 4, 2 * 4, 4 * 4, 2 * 4, 4 * 4, 8 * 4, 4 * 4, 8 * 4, 16 * 4,
+	8 * 4, 16 * 4, 32 * 4, 16 * 4, 32 * 4, 4 * 4, 1 * 4, 8 * 4, 2 * 4, 16 * 4, 4 * 4,
+}
+
 const WARPEDMODEL_PREC_BITS = 16
 const WARPEDMODEL_NONDIAGAFFINE_CLAMP = 1 << 13
 const WARPEDMODEL_TRANS_CLAMP = 1 << 23

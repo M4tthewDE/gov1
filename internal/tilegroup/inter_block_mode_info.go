@@ -237,7 +237,7 @@ func (t *TileGroup) readMotionMode(isCompound bool, b *bitstream.BitStream, uh u
 		return
 	}
 
-	if util.Min(t.Block_Width[state.MiSize], t.Block_Height[state.MiSize]) < 8 {
+	if util.Min(shared.BLOCK_WIDTH[state.MiSize], shared.BLOCK_HEIGHT[state.MiSize]) < 8 {
 		t.MotionMode = SIMPLE
 		return
 	}
@@ -368,7 +368,7 @@ func (t *TileGroup) addSample(deltaRow int, deltaCol int, state *state.State) {
 	candCol := mvCol & ^(candW4 - 1)
 	midY := candRow*4 + candH4*2 - 1
 	midX := candCol*4 + candW4*2 - 1
-	threshold := util.Clip3(16, 112, util.Max(t.Block_Width[state.MiSize], t.Block_Height[state.MiSize]))
+	threshold := util.Clip3(16, 112, util.Max(shared.BLOCK_WIDTH[state.MiSize], shared.BLOCK_HEIGHT[state.MiSize]))
 	mvDiffRow := util.Abs(t.Mvs[candRow][candCol][0][0] - t.Mv[0][0])
 	mvDiffCol := util.Abs(t.Mvs[candRow][candCol][0][1] - t.Mv[0][1])
 	valid := (mvDiffRow + mvDiffCol) <= threshold
@@ -395,7 +395,7 @@ func (t *TileGroup) addSample(deltaRow int, deltaCol int, state *state.State) {
 
 // needs_interp_filter()
 func (t *TileGroup) needsInterpFilter(state *state.State) bool {
-	large := util.Min(t.Block_Width[state.MiSize], t.Block_Height[state.MiSize]) >= 8
+	large := util.Min(shared.BLOCK_WIDTH[state.MiSize], shared.BLOCK_HEIGHT[state.MiSize]) >= 8
 
 	if util.Bool(t.SkipMode) || t.MotionMode == LOCALWARP {
 		return false

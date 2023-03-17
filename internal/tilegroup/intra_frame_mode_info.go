@@ -69,7 +69,7 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 		t.PaletteSizeY = 0
 		t.PaletteSizeUV = 0
 
-		if state.MiSize >= shared.BLOCK_8X8 && t.Block_Width[state.MiSize] <= 64 && t.Block_Height[state.MiSize] <= 64 && util.Bool(uh.AllowScreenContentTools) {
+		if state.MiSize >= shared.BLOCK_8X8 && shared.BLOCK_WIDTH[state.MiSize] <= 64 && shared.BLOCK_HEIGHT[state.MiSize] <= 64 && util.Bool(uh.AllowScreenContentTools) {
 			t.paletteModeInfo(b, state, sh)
 		}
 		t.filterIntraModeInfo(b, sh, state)
@@ -332,7 +332,7 @@ func (t *TileGroup) intraAngleInfoUv(b *bitstream.BitStream, state *state.State)
 // filter_intra_mode_info()
 func (t *TileGroup) filterIntraModeInfo(b *bitstream.BitStream, sh sequenceheader.SequenceHeader, state *state.State) {
 	useFilterIntra := false
-	if sh.EnableFilterIntra && t.YMode == DC_PRED && t.PaletteSizeY == 0 && util.Max(t.Block_Width[state.MiSize], t.Block_Height[state.MiSize]) <= 32 {
+	if sh.EnableFilterIntra && t.YMode == DC_PRED && t.PaletteSizeY == 0 && util.Max(shared.BLOCK_WIDTH[state.MiSize], shared.BLOCK_HEIGHT[state.MiSize]) <= 32 {
 		useFilterIntra = util.Bool(b.S())
 
 		if useFilterIntra {

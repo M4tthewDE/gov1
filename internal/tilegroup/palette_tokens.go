@@ -3,14 +3,15 @@ package tilegroup
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // palette_tokens()
 func (t *TileGroup) paletteTokens(b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader) {
-	blockHeight := t.Block_Height[state.MiSize]
-	blockWidth := t.Block_Width[state.MiSize]
+	blockHeight := shared.BLOCK_HEIGHT[state.MiSize]
+	blockWidth := shared.BLOCK_WIDTH[state.MiSize]
 	onscreenHeight := util.Min(blockHeight, (state.MiRows-state.MiRow)*MI_SIZE)
 	onscreenWidth := util.Min(blockWidth, (state.MiCols-state.MiCol)*MI_SIZE)
 

@@ -84,8 +84,8 @@ func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 	t.PaletteSizeY = 0
 	t.PaletteSizeUV = 0
 	if state.MiSize >= shared.BLOCK_8X8 &&
-		t.Block_Width[state.MiSize] <= 64 &&
-		t.Block_Height[state.MiSize] <= 64 &&
+		shared.BLOCK_WIDTH[state.MiSize] <= 64 &&
+		shared.BLOCK_HEIGHT[state.MiSize] <= 64 &&
 		util.Bool(uh.AllowScreenContentTools) {
 		t.paletteModeInfo(b, state, sh)
 	}
@@ -163,7 +163,7 @@ func (t *TileGroup) getSegmentId(state *state.State) int {
 
 // read_skip_mode()
 func (t *TileGroup) readSkipMode(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
-	if t.segFeatureActive(shared.SEG_LVL_SKIP, uh, state) || t.segFeatureActive(shared.SEG_LVL_REF_FRAME, uh, state) || t.segFeatureActive(shared.SEG_LVL_GLOBALMV, uh, state) || !util.Bool(uh.SkipModePresent) || t.Block_Width[state.MiSize] < 8 || t.Block_Height[state.MiSize] < 8 {
+	if t.segFeatureActive(shared.SEG_LVL_SKIP, uh, state) || t.segFeatureActive(shared.SEG_LVL_REF_FRAME, uh, state) || t.segFeatureActive(shared.SEG_LVL_GLOBALMV, uh, state) || !util.Bool(uh.SkipModePresent) || shared.BLOCK_WIDTH[state.MiSize] < 8 || shared.BLOCK_HEIGHT[state.MiSize] < 8 {
 		t.SkipMode = 0
 	} else {
 		t.SkipMode = b.S()

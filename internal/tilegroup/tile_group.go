@@ -147,8 +147,6 @@ type TileGroup struct {
 	NewMvCount          int
 	GlobalMvs           [][]int
 	MotionFieldMvs      [][][][]int
-	Block_Width         []int
-	Block_Height        []int
 	IsInters            [][]int
 	Mv                  [][]int
 	Mvs                 [][][][]int
