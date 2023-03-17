@@ -179,6 +179,25 @@ func (t *TileGroup) readIsInter(b *bitstream.BitStream, state *state.State, uh u
 	} else if t.segFeatureActive(shared.SEG_LVL_GLOBALMV, uh, state) {
 		t.IsInter = 0
 	} else {
-		t.IsInter = b.S()
+		// S()
+		var ctx int
+		if state.AvailU && state.AvailL {
+			if t.LeftIntra && t.AboveIntra {
+				ctx = 3
+			} else {
+				ctx = util.Int(t.LeftIntra || t.AboveIntra)
+			}
+
+		} else if state.AvailU || state.AvailL {
+			if state.AvailU {
+				ctx = 2 * util.Int(t.AboveIntra)
+			} else {
+				ctx = 2 * util.Int(t.LeftIntra)
+			}
+		} else {
+			ctx = 0
+		}
+
+		t.IsInter = ReadSymbol(state.TileIsInterCdf[ctx], state, b, uh)
 	}
 }
