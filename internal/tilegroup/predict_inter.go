@@ -201,7 +201,7 @@ func (t *TileGroup) roundVariablesDerivationProcess(isCompound bool, sh sequence
 // 7.11.3.3  Motion vector scaling process
 func (t *TileGroup) motionVectorScalingProcess(plane int, refIdx int, x int, y int, mv [2]int, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) (int, int, int, int) {
 	xScale := ((t.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (uh.FrameWidth / 2)) / uh.FrameWidth
-	yScale := ((t.RefUpscaledHeight[refIdx] << REF_SCALE_SHIFT) + (uh.FrameHeight / 2)) / uh.FrameHeight
+	yScale := ((t.RefFrameHeight[refIdx] << REF_SCALE_SHIFT) + (uh.FrameHeight / 2)) / uh.FrameHeight
 
 	subX := 0
 	subY := 0

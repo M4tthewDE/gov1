@@ -136,20 +136,20 @@ type TileGroup struct {
 	Skips               [][]int
 	SkipModes           [][]int
 	YMode               int
-	YModes              [][]int
+	YModes              [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
 	UVMode              int
 	UVModes             [][]int
 	PaletteSizeY        int
 	PaletteSizeUV       int
-	InterpFilter        []int
+	InterpFilter        [2]int
 	InterpFilters       [][][]int
 	NumMvFound          int
 	NewMvCount          int
 	GlobalMvs           [2][2]int
 	MotionFieldMvs      [][][][2]int
 	IsInters            [][]int
-	Mv                  [][2]int
-	Mvs                 [][][][2]int
+	Mv                  [2][2]int
+	Mvs                 [shared.MAX_TILE_COLS][shared.MAX_TILE_ROWS][1][2]int
 	FoundMatch          int
 	TotalMatches        int
 	CloseMatches        int
@@ -165,7 +165,7 @@ type TileGroup struct {
 	CflAlphaU           int
 	CflAlphaV           int
 	useIntrabc          int
-	PredMv              [][2]int
+	PredMv              [2][2]int
 	RefMvIdx            int
 	MvCtx               int
 	PaletteSizes        [][][]int
@@ -198,16 +198,16 @@ type TileGroup struct {
 	NumSamplesScanned int
 	CandList          [][]int
 
-	RefUpscaledWidth  []int
-	RefUpscaledHeight []int
-	MaskType          int
+	RefUpscaledWidth [8]int
+	RefFrameHeight   []int
+	MaskType         int
 
 	ColorMapY        [][]int
 	ColorMapUV       [][]int
 	ColorOrder       []int
 	ColorContextHash int
 
-	InterTxSizes [][]int
+	InterTxSizes [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
 	TxSize       int
 	TxSizes      [][]int
 

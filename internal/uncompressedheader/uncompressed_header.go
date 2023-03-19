@@ -86,7 +86,7 @@ type UncompressedHeader struct {
 	ForceIntegerMv             bool
 	AllowScreenContentTools    int
 	RefOrderHint               []int
-	RefFrameIdx                []int
+	RefFrameIdx                [7]int
 	OrderHint                  int
 	OrderHints                 []int
 	SkipModeFrame              []int

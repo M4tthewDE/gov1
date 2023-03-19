@@ -69,7 +69,7 @@ func (t *TileGroup) assignMv(isCompound int, b *bitstream.BitStream, state *stat
 
 // read_mv( ref )
 func (t *TileGroup) readMv(ref int, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, state *state.State) {
-	var diffMv []int
+	var diffMv [2]int
 	diffMv[0] = 0
 	diffMv[1] = 0
 

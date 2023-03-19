@@ -17,7 +17,7 @@ func (t *TileGroup) isInside(candidateR int, candidateC int, state *state.State)
 func (t *TileGroup) isScaled(refFrame int, uh uncompressedheader.UncompressedHeader) bool {
 	refIdx := uh.RefFrameIdx[refFrame-shared.LAST_FRAME]
 	xScale := ((t.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (uh.FrameWidth / 2)) / uh.FrameWidth
-	yScale := ((t.RefUpscaledHeight[refIdx] << REF_SCALE_SHIFT) + (uh.FrameHeight / 2)) / uh.FrameHeight
+	yScale := ((t.RefFrameHeight[refIdx] << REF_SCALE_SHIFT) + (uh.FrameHeight / 2)) / uh.FrameHeight
 	noScale := 1 << REF_SCALE_SHIFT
 
 	return xScale != noScale || yScale != noScale

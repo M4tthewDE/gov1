@@ -54,7 +54,6 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 	logger.Logger.Info("Parsing obu...", zap.Int("type", h.Type))
 
 	var sh sequenceheader.SequenceHeader
-	var uh uncompressedheader.UncompressedHeader
 
 	switch h.Type {
 	case header.OBU_SEQUENCE_HEADER:
@@ -62,11 +61,11 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 	case header.OBU_TEMPORAL_DELIMITER:
 		state.SeenFrameHeader = false
 	case header.OBU_FRAME_HEADER:
-		uh = o.ParseFrameHeader(b, state, h, sh)
+		_ = o.ParseFrameHeader(b, state, h, sh)
 	case header.OBU_REDUNDANT_FRAME_HEADER:
 		o.ParseFrameHeader(b, state, h, sh)
 	case header.OBU_FRAME:
-		o.newFrame(o.Size, b, state, h, sh, uh)
+		o.newFrame(o.Size, b, state, h, sh)
 	case header.OBU_PADDING:
 		o.paddingObu(b)
 	default:
@@ -85,10 +84,10 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 
 // TODO: remove size, should be included in struct
 // frame_obu( sz )
-func (o *Obu) newFrame(sz int, b *bitstream.BitStream, state *state.State, h header.Header, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
+func (o *Obu) newFrame(sz int, b *bitstream.BitStream, state *state.State, h header.Header, sh sequenceheader.SequenceHeader) {
 	startBitPos := b.Position
 
-	o.ParseFrameHeader(b, state, h, sh)
+	uh := o.ParseFrameHeader(b, state, h, sh)
 	b.ByteAlignment()
 
 	endBitPos := b.Position
