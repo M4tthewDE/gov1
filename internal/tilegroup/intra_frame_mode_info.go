@@ -52,7 +52,7 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 		t.assignMv(0, b, state, sh, uh)
 	} else {
 		t.IsInter = 0
-		intraFrameYMode := b.S()
+		intraFrameYMode := t.intraFrameYModeSymbol(state, b, uh)
 		t.YMode = intraFrameYMode
 		t.intraAngleInfoY(b, state)
 
@@ -76,6 +76,29 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 		}
 		t.filterIntraModeInfo(b, sh, state)
 	}
+}
+
+var INTRA_MODE_CONTEXT = []int{
+	0, 1, 2, 3, 4, 4, 4, 4, 3, 0, 1, 2, 0,
+}
+
+func (t *TileGroup) intraFrameYModeSymbol(state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
+	var aboveMode int
+	var leftMode int
+
+	if state.AvailU {
+		aboveMode = INTRA_MODE_CONTEXT[t.YModes[state.MiRow-1][state.MiCol]]
+	} else {
+		aboveMode = DC_PRED
+	}
+
+	if state.AvailL {
+		leftMode = INTRA_MODE_CONTEXT[t.YModes[state.MiRow][state.MiCol-1]]
+	} else {
+		leftMode = DC_PRED
+	}
+
+	return symbol.ReadSymbol(state.TileIntraFrameYModeCdf[aboveMode][leftMode], state, b, uh)
 }
 
 // read_segment_id()
