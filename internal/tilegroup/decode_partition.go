@@ -5,6 +5,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/symbol"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
@@ -133,7 +134,7 @@ func splitOrVertElement(bSize int, r int, c int, state *state.State, uh uncompre
 	cdf[1] = 1 << 15
 	cdf[3] = 0
 
-	return ReadSymbol(cdf, state, b, uh)
+	return symbol.ReadSymbol(cdf, state, b, uh)
 }
 
 func splitOrHorzElement(bSize int, r int, c int, state *state.State, uh uncompressedheader.UncompressedHeader, b *bitstream.BitStream) int {
@@ -170,7 +171,7 @@ func splitOrHorzElement(bSize int, r int, c int, state *state.State, uh uncompre
 	cdf[1] = 1 << 15
 	cdf[3] = 0
 
-	return ReadSymbol(cdf, state, b, uh)
+	return symbol.ReadSymbol(cdf, state, b, uh)
 }
 
 func partitionElement(bSize int, r int, c int, state *state.State, uh uncompressedheader.UncompressedHeader, b *bitstream.BitStream) int {
@@ -192,5 +193,5 @@ func partitionElement(bSize int, r int, c int, state *state.State, uh uncompress
 		cdf = state.TilePartitionW128Cdf[ctx]
 	}
 
-	return ReadSymbol(cdf, state, b, uh)
+	return symbol.ReadSymbol(cdf, state, b, uh)
 }

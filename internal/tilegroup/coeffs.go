@@ -2,6 +2,7 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/literal"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
@@ -95,7 +96,7 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 
 			for i := 1; i < util.Max(0, eobPt-2); i++ {
 				eobShift = util.Max(0, eobPt-2) - 1 - i
-				eobExtraBit := b.L(1)
+				eobExtraBit := literal.L(1, state, b, uh)
 				if util.Bool(eobExtraBit) {
 					eob += (1 << eobShift)
 				}
@@ -134,7 +135,7 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 					dcSign := b.S()
 					sign = dcSign
 				} else {
-					signBit := b.L(1)
+					signBit := literal.L(0, state, b, uh)
 					sign = signBit
 				}
 			} else {
@@ -145,7 +146,7 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 				length := 0
 				for {
 					length++
-					golombLengthBit := b.L(1)
+					golombLengthBit := literal.L(1, state, b, uh)
 
 					if util.Bool(golombLengthBit) {
 						break
@@ -153,7 +154,7 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 				}
 				x := 1
 				for i := length - 2; i >= 0; i-- {
-					golombDataBit := b.L(1)
+					golombDataBit := literal.L(1, state, b, uh)
 					x = (x << 1) | golombDataBit
 				}
 				t.Quant[pos] = x + COEFF_BASE_RANGE + NUM_BASE_LEVELS

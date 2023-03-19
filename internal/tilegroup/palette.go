@@ -2,13 +2,15 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/literal"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // palette_mode_info()
-func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader) {
+func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
 	// TODO: this is used for initilization of has_palette_y I think
 	//bSizeCtx := Mi_Width_Log2[p.MiSize] + Mi_Height_Log2[p.MiSize] - 2
 
@@ -22,7 +24,7 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, 
 			idx := 0
 
 			for i := 0; i < cacheN && idx < t.PaletteSizeY; i++ {
-				usePaletteColorCacheY := b.L(1)
+				usePaletteColorCacheY := literal.L(1, state, b, uh)
 
 				if util.Bool(usePaletteColorCacheY) {
 					t.PaletteColorsY[idx] = t.PaletteCache[i]
@@ -31,19 +33,19 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, 
 			}
 
 			if idx < t.PaletteSizeY {
-				t.PaletteColorsY[idx] = b.L(sh.ColorConfig.BitDepth)
+				t.PaletteColorsY[idx] = literal.L(sh.ColorConfig.BitDepth, state, b, uh)
 				idx++
 			}
 
 			var paletteBits int
 			if idx < t.PaletteSizeY {
 				minBits := sh.ColorConfig.BitDepth - 1
-				paletteNumExtraBitsY := b.L(2)
+				paletteNumExtraBitsY := literal.L(2, state, b, uh)
 				paletteBits = minBits + paletteNumExtraBitsY
 			}
 
 			for idx < t.PaletteSizeY {
-				paletteDeltaY := b.L(paletteBits)
+				paletteDeltaY := literal.L(paletteBits, state, b, uh)
 				paletteDeltaY++
 				t.PaletteColorsY[idx] = util.Clip1(t.PaletteColorsY[idx-1]+paletteDeltaY, sh.ColorConfig.BitDepth)
 				rangE := (1 << sh.ColorConfig.BitDepth) - t.PaletteColorsY[idx] - 1
@@ -63,7 +65,7 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, 
 			idx := 0
 
 			for i := 0; i < cacheN && idx < t.PaletteSizeUV; i++ {
-				usePaletteColorCacheU := b.L(1)
+				usePaletteColorCacheU := literal.L(1, state, b, uh)
 
 				if util.Bool(usePaletteColorCacheU) {
 					t.PaletteColorsY[idx] = t.PaletteCache[i]
@@ -72,19 +74,19 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, 
 			}
 
 			if idx < t.PaletteSizeUV {
-				t.PaletteColorsU[idx] = b.L(sh.ColorConfig.BitDepth)
+				t.PaletteColorsU[idx] = literal.L(sh.ColorConfig.BitDepth, state, b, uh)
 				idx++
 			}
 
 			var paletteBits int
 			if idx < t.PaletteSizeUV {
 				minBits := sh.ColorConfig.BitDepth - 3
-				paletteNumExtraBitsU := b.L(2)
+				paletteNumExtraBitsU := literal.L(2, state, b, uh)
 				paletteBits = minBits + paletteNumExtraBitsU
 			}
 
 			for idx < t.PaletteSizeUV {
-				paletteDeltaU := b.L(paletteBits)
+				paletteDeltaU := literal.L(paletteBits, state, b, uh)
 				t.PaletteColorsU[idx] = util.Clip1(t.PaletteColorsU[idx-1]+paletteDeltaU, sh.ColorConfig.BitDepth)
 				rangE := (1 << sh.ColorConfig.BitDepth) - t.PaletteColorsU[idx] - 1
 				paletteBits = util.Min(paletteBits, util.CeilLog2(rangE))
@@ -92,19 +94,19 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, 
 			}
 			t.PaletteColorsU = util.Sort(t.PaletteColorsU, 0, t.PaletteSizeUV-1)
 
-			deltaEncodePaletteColorsv := b.L(1)
+			deltaEncodePaletteColorsv := literal.L(1, state, b, uh)
 
 			if util.Bool(deltaEncodePaletteColorsv) {
 				minBits := sh.ColorConfig.BitDepth - 4
 				maxVal := 1 << sh.ColorConfig.BitDepth
-				paletteNumExtraBitsv := b.L(2)
+				paletteNumExtraBitsv := literal.L(2, state, b, uh)
 				paletteBits = minBits + paletteNumExtraBitsv
-				t.PaletteColorsV[0] = b.L(sh.ColorConfig.BitDepth)
+				t.PaletteColorsV[0] = literal.L(sh.ColorConfig.BitDepth, state, b, uh)
 
 				for idx := 1; idx < t.PaletteSizeUV; idx++ {
-					paletteDeltaV := b.L(paletteBits)
+					paletteDeltaV := literal.L(paletteBits, state, b, uh)
 					if util.Bool(paletteDeltaV) {
-						paletteDeltaSignBitV := b.L(1)
+						paletteDeltaSignBitV := literal.L(1, state, b, uh)
 						if util.Bool(paletteDeltaSignBitV) {
 							paletteDeltaV = -paletteDeltaV
 						}
@@ -121,7 +123,7 @@ func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, 
 				}
 			} else {
 				for idx := 0; idx < t.PaletteSizeUV; idx++ {
-					t.PaletteColorsV[idx] = b.L(sh.ColorConfig.BitDepth)
+					t.PaletteColorsV[idx] = literal.L(sh.ColorConfig.BitDepth, state, b, uh)
 				}
 			}
 		}

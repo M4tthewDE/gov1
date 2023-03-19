@@ -130,25 +130,7 @@ func (b *BitStream) Le(n int) int {
 	return t
 }
 
-// NS( n )
-func (b *BitStream) NS(n int) int {
-	w := util.FloorLog2(n) + 1
-	m := (1 << w) - n
-	v := b.L(w - 1)
-	if v < m {
-		return v
-	}
-	extraBit := b.L(1)
-	return (v << 1) - m + extraBit
-}
-
 func (b *BitStream) S() int {
 	panic("not implemented: S()")
-	return 0
-}
-
-// L()
-func (b *BitStream) L(a int) int {
-	panic("not implemented: L()")
 	return 0
 }

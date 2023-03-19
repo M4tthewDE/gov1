@@ -5,6 +5,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/symbol"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
@@ -87,7 +88,7 @@ func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 		shared.BLOCK_WIDTH[state.MiSize] <= 64 &&
 		shared.BLOCK_HEIGHT[state.MiSize] <= 64 &&
 		util.Bool(uh.AllowScreenContentTools) {
-		t.paletteModeInfo(b, state, sh)
+		t.paletteModeInfo(b, state, sh, uh)
 	}
 
 	t.filterIntraModeInfo(b, sh, state)
@@ -198,6 +199,6 @@ func (t *TileGroup) readIsInter(b *bitstream.BitStream, state *state.State, uh u
 			ctx = 0
 		}
 
-		t.IsInter = ReadSymbol(state.TileIsInterCdf[ctx], state, b, uh)
+		t.IsInter = symbol.ReadSymbol(state.TileIsInterCdf[ctx], state, b, uh)
 	}
 }

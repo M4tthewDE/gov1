@@ -2,9 +2,11 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/literal"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/symbol"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
@@ -70,7 +72,7 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 		t.PaletteSizeUV = 0
 
 		if state.MiSize >= shared.BLOCK_8X8 && shared.BLOCK_WIDTH[state.MiSize] <= 64 && shared.BLOCK_HEIGHT[state.MiSize] <= 64 && util.Bool(uh.AllowScreenContentTools) {
-			t.paletteModeInfo(b, state, sh)
+			t.paletteModeInfo(b, state, sh, uh)
 		}
 		t.filterIntraModeInfo(b, sh, state)
 	}
@@ -130,7 +132,7 @@ func (t *TileGroup) readSegmentId(b *bitstream.BitStream, uh uncompressedheader.
 			ctx = 0
 		}
 
-		t.SegmentId = ReadSymbol(state.TileSegmentIdCdf[ctx], state, b, uh)
+		t.SegmentId = symbol.ReadSymbol(state.TileSegmentIdCdf[ctx], state, b, uh)
 		t.SegmentId = util.NegDeinterleave(t.SegmentId, pred, uh.LastActiveSegId+1)
 	}
 }
@@ -148,7 +150,7 @@ func (t *TileGroup) readSkip(b *bitstream.BitStream, uh uncompressedheader.Uncom
 			ctx += t.SkipModes[state.MiRow][state.MiCol-1]
 		}
 
-		t.Skip = ReadSymbol(state.TileSkipCdf[ctx], state, b, uh)
+		t.Skip = symbol.ReadSymbol(state.TileSkipCdf[ctx], state, b, uh)
 	}
 }
 
@@ -185,7 +187,7 @@ func (t *TileGroup) readCdef(b *bitstream.BitStream, uh uncompressedheader.Uncom
 	c := state.MiCol & cdefMask4
 
 	if state.Cdef.CdefIdx[r][c] == -1 {
-		state.Cdef.CdefIdx[r][c] = b.L(state.Cdef.CdefBits)
+		state.Cdef.CdefIdx[r][c] = literal.L(state.Cdef.CdefBits, state, b, uh)
 		w4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
 		h4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 
@@ -212,16 +214,16 @@ func (t *TileGroup) readDeltaQIndex(b *bitstream.BitStream, sh sequenceheader.Se
 	}
 
 	if state.ReadDeltas {
-		deltaQAbs := ReadSymbol(state.TileDeltaQCdf, state, b, uh)
+		deltaQAbs := symbol.ReadSymbol(state.TileDeltaQCdf, state, b, uh)
 		if deltaQAbs == DELTA_Q_SMALL {
-			deltaQRemBits := b.L(3)
+			deltaQRemBits := literal.L(3, state, b, uh)
 			deltaQRemBits++
-			deltaQAbsBits := b.L(deltaQRemBits)
+			deltaQAbsBits := literal.L(deltaQRemBits, state, b, uh)
 			deltaQAbs = deltaQAbsBits + (1 << deltaQRemBits) + 1
 		}
 
 		if util.Bool(deltaQAbs) {
-			deltaQSignBit := b.L(1)
+			deltaQSignBit := literal.L(1, state, b, uh)
 			var reducedDeltaQIndex int
 			if util.Bool(deltaQSignBit) {
 				reducedDeltaQIndex = -deltaQAbs
@@ -264,9 +266,9 @@ func (t *TileGroup) readDeltaLf(b *bitstream.BitStream, sh sequenceheader.Sequen
 			delta_lf_abs := b.S()
 
 			if delta_lf_abs == DELTA_LF_SMALL {
-				deltaLfRemBits := b.L(3)
+				deltaLfRemBits := literal.L(3, state, b, uh)
 				n := deltaLfRemBits + 1
-				deltaLfAbsBits := b.L(n)
+				deltaLfAbsBits := literal.L(n, state, b, uh)
 				deltaLfAbs = deltaLfAbsBits + (1 << n) + 1
 			} else {
 				deltaLfAbs = delta_lf_abs
@@ -274,7 +276,7 @@ func (t *TileGroup) readDeltaLf(b *bitstream.BitStream, sh sequenceheader.Sequen
 
 			var reducedDeltaLfLevel int
 			if util.Bool(deltaLfAbs) {
-				deltaLfSignBit := b.L(1)
+				deltaLfSignBit := literal.L(1, state, b, uh)
 				if util.Bool(deltaLfSignBit) {
 					reducedDeltaLfLevel = -deltaLfAbs
 				} else {

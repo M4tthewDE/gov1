@@ -2,9 +2,11 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/literal"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/symbol"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 	"github.com/m4tthewde/gov1/internal/wedgemask"
@@ -34,7 +36,7 @@ func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 
 		t.YMode = shared.NEAREST_NEARESTMV + compoundMode
 	} else {
-		newMv := ReadSymbol(state.TileNewMvCdf[t.NewMvContext], state, b, uh)
+		newMv := symbol.ReadSymbol(state.TileNewMvCdf[t.NewMvContext], state, b, uh)
 		if newMv == 0 {
 			t.YMode = shared.NEWMV
 		} else {
@@ -81,7 +83,7 @@ func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 	t.assignMv(util.Int(isCompound), b, state, sh, uh)
 	t.readInterIntraMode(isCompound, b, state, sh)
 	t.readMotionMode(isCompound, b, uh, state)
-	t.readCompoundType(isCompound, b, state, sh)
+	t.readCompoundType(isCompound, b, state, sh, uh)
 
 	if uh.InterpolationFilter == shared.SWITCHABLE {
 		x := 1
@@ -409,7 +411,7 @@ func (t *TileGroup) needsInterpFilter(state *state.State) bool {
 }
 
 // read_compound_type( isCompound )
-func (t *TileGroup) readCompoundType(isCompound bool, b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader) {
+func (t *TileGroup) readCompoundType(isCompound bool, b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
 	t.CompGroupIdx = 0
 	t.CompoundIdx = 1
 	if util.Bool(t.SkipMode) {
@@ -445,9 +447,9 @@ func (t *TileGroup) readCompoundType(isCompound bool, b *bitstream.BitStream, st
 
 		if t.CompoundType == COMPOUND_WEDGE {
 			t.WedgeIndex = b.S()
-			t.WedgeIndex = b.L(1)
+			t.WedgeIndex = literal.L(1, state, b, uh)
 		} else if t.CompoundType == COMPOUND_DIFFWTD {
-			t.MaskType = b.L(1)
+			t.MaskType = literal.L(1, state, b, uh)
 		}
 	} else {
 		if util.Bool(t.InterIntra) {

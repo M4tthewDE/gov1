@@ -2,6 +2,7 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/literal"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
@@ -51,7 +52,7 @@ func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream, stat
 
 			for unitRow := unitRowStart; unitRow < unitRowEnd; unitRow++ {
 				for unitCol := unitColStart; unitCol < unitColEnd; unitCol++ {
-					t.readLrUnit(plane, unitRow, unitCol, b, uh)
+					t.readLrUnit(plane, unitRow, unitCol, state, b, uh)
 				}
 			}
 		}
@@ -59,7 +60,7 @@ func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream, stat
 }
 
 // read_lr_unit(plane, unitRow, unitCol)
-func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
 	var restorationType int
 	if uh.FrameRestorationType[plane] == shared.RESTORE_WIENER {
 		useWiener := b.S()
@@ -92,13 +93,13 @@ func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, b *bitstream
 				min := Wiener_Taps_Min[j]
 				max := Wiener_Taps_Max[j]
 				k := Wiener_Taps_K[j]
-				v := t.decodeSignedSubexpWithRefBool(min, max+1, k, t.RefLrWiener[plane][pass][j], b)
+				v := t.decodeSignedSubexpWithRefBool(min, max+1, k, t.RefLrWiener[plane][pass][j], state, b, uh)
 				t.LrWiener[plane][unitRow][unitCol][pass][j] = v
 				t.RefLrWiener[plane][pass][j] = v
 			}
 		}
 	} else if restorationType == shared.RESTORE_SGRPROJ {
-		lrSgrSet := b.L(SGRPROJ_PARAMS_BITS)
+		lrSgrSet := literal.L(SGRPROJ_PARAMS_BITS, state, b, uh)
 		t.LrSgrSet[plane][unitRow][unitCol] = lrSgrSet
 
 		for i := 0; i < 2; i++ {
@@ -108,7 +109,7 @@ func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, b *bitstream
 
 			var v int
 			if radius != 0 {
-				v = t.decodeSignedSubexpWithRefBool(min, max+1, SGRPROJ_PRJ_SUBEXP_K, t.RefSgrXqd[plane][i], b)
+				v = t.decodeSignedSubexpWithRefBool(min, max+1, SGRPROJ_PRJ_SUBEXP_K, t.RefSgrXqd[plane][i], state, b, uh)
 			} else {
 				v = 0
 				if i == 1 {
@@ -123,14 +124,14 @@ func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, b *bitstream
 
 }
 
-func (t *TileGroup) decodeSignedSubexpWithRefBool(low int, high int, k int, r int, b *bitstream.BitStream) int {
-	x := t.decodeUnsignedSubexpWithRefBool(high-low, k, r-low, b)
+func (t *TileGroup) decodeSignedSubexpWithRefBool(low int, high int, k int, r int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
+	x := t.decodeUnsignedSubexpWithRefBool(high-low, k, r-low, state, b, uh)
 	return x + low
 
 }
 
-func (t *TileGroup) decodeUnsignedSubexpWithRefBool(mx int, k int, r int, b *bitstream.BitStream) int {
-	v := t.decodeSubexpBool(mx, k, b)
+func (t *TileGroup) decodeUnsignedSubexpWithRefBool(mx int, k int, r int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
+	v := t.decodeSubexpBool(mx, k, state, b, uh)
 	if (r << 1) <= mx {
 		return util.InverseRecenter(r, v)
 	} else {
@@ -138,7 +139,7 @@ func (t *TileGroup) decodeUnsignedSubexpWithRefBool(mx int, k int, r int, b *bit
 	}
 }
 
-func (t *TileGroup) decodeSubexpBool(numSyms int, k int, b *bitstream.BitStream) int {
+func (t *TileGroup) decodeSubexpBool(numSyms int, k int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
 	i := 0
 	mk := 0
 	for {
@@ -150,15 +151,15 @@ func (t *TileGroup) decodeSubexpBool(numSyms int, k int, b *bitstream.BitStream)
 		a := 1 << b2
 
 		if numSyms <= -mk+3*a {
-			subexpUnifBools := b.L(1)
+			subexpUnifBools := literal.L(1, state, b, uh)
 			return subexpUnifBools + mk
 		} else {
-			subexpMoreBools := b.L(1) != 0
+			subexpMoreBools := literal.L(1, state, b, uh) != 0
 			if subexpMoreBools {
 				i++
 				mk += a
 			} else {
-				subexpBools := b.L(b2)
+				subexpBools := literal.L(b2, state, b, uh)
 				return subexpBools + mk
 			}
 		}
