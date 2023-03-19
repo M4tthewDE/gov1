@@ -4,6 +4,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/symbol"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
@@ -46,16 +47,73 @@ func (t *TileGroup) readTxSize(allowSelect bool, b *bitstream.BitStream, state *
 	}
 
 	maxRectTxSize := Max_Tx_Size_Rect[state.MiSize]
-	// TODO: what is this for?
-	//maxTxDepth := Max_Tx_Depth[p.MiSize]
+	maxTxDepth := Max_Tx_Depth[state.MiSize]
 	t.TxSize = maxRectTxSize
 
 	if state.MiSize > shared.BLOCK_4X4 && allowSelect && uh.TxMode == shared.TX_MODE_SELECT {
-		txDepth := b.S()
+		txDepth := t.txDepthSymbol(maxRectTxSize, maxTxDepth, state, b, uh)
 		for i := 0; i < txDepth; i++ {
 			t.TxSize = Split_Tx_Size[t.TxSize]
 		}
 	}
+}
+
+func (t *TileGroup) txDepthSymbol(maxRectTxSize int, maxTxDepth int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
+	maxTxWidth := Tx_Width[maxRectTxSize]
+	maxTxHeight := Tx_Height[maxRectTxSize]
+
+	var aboveW int
+	if state.AvailU && util.Bool(t.IsInters[state.MiRow-1][state.MiCol]) {
+		aboveW = shared.BLOCK_WIDTH[state.MiSizes[state.MiRow-1][state.MiCol]]
+	} else if state.AvailU {
+		aboveW = t.getAboveTxWidth(state.MiRow, state.MiCol, state)
+	} else {
+		aboveW = 0
+	}
+
+	var leftH int
+	if state.AvailL && util.Bool(t.IsInters[state.MiRow][state.MiCol-1]) {
+		leftH = shared.BLOCK_HEIGHT[state.MiSizes[state.MiRow][state.MiCol-1]]
+	} else if state.AvailU {
+		leftH = t.getLeftTxHeight(state.MiRow, state.MiCol, state)
+	} else {
+		leftH = 0
+	}
+
+	ctx := util.Int(aboveW >= maxTxWidth) + util.Int(leftH >= maxTxHeight)
+
+	if maxTxDepth == 4 {
+		return symbol.ReadSymbol(state.TileTx64x64Cdf[ctx], state, b, uh)
+
+	} else if maxTxDepth == 3 {
+		return symbol.ReadSymbol(state.TileTx32x32Cdf[ctx], state, b, uh)
+	} else if maxTxDepth == 2 {
+		return symbol.ReadSymbol(state.TileTx16x16Cdf[ctx], state, b, uh)
+	} else {
+		return symbol.ReadSymbol(state.TileTx8x8Cdf[ctx], state, b, uh)
+	}
+}
+
+func (t *TileGroup) getAboveTxWidth(row int, col int, state *state.State) int {
+	if row == state.MiRow {
+		if !state.AvailU {
+			return 64
+		} else if util.Bool(t.Skips[row-1][col]) && util.Bool(t.IsInters[row-1][col]) {
+			return shared.BLOCK_WIDTH[state.MiSizes[row-1][col]]
+		}
+	}
+	return Tx_Width[t.InterTxSizes[row-1][col]]
+}
+
+func (t *TileGroup) getLeftTxHeight(row int, col int, state *state.State) int {
+	if row == state.MiCol {
+		if !state.AvailL {
+			return 64
+		} else if util.Bool(t.Skips[row][col-1]) && util.Bool(t.IsInters[row][col-1]) {
+			return shared.BLOCK_HEIGHT[state.MiSizes[row][col-1]]
+		}
+	}
+	return Tx_Height[t.InterTxSizes[row][col-1]]
 }
 
 // read_var_tx_size( row, col, txSz, depth )
