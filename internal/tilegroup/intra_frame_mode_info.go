@@ -212,7 +212,7 @@ func (t *TileGroup) readDeltaQIndex(b *bitstream.BitStream, sh sequenceheader.Se
 	}
 
 	if state.ReadDeltas {
-		deltaQAbs := b.S()
+		deltaQAbs := ReadSymbol(state.TileDeltaQCdf, state, b, uh)
 		if deltaQAbs == DELTA_Q_SMALL {
 			deltaQRemBits := b.L(3)
 			deltaQRemBits++
