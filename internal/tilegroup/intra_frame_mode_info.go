@@ -119,7 +119,18 @@ func (t *TileGroup) readSegmentId(b *bitstream.BitStream, uh uncompressedheader.
 	if t.Skip == 1 {
 		t.SegmentId = pred
 	} else {
-		t.SegmentId = b.S()
+		var ctx int
+		if prevUL < 0 {
+			ctx = 0
+		} else if (prevUL == prevU) && prevUL == prevL {
+			ctx = 2
+		} else if prevUL == prevU || prevUL == prevL || prevU == prevL {
+			ctx = 1
+		} else {
+			ctx = 0
+		}
+
+		t.SegmentId = ReadSymbol(state.TileSegmentIdCdf[ctx], state, b, uh)
 		t.SegmentId = util.NegDeinterleave(t.SegmentId, pred, uh.LastActiveSegId+1)
 	}
 }
