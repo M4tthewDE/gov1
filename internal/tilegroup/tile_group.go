@@ -583,16 +583,16 @@ func (t *TileGroup) clearBlockDecodedFlags(r int, c int, sbSize4 int, state *sta
 			for x := -1; x <= (sbSize4 >> subX); x++ {
 
 				if y < 0 && x < sbWidth4 {
-					state.BlockDecoded[plane][y][x] = 1
+					state.BlockDecoded[plane][y][x] = true
 				} else if x < 0 && y < sbHeight4 {
-					state.BlockDecoded[plane][y][x] = 1
+					state.BlockDecoded[plane][y][x] = true
 				} else {
-					state.BlockDecoded[plane][y][x] = 0
+					state.BlockDecoded[plane][y][x] = false
 				}
 			}
 		}
 		lastElement := len(state.BlockDecoded[plane][sbSize4>>subY])
-		state.BlockDecoded[plane][sbSize4>>subY][lastElement] = 0
+		state.BlockDecoded[plane][sbSize4>>subY][lastElement] = false
 	}
 
 }

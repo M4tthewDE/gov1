@@ -1,6 +1,8 @@
 package tilegroup
 
 import (
+	"runtime"
+
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
@@ -9,7 +11,7 @@ import (
 
 // 7.11.2 Intra prediction process
 // predict_intra( plane, x, y, haveLeft, haveAbove, haveAboveRight, haveBelowLeft, mode, log2W, log2H )
-func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbove bool, haveAboveRight int, haveBelowLeft int, mode int, log2W int, log2H int, state *state.State, sh sequenceheader.SequenceHeader) {
+func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbove bool, haveAboveRight bool, haveBelowLeft bool, mode int, log2W int, log2H int, state *state.State, sh sequenceheader.SequenceHeader) {
 	w := 1 << log2W
 	h := 1 << log2H
 	maxX := (state.MiCols * MI_SIZE) - 1
@@ -24,11 +26,12 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 		if util.Int(haveAbove) == 0 && util.Int(haveLeft) == 1 {
 			t.AboveRow[i] = state.CurrFrame[plane][y][x-1]
 		} else if util.Int(haveAbove) == 0 && util.Int(haveLeft) == 0 {
+			runtime.Breakpoint()
 			t.AboveRow[i] = (1 << (sh.ColorConfig.BitDepth - 1)) - 1
 
 		} else {
 			aboveLimit := util.Min(maxX, x+w-1)
-			if util.Bool(haveAboveRight) {
+			if haveAboveRight {
 				aboveLimit = util.Min(maxX, x+2*w-1)
 			}
 			t.AboveRow[i] = state.CurrFrame[plane][y-1][util.Min(aboveLimit, x+i)]
@@ -43,7 +46,7 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 
 		} else {
 			leftLimit := util.Min(maxY, y+h-1)
-			if util.Bool(haveBelowLeft) {
+			if haveBelowLeft {
 				leftLimit = util.Min(maxY, y+2*h-1)
 			}
 			t.AboveRow[i] = state.CurrFrame[plane][util.Min(leftLimit, y+i)][x-1]

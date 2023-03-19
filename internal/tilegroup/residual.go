@@ -135,14 +135,29 @@ func (t *TileGroup) transformBlock(plane int, baseX int, baseY int, txSz int, x 
 				conditionL = state.AvailLChroma
 				conditionU = state.AvailUChroma
 			}
+
+			// this assumes negative indeces are intended
+			x1 := (subBlockMiCol >> subX) + stepX
+			x2 := (subBlockMiCol >> subX) - 1
+			y1 := (subBlockMiRow >> subY) + stepY
+			y2 := (subBlockMiRow >> subY) - 1
+
+			if x2 < 0 {
+				x2 = len(state.BlockDecoded[plane][y1]) + x2
+			}
+
+			if y2 < 0 {
+				y2 = len(state.BlockDecoded[plane]) + y2
+			}
+
 			t.predictIntra(
 				plane,
 				startX,
 				startY,
 				conditionL || x > 0,
 				conditionU || y > 0,
-				state.BlockDecoded[plane][(subBlockMiRow>>subY)-1][(subBlockMiCol>>subX)+stepX],
-				state.BlockDecoded[plane][(subBlockMiRow>>subY)+stepY][(subBlockMiCol>>subX)-1],
+				state.BlockDecoded[plane][y2][x1],
+				state.BlockDecoded[plane][y1][x2],
 				mode,
 				log2W,
 				log2H,
@@ -169,7 +184,7 @@ func (t *TileGroup) transformBlock(plane int, baseX int, baseY int, txSz int, x 
 	for i := 0; i < stepY; i++ {
 		for j := 0; j < stepY; j++ {
 			t.LoopFilterTxSizes[plane][(row>>subY)+i][(col>>subX + j)] = txSz
-			state.BlockDecoded[plane][(subBlockMiRow>>subY)+i][(subBlockMiCol>>subX)+j] = 1
+			state.BlockDecoded[plane][(subBlockMiRow>>subY)+i][(subBlockMiCol>>subX)+j] = true
 		}
 	}
 }

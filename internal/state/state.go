@@ -27,25 +27,26 @@ type State struct {
 	MiColEnd          int
 	MiRowStart        int
 	MiRowEnd          int
-	BlockWidth        []int
-	BlockHeight       []int
+	BlockWidth        [shared.MAX_TILE_ROWS]int
+	BlockHeight       [shared.MAX_TILE_COLS]int
 
-	SeenFrameHeader        bool
-	RenderWidth            int
-	RenderHeight           int
-	UpscaledWidth          int
-	UpscaledHeight         int
-	TileNum                int
-	MiCol                  int
-	MiRow                  int
-	MiSize                 int
-	MiSizes                [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
-	DeltaLF                [shared.FRAME_LF_COUNT]int
-	DeltaLFs               [][][]int
-	RefLrWiener            [][][]int
-	ReadDeltas             bool
-	Cdef                   cdef.Cdef
-	BlockDecoded           [][][]int
+	SeenFrameHeader bool
+	RenderWidth     int
+	RenderHeight    int
+	UpscaledWidth   int
+	UpscaledHeight  int
+	TileNum         int
+	MiCol           int
+	MiRow           int
+	MiSize          int
+	MiSizes         [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
+	DeltaLF         [shared.FRAME_LF_COUNT]int
+	DeltaLFs        [][][]int
+	RefLrWiener     [][][]int
+	ReadDeltas      bool
+	Cdef            cdef.Cdef
+	// the secondary and tertiary sizes are purely guesswork
+	BlockDecoded           [2][3][3]bool
 	FrameRestorationType   []int
 	LoopRestorationSize    []int
 	AvailU                 bool
