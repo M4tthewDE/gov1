@@ -542,6 +542,15 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 			}
 
 			t.addExtraMvCandidateProcess(mvRow, mvCol, isCompound, state)
+
+			// Unsure if negative indexing here is intended
+			if mvRow < 0 {
+				mvRow = len(state.MiSizes) + mvRow
+			}
+			if mvCol < 0 {
+				mvCol = len(state.MiSizes) + mvCol
+			}
+
 			if pass == 0 {
 				idx += shared.NUM_4X4_BLOCKS_WIDE[state.MiSizes[mvRow][mvCol]]
 			} else {
@@ -598,10 +607,12 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 // 7.10.2.13 Add extra mv candidate process
 func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound int, state *state.State) {
 	// Unsure if negative indexing here is intended
-	// if the size of state.RefFrames[] gets increased, it keeps reaching the maximum size
-	// the decoding seems to never stop and enters an infinite loop
 	if mvRow < 0 {
-		mvRow = len(state.RefFrames) - mvRow
+		mvRow = len(state.RefFrames) + mvRow
+	}
+
+	if mvCol < 0 {
+		mvCol = len(state.RefFrames) + mvCol
 	}
 
 	var candRef int

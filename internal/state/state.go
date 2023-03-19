@@ -39,7 +39,7 @@ type State struct {
 	MiCol                  int
 	MiRow                  int
 	MiSize                 int
-	MiSizes                [][]int
+	MiSizes                [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
 	DeltaLF                [shared.FRAME_LF_COUNT]int
 	DeltaLFs               [][][]int
 	RefLrWiener            [][][]int
@@ -53,7 +53,7 @@ type State struct {
 	AvailUChroma           bool
 	AvailLChroma           bool
 	RefFrame               [2]int
-	RefFrames              [][2][2]int
+	RefFrames              [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS][2]int
 	RefFrameWidth          []int
 	RefFrameHeight         []int
 	CurrFrame              [][][]int

@@ -3,14 +3,10 @@ package tileinfo
 import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/util"
 )
-
-const MAX_TILE_WIDTH = 4096
-const MAX_TILE_AREA = 4096 * 2304
-const MAX_TILE_COLS = 64
-const MAX_TILE_ROWS = 64
 
 type TileInfo struct {
 	ContextUpdateTileId int
@@ -38,11 +34,11 @@ func NewTileInfo(sh sequenceheader.SequenceHeader, s *state.State, b *bitstream.
 	s.MiRowStarts = make([]int, sbRows+1)
 
 	sbSize := sbShift + 2
-	maxTileWidthSb := MAX_TILE_WIDTH >> sbSize
-	maxTileAreaSb := MAX_TILE_AREA >> (2 * sbSize)
+	maxTileWidthSb := shared.MAX_TILE_WIDTH >> sbSize
+	maxTileAreaSb := shared.MAX_TILE_AREA >> (2 * sbSize)
 	minLog2TileCols := util.TileLog2(maxTileWidthSb, sbCols)
-	maxLog2TileCols := util.TileLog2(1, int(util.Min(sbCols, MAX_TILE_COLS)))
-	maxLog2TileRows := util.TileLog2(1, util.Min(sbRows, MAX_TILE_ROWS))
+	maxLog2TileCols := util.TileLog2(1, int(util.Min(sbCols, shared.MAX_TILE_COLS)))
+	maxLog2TileRows := util.TileLog2(1, util.Min(sbRows, shared.MAX_TILE_ROWS))
 	minLog2Tiles := util.Max(minLog2TileCols, util.TileLog2(maxTileAreaSb, sbRows*sbCols))
 
 	uniformTileSpacing := b.F(1) != 0

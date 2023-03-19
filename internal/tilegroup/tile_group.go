@@ -153,7 +153,7 @@ type TileGroup struct {
 	FoundMatch          int
 	TotalMatches        int
 	CloseMatches        int
-	RefStackMv          [][][2]int
+	RefStackMv          [2][2][2]int
 	RefIdCount          [2]int
 	RefIdMvs            [][][2]int
 	RefDiffCount        [2]int
