@@ -69,7 +69,7 @@ func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 	state.RefFrame[1] = shared.NONE
 	yMode := b.S()
 	t.YMode = yMode
-	t.intraAngleInfoY(b, state)
+	t.intraAngleInfoY(b, state, uh)
 
 	if t.HasChroma {
 		uvMode := b.S()

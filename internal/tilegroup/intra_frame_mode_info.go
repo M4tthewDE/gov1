@@ -54,7 +54,7 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 		t.IsInter = 0
 		intraFrameYMode := t.intraFrameYModeSymbol(state, b, uh)
 		t.YMode = intraFrameYMode
-		t.intraAngleInfoY(b, state)
+		t.intraAngleInfoY(b, state, uh)
 
 		if t.HasChroma {
 			uvMode := b.S()
@@ -319,13 +319,13 @@ func (t *TileGroup) readDeltaLf(b *bitstream.BitStream, sh sequenceheader.Sequen
 }
 
 // intra_angle_info_y()
-func (t *TileGroup) intraAngleInfoY(b *bitstream.BitStream, state *state.State) {
+func (t *TileGroup) intraAngleInfoY(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	t.AngleDeltaY = 0
 
 	if state.MiSize >= shared.BLOCK_8X8 {
 
 		if t.isDirectionalMode(t.YMode) {
-			angleDeltaY := b.S()
+			angleDeltaY := symbol.ReadSymbol(state.TileAngleDeltaCdf[t.YMode-V_PRED], state, b, uh)
 			t.AngleDeltaY = angleDeltaY - MAX_ANGLE_DELTA
 		}
 	}
