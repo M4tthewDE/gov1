@@ -696,6 +696,17 @@ func (t *TileGroup) contextAndClampingProcess(isCompound int, numNew int, state 
 			t.RefStackMv[idx][list] = refMv
 		}
 	}
+
+	if t.CloseMatches == 0 {
+		t.NewMvContext = util.Min(t.TotalMatches, 1)
+		t.RefMvContext = t.TotalMatches
+	} else if t.CloseMatches == 1 {
+		t.NewMvContext = 3 - util.Min(numNew, 1)
+		t.RefMvContext = 2 + t.TotalMatches
+	} else {
+		t.NewMvContext = 5 - util.Min(numNew, 1)
+		t.RefMvContext = 5
+	}
 }
 
 // clamp_mv_row( mvec, border)

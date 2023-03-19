@@ -254,6 +254,9 @@ type TileGroup struct {
 	T                 []int
 	Residual          [][]int
 	LoopFilterTxSizes [][][]int
+
+	NewMvContext int
+	RefMvContext int
 }
 
 func NewTileGroup(sz int, b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) TileGroup {

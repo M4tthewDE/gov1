@@ -34,7 +34,7 @@ func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 
 		t.YMode = shared.NEAREST_NEARESTMV + compoundMode
 	} else {
-		newMv := b.S()
+		newMv := ReadSymbol(state.TileNewMvCdf[t.NewMvContext], state, b, uh)
 		if newMv == 0 {
 			t.YMode = shared.NEWMV
 		} else {
