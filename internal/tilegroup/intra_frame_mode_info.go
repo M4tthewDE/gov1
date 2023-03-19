@@ -263,7 +263,12 @@ func (t *TileGroup) readDeltaLf(b *bitstream.BitStream, sh sequenceheader.Sequen
 
 		for i := 0; i < frameLfCount; i++ {
 			var deltaLfAbs int
-			delta_lf_abs := b.S()
+			var delta_lf_abs int
+			if uh.DeltaLfMulti == 0 {
+				delta_lf_abs = symbol.ReadSymbol(state.TileDeltaLFCdf, state, b, uh)
+			} else {
+				delta_lf_abs = symbol.ReadSymbol(state.TileDeltaLFMultiCdf[i], state, b, uh)
+			}
 
 			if delta_lf_abs == DELTA_LF_SMALL {
 				deltaLfRemBits := literal.L(3, state, b, uh)
