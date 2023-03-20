@@ -1,8 +1,6 @@
 package tilegroup
 
 import (
-	"runtime"
-
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
@@ -26,7 +24,6 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 		if util.Int(haveAbove) == 0 && util.Int(haveLeft) == 1 {
 			t.AboveRow[i] = state.CurrFrame[plane][y][x-1]
 		} else if util.Int(haveAbove) == 0 && util.Int(haveLeft) == 0 {
-			runtime.Breakpoint()
 			t.AboveRow[i] = (1 << (sh.ColorConfig.BitDepth - 1)) - 1
 
 		} else {

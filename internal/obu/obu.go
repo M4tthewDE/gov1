@@ -15,11 +15,14 @@ import (
 type ObuType int
 
 type Obu struct {
-	Size int
+	Size           int
+	Header         header.Header
+	SequenceHeader sequenceheader.SequenceHeader
 }
 
-func NewObu(sz int, state *state.State, b *bitstream.BitStream) Obu {
+func NewObu(sz int, state *state.State, b *bitstream.BitStream, sh sequenceheader.SequenceHeader) Obu {
 	obu := Obu{}
+	obu.SequenceHeader = sh
 	obu.build(sz, b, state)
 
 	return obu
@@ -27,22 +30,22 @@ func NewObu(sz int, state *state.State, b *bitstream.BitStream) Obu {
 
 // open_bitstream_unit(sz)
 func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
-	h := header.NewHeader(b)
+	o.Header = header.NewHeader(b)
 
-	if h.HasSizeField {
+	if o.Header.HasSizeField {
 		o.Size = b.Leb128()
 	} else {
-		o.Size = sz - 1 - util.Int(h.ExtensionFlag)
+		o.Size = sz - 1 - util.Int(o.Header.ExtensionFlag)
 	}
 
 	startPosition := b.Position
 
-	if h.Type != header.OBU_SEQUENCE_HEADER &&
-		h.Type != header.OBU_TEMPORAL_DELIMITER &&
+	if o.Header.Type != header.OBU_SEQUENCE_HEADER &&
+		o.Header.Type != header.OBU_TEMPORAL_DELIMITER &&
 		state.OperatingPointIdc != 0 &&
-		h.ExtensionFlag {
-		inTemporalLayer := ((state.OperatingPointIdc >> h.ExtensionHeader.TemporalID) & 1) != 0
-		inSpatialLayer := ((state.OperatingPointIdc >> (h.ExtensionHeader.SpatialID + 8)) & 1) != 0
+		o.Header.ExtensionFlag {
+		inTemporalLayer := ((state.OperatingPointIdc >> o.Header.ExtensionHeader.TemporalID) & 1) != 0
+		inSpatialLayer := ((state.OperatingPointIdc >> (o.Header.ExtensionHeader.SpatialID + 8)) & 1) != 0
 
 		if !inTemporalLayer || !inSpatialLayer {
 			//drop_obu()
@@ -51,21 +54,19 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 		}
 	}
 
-	logger.Logger.Info("Parsing obu...", zap.Int("type", h.Type))
+	logger.Logger.Info("Parsing obu...", zap.Int("type", o.Header.Type))
 
-	var sh sequenceheader.SequenceHeader
-
-	switch h.Type {
+	switch o.Header.Type {
 	case header.OBU_SEQUENCE_HEADER:
-		sh = sequenceheader.NewSequenceHeader(b, state)
+		o.SequenceHeader = sequenceheader.NewSequenceHeader(b, state)
 	case header.OBU_TEMPORAL_DELIMITER:
 		state.SeenFrameHeader = false
 	case header.OBU_FRAME_HEADER:
-		_ = o.ParseFrameHeader(b, state, h, sh)
+		o.ParseFrameHeader(b, state, o.Header, o.SequenceHeader)
 	case header.OBU_REDUNDANT_FRAME_HEADER:
-		o.ParseFrameHeader(b, state, h, sh)
+		o.ParseFrameHeader(b, state, o.Header, o.SequenceHeader)
 	case header.OBU_FRAME:
-		o.newFrame(o.Size, b, state, h, sh)
+		o.newFrame(o.Size, b, state, o.Header, o.SequenceHeader)
 	case header.OBU_PADDING:
 		o.paddingObu(b)
 	default:
@@ -75,16 +76,16 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 	payloadBits := b.Position - startPosition
 
 	if o.Size > 0 &&
-		h.Type != header.OBU_TILE_GROUP &&
-		h.Type != header.OBU_TILE_LIST &&
-		h.Type != header.OBU_FRAME {
+		o.Header.Type != header.OBU_TILE_GROUP &&
+		o.Header.Type != header.OBU_TILE_LIST &&
+		o.Header.Type != header.OBU_FRAME {
 		b.TrailingBits(o.Size*8 - payloadBits)
 	}
 }
 
 // TODO: remove size, should be included in struct
 // frame_obu( sz )
-func (o *Obu) newFrame(sz int, b *bitstream.BitStream, state *state.State, h header.Header, sh sequenceheader.SequenceHeader) {
+func (o *Obu) newFrame(sz int, b *bitstream.BitStream, state *state.State, h header.Header, sh sequenceheader.SequenceHeader) tilegroup.TileGroup {
 	startBitPos := b.Position
 
 	uh := o.ParseFrameHeader(b, state, h, sh)
@@ -95,7 +96,7 @@ func (o *Obu) newFrame(sz int, b *bitstream.BitStream, state *state.State, h hea
 	headerBytes := (endBitPos - startBitPos) / 8
 	sz -= headerBytes
 
-	_ = tilegroup.NewTileGroup(sz, b, state, uh, sh)
+	return tilegroup.NewTileGroup(sz, b, state, uh, sh)
 }
 
 // frame_header_obu()
