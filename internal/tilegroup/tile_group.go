@@ -125,7 +125,7 @@ type TileGroup struct {
 	LrType              [3][1][1]int
 	RefLrWiener         [3][2][3]int
 	LrWiener            [][][][][]int
-	LrSgrSet            [][][]int
+	LrSgrSet            [3][1][1]int
 	RefSgrXqd           [3][2]int
 	LrSgrXqd            [][][][]int
 	HasChroma           bool
