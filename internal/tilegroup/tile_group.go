@@ -127,7 +127,7 @@ type TileGroup struct {
 	LrWiener            [][][][][]int
 	LrSgrSet            [3][1][1]int
 	RefSgrXqd           [3][2]int
-	LrSgrXqd            [][][][]int
+	LrSgrXqd            [3][1][1][2]int
 	HasChroma           bool
 	SegmentId           int
 	SegmentIds          [][]int
