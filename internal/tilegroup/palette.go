@@ -4,18 +4,27 @@ import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/literal"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/symbol"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
 // palette_mode_info()
 func (t *TileGroup) paletteModeInfo(b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) {
-	// TODO: this is used for initilization of has_palette_y I think
-	//bSizeCtx := Mi_Width_Log2[p.MiSize] + Mi_Height_Log2[p.MiSize] - 2
+	bSizeCtx := shared.MI_WIDTH_LOG2[state.MiSize] + shared.MI_HEIGHT_LOG2[state.MiSize] - 2
 
 	if t.YMode == DC_PRED {
-		hasPaletteY := b.S()
+		ctx := 0
+		if state.AvailU && t.PaletteSizes[0][state.MiRow-1][state.MiCol] > 0 {
+			ctx += 1
+		}
+		if state.AvailL && t.PaletteSizes[0][state.MiRow][state.MiCol-1] > 0 {
+			ctx += 1
+		}
+
+		hasPaletteY := symbol.ReadSymbol(state.TilePaletteYModeCdf[bSizeCtx][ctx], state, b, uh)
 
 		if util.Bool(hasPaletteY) {
 			paletteSizeYMinus2 := b.S()
