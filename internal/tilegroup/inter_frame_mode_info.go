@@ -76,7 +76,7 @@ func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 		t.UVMode = uvMode
 
 		if t.UVMode == UV_CFL_PRED {
-			t.readCflAlphas(b)
+			t.readCflAlphas(b, state, uh)
 		}
 
 		t.intraAngleInfoUv(b, state)

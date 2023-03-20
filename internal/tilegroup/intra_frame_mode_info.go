@@ -69,7 +69,7 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 			t.UVMode = uvMode
 
 			if t.UVMode == UV_CFL_PRED {
-				t.readCflAlphas(b)
+				t.readCflAlphas(b, state, uh)
 			}
 
 			t.intraAngleInfoUv(b, state)
@@ -339,8 +339,8 @@ func (t *TileGroup) intraAngleInfoY(b *bitstream.BitStream, state *state.State, 
 }
 
 // read_cfl_alphas()
-func (t *TileGroup) readCflAlphas(b *bitstream.BitStream) {
-	cflAlphaSigns := b.S()
+func (t *TileGroup) readCflAlphas(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
+	cflAlphaSigns := symbol.ReadSymbol(state.TileCflSignCdf, state, b, uh)
 	signU := (cflAlphaSigns + 1) / 3
 	signV := (cflAlphaSigns + 1) % 3
 
