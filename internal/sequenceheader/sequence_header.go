@@ -81,8 +81,9 @@ type ColorConfig struct {
 	SubsamplingY            bool
 	ChromaSamplePosition    int
 	SeparateUvDeltaQ        bool
-	NumPlanes               int
-	BitDepth                int
+	// can only be 3 or 1
+	NumPlanes int
+	BitDepth  int
 }
 
 type OperatingParametersInfo struct {
