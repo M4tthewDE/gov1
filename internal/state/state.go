@@ -45,8 +45,8 @@ type State struct {
 	RefLrWiener     [][][]int
 	ReadDeltas      bool
 	Cdef            cdef.Cdef
-	// the secondary and tertiary sizes are purely guesswork
-	BlockDecoded           [2][3][3]bool
+
+	BlockDecoded           [3][13][13]bool
 	FrameRestorationType   []int
 	LoopRestorationSize    [3]int
 	AvailU                 bool
