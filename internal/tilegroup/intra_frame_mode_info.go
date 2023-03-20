@@ -345,24 +345,7 @@ func (t *TileGroup) readCflAlphas(b *bitstream.BitStream, state *state.State, uh
 	signV := (cflAlphaSigns + 1) % 3
 
 	if signU != CFL_SIGN_ZERO {
-		var ctx int
-		switch cflAlphaSigns {
-		case 0, 1:
-			panic("Invalid value for cfl_alpha_signs")
-		case 2:
-			ctx = 0
-		case 3:
-			ctx = 1
-		case 4:
-			ctx = 2
-		case 5:
-			ctx = 3
-		case 6:
-			ctx = 4
-		case 7:
-			ctx = 5
-		}
-
+		ctx := (signU - 1) * signV
 		cflAlphaU := symbol.ReadSymbol(state.TileCflAlphaCdf[ctx], state, b, uh)
 
 		t.CflAlphaU = 1 + cflAlphaU
