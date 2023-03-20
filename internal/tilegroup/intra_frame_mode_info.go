@@ -345,7 +345,7 @@ func (t *TileGroup) readCflAlphas(b *bitstream.BitStream, state *state.State, uh
 	signV := (cflAlphaSigns + 1) % 3
 
 	if signU != CFL_SIGN_ZERO {
-		ctx := (signU - 1) * signV
+		ctx := (signU-1)*3 + signV
 		cflAlphaU := symbol.ReadSymbol(state.TileCflAlphaCdf[ctx], state, b, uh)
 
 		t.CflAlphaU = 1 + cflAlphaU
@@ -357,7 +357,9 @@ func (t *TileGroup) readCflAlphas(b *bitstream.BitStream, state *state.State, uh
 	}
 
 	if signV != CFL_SIGN_ZERO {
-		cflAlphaV := b.S()
+		ctx := (signV-1)*3 + signU
+		cflAlphaV := symbol.ReadSymbol(state.TileCflAlphaCdf[ctx], state, b, uh)
+
 		t.CflAlphaV = 1 + cflAlphaV
 		if signV == CFL_SIGN_NEG {
 			t.CflAlphaV = -t.CflAlphaV
