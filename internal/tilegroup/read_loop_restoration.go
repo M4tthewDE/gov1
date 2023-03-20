@@ -6,6 +6,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/symbol"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
@@ -75,7 +76,7 @@ func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, state *state
 			restorationType = shared.RESTORE_SGRPROJ
 		}
 	} else {
-		restorationType = b.S()
+		restorationType = symbol.ReadSymbol(state.TileRestorationTypeCdf, state, b, uh)
 	}
 
 	t.LrType[plane][unitRow][unitCol] = restorationType
