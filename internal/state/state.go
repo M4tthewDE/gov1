@@ -48,7 +48,7 @@ type State struct {
 	// the secondary and tertiary sizes are purely guesswork
 	BlockDecoded           [2][3][3]bool
 	FrameRestorationType   []int
-	LoopRestorationSize    []int
+	LoopRestorationSize    [3]int
 	AvailU                 bool
 	AvailL                 bool
 	AvailUChroma           bool

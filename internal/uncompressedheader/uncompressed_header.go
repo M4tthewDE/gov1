@@ -100,7 +100,6 @@ type UncompressedHeader struct {
 	LoopFilterRefDeltas    [8]int
 	LoopFilterModeDeltas   [2]int
 	LoopFilterSharpness    int
-	LoopRestorationSize    []int
 
 	CdefBits          int
 	CdefYPriStrength  []int
@@ -456,7 +455,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 
 	u.loopFilterParams(b, sh)
 	u.cdefParams(b, sh)
-	u.lrParams(b, sh)
+	u.lrParams(b, s, sh)
 	u.readTxMode(b)
 	u.frameReferenceMode(b)
 	u.skipModeParams(b, sh)
@@ -929,7 +928,7 @@ func (u *UncompressedHeader) cdefParams(b *bitstream.BitStream, sh sequenceheade
 }
 
 // lr_params()
-func (u *UncompressedHeader) lrParams(b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
+func (u *UncompressedHeader) lrParams(b *bitstream.BitStream, state *state.State, sh sequenceheader.SequenceHeader) {
 	if u.AllLossless || u.AllowIntraBc || !sh.EnableRestoration {
 		u.FrameRestorationType[0] = shared.RESTORE_NONE
 		u.FrameRestorationType[1] = shared.RESTORE_NONE
@@ -964,7 +963,7 @@ func (u *UncompressedHeader) lrParams(b *bitstream.BitStream, sh sequenceheader.
 				lrUnitShift += lrUnitExtraShift
 			}
 		}
-		u.LoopRestorationSize[0] = shared.RESTORATION_TILESIZE_MAX >> (2 - lrUnitShift)
+		state.LoopRestorationSize[0] = shared.RESTORATION_TILESIZE_MAX >> (2 - lrUnitShift)
 
 		var lrUvShift int
 		if sh.ColorConfig.SubsamplingX && sh.ColorConfig.SubsamplingY && usesChromaLr {
@@ -973,8 +972,8 @@ func (u *UncompressedHeader) lrParams(b *bitstream.BitStream, sh sequenceheader.
 			lrUvShift = 0
 		}
 
-		u.LoopRestorationSize[1] = u.LoopRestorationSize[0] >> lrUvShift
-		u.LoopRestorationSize[2] = u.LoopRestorationSize[0] >> lrUvShift
+		state.LoopRestorationSize[1] = state.LoopRestorationSize[0] >> lrUvShift
+		state.LoopRestorationSize[2] = state.LoopRestorationSize[0] >> lrUvShift
 	}
 }
 
