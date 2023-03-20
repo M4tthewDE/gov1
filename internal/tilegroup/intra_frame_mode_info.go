@@ -57,7 +57,14 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 		t.intraAngleInfoY(b, state, uh)
 
 		if t.HasChroma {
-			uvMode := b.S()
+			var uvMode int
+			if t.Lossless && t.getPlaneResidualSize(state.MiSize, 1, sh) == shared.BLOCK_4X4 {
+				uvMode = symbol.ReadSymbol(state.TileUVModeCflAllowedCdf[t.YMode], state, b, uh)
+			} else if !t.Lossless && util.Max(shared.BLOCK_WIDTH[state.MiSize], shared.BLOCK_HEIGHT[state.MiSize]) < 32 {
+				uvMode = symbol.ReadSymbol(state.TileUVModeCflAllowedCdf[t.YMode], state, b, uh)
+			} else {
+				uvMode = symbol.ReadSymbol(state.TileUVModeCflNotAllowedCdf[t.YMode], state, b, uh)
+			}
 
 			t.UVMode = uvMode
 
