@@ -123,7 +123,7 @@ const DIV_LUT_BITS = 8
 
 type TileGroup struct {
 	LrType              [][][]int
-	RefLrWiener         [][][]int
+	RefLrWiener         [3][2][3]int
 	LrWiener            [][][][][]int
 	LrSgrSet            [][][]int
 	RefSgrXqd           [3][2]int
