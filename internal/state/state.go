@@ -57,7 +57,7 @@ type State struct {
 	RefFrames              [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS][2]int
 	RefFrameWidth          []int
 	RefFrameHeight         []int
-	CurrFrame              [][][]int
+	CurrFrame              [1][6][6]int
 	SymbolMaxBits          int
 	SymbolValue            int
 	SymbolRange            int

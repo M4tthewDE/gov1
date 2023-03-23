@@ -230,7 +230,7 @@ func (t *TileGroup) motionVectorScalingProcess(plane int, refIdx int, x int, y i
 
 // 7.11.3.4 Block inter prediction process
 func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y int, xStep int, yStep int, w int, h int, candRow int, candCol int, state *state.State, sh sequenceheader.SequenceHeader) [][]int {
-	var ref [][][]int
+	var ref [1][6][6]int
 	if refIdx == -1 {
 		ref = state.CurrFrame
 	} else {

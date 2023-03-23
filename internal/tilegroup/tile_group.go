@@ -234,7 +234,7 @@ type TileGroup struct {
 	LocalValid      bool
 	LocalWarpParams [6]int
 
-	FrameStore [][][][]int
+	FrameStore [][1][6][6]int
 	Mask       [][]int
 
 	FwdWeight int
