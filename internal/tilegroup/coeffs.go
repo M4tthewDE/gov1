@@ -476,7 +476,7 @@ func (t *TileGroup) transformType(x4 int, y4 int, txSz int, uh uncompressedheade
 				t.TxType = Tx_Type_Inter_Inv_Set3[interTxType]
 			}
 		} else {
-			intraTxType := b.S()
+			intraTxType := t.intraTxTypeSymbol(set, txSz, state, b, uh)
 			if set == TX_SET_INTRA_1 {
 				t.TxType = Tx_Type_Intra_Inv_Set1[intraTxType]
 			} else {
@@ -492,6 +492,27 @@ func (t *TileGroup) transformType(x4 int, y4 int, txSz int, uh uncompressedheade
 			t.TxTypes[y4+j][x4+i] = t.TxType
 		}
 	}
+}
+
+func (t *TileGroup) intraTxTypeSymbol(set int, txSz int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
+	var intraDir int
+	if t.UseFilterIntra {
+		intraDir = FILTER_INTRA_MODE_TO_INTRA_DIR[t.FilterIntraMode]
+	} else {
+		intraDir = t.YMode
+	}
+
+	if set == TX_SET_INTRA_1 {
+		return symbol.ReadSymbol(state.TileIntraTxTypeSet1Cdf[TX_SIZE_SQR[txSz]][intraDir], state, b, uh)
+	} else if set == TX_SET_INTRA_2 {
+		return symbol.ReadSymbol(state.TileIntraTxTypeSet2Cdf[TX_SIZE_SQR[txSz]][intraDir], state, b, uh)
+	}
+
+	panic("invalid set")
+}
+
+var FILTER_INTRA_MODE_TO_INTRA_DIR = []int{
+	DC_PRED, V_PRED, H_PRED, D157_PRED, DC_PRED,
 }
 
 // get_tx_set( txSz )

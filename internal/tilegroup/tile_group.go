@@ -76,6 +76,7 @@ const MAX_REF_MV_STACK_SIZE = 8
 
 const V_PRED = 1
 const H_PRED = 2
+const D157_PRED = 6
 const SMOOTH_PRED = 9
 const SMOOTH_V_PRED = 10
 const SMOOTH_H_PRED = 11
@@ -189,7 +190,7 @@ type TileGroup struct {
 
 	InterIntra      int
 	InterIntraMode  int
-	UseFilterIntra  int
+	UseFilterIntra  bool
 	WedgeIndex      int
 	WedgeSign       int
 	WedgeInterIntra int

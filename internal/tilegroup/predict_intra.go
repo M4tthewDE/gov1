@@ -63,7 +63,7 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 	t.LeftCol[len(t.LeftCol)-1] = t.AboveRow[len(t.AboveRow)-1]
 
 	var pred [6][6]int
-	if plane == 0 && util.Bool(t.UseFilterIntra) {
+	if plane == 0 && t.UseFilterIntra {
 		pred = t.recursiveIntraPredictionProcess(w, h, sh)
 	} else if t.isDirectionalMode(mode) {
 		pred = t.directionalIntraPredictionProcess(plane, x, y, util.Int(haveLeft), util.Int(haveAbove), mode, w, h, maxX, maxY, state, sh)

@@ -475,7 +475,7 @@ func (t *TileGroup) readInterIntraMode(isCompound bool, b *bitstream.BitStream, 
 			state.RefFrame[1] = shared.INTRA_FRAME
 			t.AngleDeltaY = 0
 			t.AngleDeltaUV = 0
-			t.UseFilterIntra = 0
+			t.UseFilterIntra = false
 			t.WedgeInterIntra = b.S()
 			if util.Bool(t.WedgeInterIntra) {
 				t.WedgeIndex = b.S()
