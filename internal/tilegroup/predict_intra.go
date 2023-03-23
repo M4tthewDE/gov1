@@ -62,7 +62,7 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 
 	t.LeftCol[len(t.LeftCol)-1] = t.AboveRow[len(t.AboveRow)-1]
 
-	var pred [][]int
+	var pred [6][6]int
 	if plane == 0 && util.Bool(t.UseFilterIntra) {
 		pred = t.recursiveIntraPredictionProcess(w, h, sh)
 	} else if t.isDirectionalMode(mode) {
@@ -83,8 +83,8 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 }
 
 // 7.11.2.2 Basic intra prediction process
-func (t *TileGroup) basicIntraPredictionProcess(w int, h int) [][]int {
-	var pred [][]int
+func (t *TileGroup) basicIntraPredictionProcess(w int, h int) [6][6]int {
+	var pred [6][6]int
 
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {
@@ -107,10 +107,10 @@ func (t *TileGroup) basicIntraPredictionProcess(w int, h int) [][]int {
 }
 
 // 7.11.2.3. Recursive intra prediction process
-func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int, sh sequenceheader.SequenceHeader) [][]int {
+func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int, sh sequenceheader.SequenceHeader) [6][6]int {
 	w4 := w >> 2
 	h2 := h >> 1
-	var pred [][]int
+	var pred [6][6]int
 	for i2 := 0; i2 <= h2-1; i2++ {
 		for j4 := 0; j4 <= w4-1; j4++ {
 			var p []int
@@ -151,8 +151,8 @@ func (t *TileGroup) recursiveIntraPredictionProcess(w int, h int, sh sequencehea
 }
 
 // 7.11.2.4. Directional intra prediction process
-func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, haveLeft int, haveAbove int, mode int, w int, h int, maxX int, maxY int, state *state.State, sh sequenceheader.SequenceHeader) [][]int {
-	var pred [][]int
+func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, haveLeft int, haveAbove int, mode int, w int, h int, maxX int, maxY int, state *state.State, sh sequenceheader.SequenceHeader) [6][6]int {
+	var pred [6][6]int
 
 	angleDelta := t.AngleDeltaUV
 	if plane == 0 {
@@ -295,8 +295,8 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 }
 
 // 7.11.2.5 DC intra prediction process
-func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2W int, log2H int, w int, h int, sh sequenceheader.SequenceHeader) [][]int {
-	var pred [][]int
+func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2W int, log2H int, w int, h int, sh sequenceheader.SequenceHeader) [6][6]int {
+	var pred [6][6]int
 	if haveLeft && haveAbove {
 		for i := 0; i < h; i++ {
 			for j := 0; j < w; j++ {
@@ -337,8 +337,8 @@ func (t *TileGroup) dcIntraPredictionProcess(haveLeft bool, haveAbove bool, log2
 }
 
 // 7.11.2.6 Smooth intra prediction process
-func (t *TileGroup) smoothIntraPredictionProcess(mode int, log2W int, log2H int, w int, h int) [][]int {
-	var pred [][]int
+func (t *TileGroup) smoothIntraPredictionProcess(mode int, log2W int, log2H int, w int, h int) [6][6]int {
+	var pred [6][6]int
 	if mode == SMOOTH_PRED {
 		for i := 0; i < h; i++ {
 			for j := 0; j < w; j++ {
