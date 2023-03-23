@@ -224,8 +224,8 @@ type TileGroup struct {
 
 	IsInterIntra bool
 
-	AboveRow []int
-	LeftCol  []int
+	AboveRow [7]int
+	LeftCol  [7]int
 
 	InterRound0    int
 	InterRound1    int

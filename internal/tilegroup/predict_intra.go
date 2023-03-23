@@ -167,8 +167,8 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 		var filterType int
 		if pAngle != 90 && pAngle != 180 {
 			if pAngle > 90 && pAngle < 180 && (w+h) >= 24 {
-				t.LeftCol[len(t.LeftCol)] = t.filterCornerProcess()
-				t.AboveRow[len(t.AboveRow)] = t.filterCornerProcess()
+				t.LeftCol[len(t.LeftCol)-1] = t.filterCornerProcess()
+				t.AboveRow[len(t.AboveRow)-1] = t.filterCornerProcess()
 			}
 			filterType = util.Int(t.getFilterType(plane, state, sh))
 
@@ -556,7 +556,7 @@ func (t *TileGroup) intraEdgeUpsampleSelectionProcess(w int, h int, filterType i
 // 7.11.2.11 Intra edge upsample process
 func (t *TileGroup) intraEdgeUpsampleProcess(numPx int, dir bool, sh sequenceheader.SequenceHeader) {
 	// does this actually modify those arrays?
-	var buf []int
+	var buf [7]int
 	if !dir {
 		buf = t.AboveRow
 	} else {
