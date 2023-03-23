@@ -83,7 +83,8 @@ type ColorConfig struct {
 	SeparateUvDeltaQ        bool
 	// can only be 3 or 1
 	NumPlanes int
-	BitDepth  int
+	// can only be 10 or 12
+	BitDepth int
 }
 
 type OperatingParametersInfo struct {
@@ -275,6 +276,11 @@ func NewColorConfig(b *bitstream.BitStream, seqProfile int) ColorConfig {
 		c.BitDepth = 10
 		if c.TwelveBit {
 			c.BitDepth = 12
+		}
+	} else if seqProfile <= 2 {
+		c.BitDepth = 8
+		if c.HighBitDepth {
+			c.BitDepth = 10
 		}
 	}
 

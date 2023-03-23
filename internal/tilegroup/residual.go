@@ -9,6 +9,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/util"
 )
 
+// residual( )
 func (t *TileGroup) residual(sh sequenceheader.SequenceHeader, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) {
 	widthChunks := util.Max(1, state.BlockWidth[state.MiSize]>>6)
 	heightChunks := util.Max(1, state.BlockHeight[state.MiSize]>>6)
