@@ -4,7 +4,9 @@ import (
 	"github.com/m4tthewde/gov1/internal/bitstream"
 	"github.com/m4tthewde/gov1/internal/literal"
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/symbol"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
 )
@@ -15,7 +17,7 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 	y4 := startY >> 2
 	w4 := Tx_Width[txSz] >> 2
 	h4 := Tx_Height[txSz] >> 2
-	_ = (TX_SIZE_SQR[txSz] + TX_SIZE_SQR_UP[txSz] + 1) >> 1
+	txSzCtx := (TX_SIZE_SQR[txSz] + TX_SIZE_SQR_UP[txSz] + 1) >> 1
 	_ = plane > 0
 	var segEob int
 	if txSz == TX_16X64 || txSz == TX_64X16 {
@@ -36,7 +38,7 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 	culLevel := 0
 	dcCategory := 0
 
-	allZero := b.S()
+	allZero := t.allZeroSymbol(plane, txSz, w4, h4, x4, y4, txSzCtx, state, b, uh, sh)
 
 	if util.Bool(allZero) {
 		if plane == 0 {
@@ -186,6 +188,77 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 	}
 
 	return eob
+}
+
+func (t *TileGroup) allZeroSymbol(plane int, txSz int, w4 int, h4 int, x4 int, y4 int, txSzCtx int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) int {
+	maxX4 := state.MiCols
+	maxY4 := state.MiRows
+
+	if plane > 0 {
+		maxX4 = maxX4 >> util.Int(sh.ColorConfig.SubsamplingX)
+		maxY4 = maxY4 >> util.Int(sh.ColorConfig.SubsamplingY)
+	}
+
+	w := Tx_Width[txSz]
+	h := Tx_Height[txSz]
+	bsize := t.getPlaneResidualSize(state.MiSize, plane, sh)
+	bw := shared.BLOCK_WIDTH[bsize]
+	bh := shared.BLOCK_HEIGHT[bsize]
+
+	var ctx int
+	if plane == 0 {
+		top := 0
+		left := 0
+		for k := 0; k < w4; k++ {
+			if x4+k < maxX4 {
+				top = util.Max(top, t.AboveLevelContext[plane][x4+k])
+			}
+		}
+		for k := 0; k < h4; k++ {
+			if y4+k < maxY4 {
+				left = util.Max(left, t.LeftLevelContext[plane][y4+k])
+			}
+		}
+		top = util.Min(top, 255)
+		left = util.Min(left, 255)
+
+		if bw == w && bh == h {
+			ctx = 0
+		} else if top == 0 && left == 0 {
+			ctx = 1
+		} else if top == 0 || left == 0 {
+			ctx = 2 + util.Int((util.Max(top, left) > 3))
+		} else if util.Max(top, left) <= 3 {
+			ctx = 4
+		} else if util.Min(top, left) <= 3 {
+			ctx = 5
+		} else {
+			ctx = 6
+		}
+	} else {
+		above := 0
+		left := 0
+		for i := 0; i < w4; i++ {
+			if x4+i < maxX4 {
+				above |= t.AboveLevelContext[plane][x4+i]
+				above |= t.AboveDcContext[plane][x4+i]
+			}
+		}
+
+		for i := 0; i < h4; i++ {
+			if y4+i < maxY4 {
+				left |= t.LeftLevelContext[plane][y4+i]
+				left |= t.LeftDcContext[plane][y4+i]
+			}
+		}
+		ctx = util.Int((above != 0)) + util.Int((left != 0))
+		ctx += 7
+		if bw*bh > w*h {
+			ctx += 3
+		}
+	}
+
+	return symbol.ReadSymbol(state.TileTxbSkipCdf[txSzCtx][ctx], state, b, uh)
 }
 
 // get_scan( txSz )

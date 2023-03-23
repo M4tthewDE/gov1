@@ -246,8 +246,8 @@ type TileGroup struct {
 	MaxLumaH int
 	MaxLumaW int
 
-	Quant             []int
-	Dequant           [][]int
+	Quant             [4096]int
+	Dequant           [64][64]int
 	TxType            int
 	PlaneTxType       int
 	TxTypes           [][]int
