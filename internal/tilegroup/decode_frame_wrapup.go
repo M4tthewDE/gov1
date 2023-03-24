@@ -1,10 +1,5 @@
 package tilegroup
 
-// 7.14
-func (t *TileGroup) loopFilterProcess() {
-	panic("not implemented")
-}
-
 // 7.15
 func (t *TileGroup) cdefProcess() [][][]int {
 	panic("not implemented")

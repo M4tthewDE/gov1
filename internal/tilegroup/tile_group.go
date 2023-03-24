@@ -321,16 +321,17 @@ func (t *TileGroup) build(sz int, b *bitstream.BitStream, state *state.State, uh
 		if !uh.DisableFrameEndUpdateCdf {
 			t.frameEndUpdateCdf(state)
 		}
-		t.decodeFrameWrapup(state, uh)
+		t.decodeFrameWrapup(state, uh, sh)
 		state.SeenFrameHeader = false
 	}
 }
 
+// 7.4. Decode frame wrapup process
 // decode_frame_wrapup( )
-func (t *TileGroup) decodeFrameWrapup(state *state.State, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) decodeFrameWrapup(state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) {
 	if !uh.ShowExistingFrame {
 		if uh.LoopFilterLevel[0] != 0 || uh.LoopFilterLevel[1] != 0 {
-			t.loopFilterProcess()
+			t.loopFilter(state, uh, sh)
 		}
 
 		state.CdefFrame = t.cdefProcess()

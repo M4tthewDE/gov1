@@ -235,6 +235,7 @@ const PRIMARY_REF_NONE = 7
 const MAX_SEGMENTS = 8
 
 const SEG_LVL_ALT_Q = 0
+const SEG_LVL_ALT_LF_Y_V = 1
 const SEG_LVL_REF_FRAME = 5
 const SEG_LVL_SKIP = 6
 const SEG_LVL_GLOBALMV = 7
