@@ -319,7 +319,7 @@ func (t *TileGroup) build(sz int, b *bitstream.BitStream, state *state.State, uh
 
 	if tgEnd == NumTiles-1 {
 		if !uh.DisableFrameEndUpdateCdf {
-			t.framEndUpdateCdf()
+			t.frameEndUpdateCdf(state)
 		}
 		t.decodeFrameWrapup(state, uh)
 		state.SeenFrameHeader = false
@@ -357,9 +357,106 @@ func (t *TileGroup) decodeFrameWrapup(state *state.State, uh uncompressedheader.
 	}
 }
 
+// 7.7. Frame end update CDF process
 // frame_end_update_cdf( )
-func (t *TileGroup) framEndUpdateCdf() {
-	panic("not implemented")
+func (t *TileGroup) frameEndUpdateCdf(state *state.State) {
+	state.YModeCdf = state.SavedYModeCdf
+	state.UVModeCflNotAllowedCdf = state.SavedUVModeCflNotAllowedCdf
+	state.UVModeCflAllowedCdf = state.SavedUVModeCflAllowedCdf
+	state.AngleDeltaCdf = state.SavedAngleDeltaCdf
+	state.IntrabcCdf = state.SavedIntrabcCdf
+	state.PartitionW8Cdf = state.SavedPartitionW8Cdf
+	state.PartitionW16Cdf = state.SavedPartitionW16Cdf
+	state.PartitionW32Cdf = state.SavedPartitionW32Cdf
+	state.PartitionW64Cdf = state.SavedPartitionW64Cdf
+	state.PartitionW128Cdf = state.SavedPartitionW128Cdf
+	state.SegmentIdCdf = state.SavedSegmentIdCdf
+	state.SegmentIdPredictedCdf = state.SavedSegmentIdPredictedCdf
+	state.Tx8x8Cdf = state.SavedTx8x8Cdf
+	state.Tx16x16Cdf = state.SavedTx16x16Cdf
+	state.Tx32x32Cdf = state.SavedTx32x32Cdf
+	state.Tx64x64Cdf = state.SavedTx64x64Cdf
+	state.TxfmSplitCdf = state.SavedTxfmSplitCdf
+	state.FilterIntraModeCdf = state.SavedFilterIntraModeCdf
+	state.FilterIntraCdf = state.SavedFilterIntraCdf
+	state.InterpFilterCdf = state.SavedInterpFilterCdf
+	state.MotionModeCdf = state.SavedMotionModeCdf
+	state.NewMvCdf = state.SavedNewMvCdf
+	state.ZeroMvCdf = state.SavedZeroMvCdf
+	state.RefMvCdf = state.SavedRefMvCdf
+	state.CompoundModeCdf = state.SavedCompoundModeCdf
+	state.DrlModeCdf = state.SavedDrlModeCdf
+	state.IsInterCdf = state.SavedIsInterCdf
+	state.CompModeCdf = state.SavedCompModeCdf
+	state.SkipModeCdf = state.SavedSkipModeCdf
+	state.SkipCdf = state.SavedSkipCdf
+	state.CompRefCdf = state.SavedCompRefCdf
+	state.CompBwdRefCdf = state.SavedCompBwdRefCdf
+	state.SingleRefCdf = state.SavedSingleRefCdf
+	state.MvJointCdf = state.SavedMvJointCdf
+	state.MvClassCdf = state.SavedMvClassCdf
+	state.MvClass0BitCdf = state.SavedMvClass0BitCdf
+	state.MvFrCdf = state.SavedMvFrCdf
+	state.MvClass0FrCdf = state.SavedMvClass0FrCdf
+	state.MvClass0HpCdf = state.SavedMvClass0HpCdf
+	state.MvSignCdf = state.SavedMvSignCdf
+	state.MvBitCdf = state.SavedMvBitCdf
+	state.MvHpCdf = state.SavedMvHpCdf
+	state.PaletteYModeCdf = state.SavedPaletteYModeCdf
+	state.PaletteUVModeCdf = state.SavedPaletteUVModeCdf
+	state.PaletteUVSizeCdf = state.SavedPaletteUVSizeCdf
+	state.PaletteSize2YColorCdf = state.SavedPaletteSize2YColorCdf
+	state.PaletteSize2UVColorCdf = state.SavedPaletteSize2UVColorCdf
+	state.PaletteSize3YColorCdf = state.SavedPaletteSize3YColorCdf
+	state.PaletteSize3UVColorCdf = state.SavedPaletteSize3UVColorCdf
+	state.PaletteSize4YColorCdf = state.SavedPaletteSize4YColorCdf
+	state.PaletteSize4UVColorCdf = state.SavedPaletteSize4UVColorCdf
+	state.PaletteSize5YColorCdf = state.SavedPaletteSize5YColorCdf
+	state.PaletteSize5UVColorCdf = state.SavedPaletteSize5UVColorCdf
+	state.PaletteSize6YColorCdf = state.SavedPaletteSize6YColorCdf
+	state.PaletteSize6UVColorCdf = state.SavedPaletteSize6UVColorCdf
+	state.PaletteSize7YColorCdf = state.SavedPaletteSize7YColorCdf
+	state.PaletteSize7UVColorCdf = state.SavedPaletteSize7UVColorCdf
+	state.PaletteSize8YColorCdf = state.SavedPaletteSize8YColorCdf
+	state.PaletteSize8UVColorCdf = state.SavedPaletteSize8UVColorCdf
+
+	state.DeltaQCdf = state.SavedDeltaQCdf
+	state.DeltaLFCdf = state.SavedDeltaLFCdf
+	state.DeltaLFMultiCdf = state.SavedDeltaLFMultiCdf
+	state.IntraTxTypeSet1Cdf = state.SavedIntraTxTypeSet1Cdf
+	state.IntraTxTypeSet2Cdf = state.SavedIntraTxTypeSet2Cdf
+	state.InterTxTypeSet1Cdf = state.SavedInterTxTypeSet1Cdf
+	state.InterTxTypeSet2Cdf = state.SavedInterTxTypeSet2Cdf
+	state.InterTxTypeSet3Cdf = state.SavedInterTxTypeSet3Cdf
+	state.UseObmcCdf = state.SavedUseObmcCdf
+	state.InterIntraCdf = state.SavedInterIntraCdf
+	state.CompRefTypeCdf = state.CompRefTypeCdf
+	state.CflSignCdf = state.SavedCflSignCdf
+	state.UniCompRefCdf = state.SavedUniCompRefCdf
+	state.WedgeInterIntraCdf = state.SavedWedgeInterIntraCdf
+	state.CompGroupIdxCdf = state.SavedCompGroupIdxCdf
+	state.CompoundIdxCdf = state.SavedCompoundIdxCdf
+	state.CompoundTypeCdf = state.SavedCompoundTypeCdf
+	state.InterIntraModeCdf = state.SavedInterIntraModeCdf
+	state.WedgeIndexCdf = state.SavedWedgeIndexCdf
+	state.CflAlphaCdf = state.SavedCflAlphaCdf
+	state.UseWienerCdf = state.SavedUseWienerCdf
+	state.UseSgrprojCdf = state.SavedUseSgrprojCdf
+	state.RestorationTypeCdf = state.SavedRestorationTypeCdf
+
+	state.TxbSkipCdf = state.SavedTxbSkipCdf
+	state.EobPt16Cdf = state.SavedEobPt16Cdf
+	state.EobPt32Cdf = state.SavedEobPt32Cdf
+	state.EobPt64Cdf = state.SavedEobPt64Cdf
+	state.EobPt128Cdf = state.SavedEobPt128Cdf
+	state.EobPt256Cdf = state.SavedEobPt256Cdf
+	state.EobPt512Cdf = state.SavedEobPt512Cdf
+	state.EobPt1024Cdf = state.SavedEobPt1024Cdf
+	state.EobExtraCdf = state.SavedEobExtraCdf
+	state.DcSignCdf = state.SavedDcSignCdf
+	state.CoeffBaseEobCdf = state.SavedCoeffBaseEobCdf
+	state.CoeffBaseCdf = state.SavedCoeffBaseCdf
+	state.CoeffBrCdf = state.SavedCoeffBrCdf
 }
 
 // init_symbol( sz )
@@ -473,6 +570,7 @@ func (t *TileGroup) initSymbol(sz int, b *bitstream.BitStream, state *state.Stat
 }
 
 // 8.2.4 Exit process for symbol decoder
+// exti_symbol( )
 func (t *TileGroup) exitSymbol(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	if state.SymbolMaxBits < -14 {
 		panic("Violating bitstream conformance!")
@@ -481,7 +579,103 @@ func (t *TileGroup) exitSymbol(b *bitstream.BitStream, state *state.State, uh un
 	b.Position += util.Max(0, state.SymbolMaxBits)
 
 	if !uh.DisableFrameEndUpdateCdf && state.TileNum == uh.TileInfo.ContextUpdateTileId {
-		// TODO: whatever is supposed to happen here
+		state.SavedYModeCdf = state.TileYModeCdf
+		state.SavedUVModeCflNotAllowedCdf = state.TileUVModeCflNotAllowedCdf
+		state.SavedUVModeCflAllowedCdf = state.TileUVModeCflAllowedCdf
+		state.SavedAngleDeltaCdf = state.TileAngleDeltaCdf
+		state.SavedIntrabcCdf = state.TileIntrabcCdf
+		state.SavedPartitionW8Cdf = state.TilePartitionW8Cdf
+		state.SavedPartitionW16Cdf = state.TilePartitionW16Cdf
+		state.SavedPartitionW32Cdf = state.TilePartitionW32Cdf
+		state.SavedPartitionW64Cdf = state.TilePartitionW64Cdf
+		state.SavedPartitionW128Cdf = state.TilePartitionW128Cdf
+		state.SavedSegmentIdCdf = state.TileSegmentIdCdf
+		state.SavedSegmentIdPredictedCdf = state.TileSegmentIdPredictedCdf
+		state.SavedTx8x8Cdf = state.TileTx8x8Cdf
+		state.SavedTx16x16Cdf = state.TileTx16x16Cdf
+		state.SavedTx32x32Cdf = state.TileTx32x32Cdf
+		state.SavedTx64x64Cdf = state.TileTx64x64Cdf
+		state.SavedTxfmSplitCdf = state.TileTxfmSplitCdf
+		state.SavedFilterIntraModeCdf = state.TileFilterIntraModeCdf
+		state.SavedFilterIntraCdf = state.TileFilterIntraCdf
+		state.SavedInterpFilterCdf = state.TileInterpFilterCdf
+		state.SavedMotionModeCdf = state.TileMotionModeCdf
+		state.SavedNewMvCdf = state.TileNewMvCdf
+		state.SavedZeroMvCdf = state.TileZeroMvCdf
+		state.SavedRefMvCdf = state.TileRefMvCdf
+		state.SavedCompoundModeCdf = state.TileCompoundModeCdf
+		state.SavedDrlModeCdf = state.TileDrlModeCdf
+		state.SavedIsInterCdf = state.TileIsInterCdf
+		state.SavedCompModeCdf = state.TileCompModeCdf
+		state.SavedSkipModeCdf = state.TileSkipModeCdf
+		state.SavedSkipCdf = state.TileSkipCdf
+		state.SavedCompRefCdf = state.TileCompRefCdf
+		state.SavedCompBwdRefCdf = state.TileCompBwdRefCdf
+		state.SavedSingleRefCdf = state.TileSingleRefCdf
+		state.SavedMvJointCdf = state.TileMvJointCdf
+		state.SavedMvClassCdf = state.TileMvClassCdf
+		state.SavedMvClass0BitCdf = state.TileMvClass0BitCdf
+		state.SavedMvFrCdf = state.TileMvFrCdf
+		state.SavedMvClass0FrCdf = state.TileMvClass0FrCdf
+		state.SavedMvClass0HpCdf = state.TileMvClass0HpCdf
+		state.SavedMvSignCdf = state.TileMvSignCdf
+		state.SavedMvBitCdf = state.TileMvBitCdf
+		state.SavedMvHpCdf = state.TileMvHpCdf
+		state.SavedPaletteYModeCdf = state.TilePaletteYModeCdf
+		state.SavedPaletteUVModeCdf = state.TilePaletteUVModeCdf
+		state.SavedPaletteUVSizeCdf = state.TilePaletteUVSizeCdf
+		state.SavedPaletteSize2YColorCdf = state.TilePaletteSize2YColorCdf
+		state.SavedPaletteSize2UVColorCdf = state.TilePaletteSize2UVColorCdf
+		state.SavedPaletteSize3YColorCdf = state.TilePaletteSize3YColorCdf
+		state.SavedPaletteSize3UVColorCdf = state.TilePaletteSize3UVColorCdf
+		state.SavedPaletteSize4YColorCdf = state.TilePaletteSize4YColorCdf
+		state.SavedPaletteSize4UVColorCdf = state.TilePaletteSize4UVColorCdf
+		state.SavedPaletteSize5YColorCdf = state.TilePaletteSize5YColorCdf
+		state.SavedPaletteSize5UVColorCdf = state.TilePaletteSize5UVColorCdf
+		state.SavedPaletteSize6YColorCdf = state.TilePaletteSize6YColorCdf
+		state.SavedPaletteSize6UVColorCdf = state.TilePaletteSize6UVColorCdf
+		state.SavedPaletteSize7YColorCdf = state.TilePaletteSize7YColorCdf
+		state.SavedPaletteSize7UVColorCdf = state.TilePaletteSize7UVColorCdf
+		state.SavedPaletteSize8YColorCdf = state.TilePaletteSize8YColorCdf
+		state.SavedPaletteSize8UVColorCdf = state.TilePaletteSize8UVColorCdf
+
+		state.SavedDeltaQCdf = state.TileDeltaQCdf
+		state.SavedDeltaLFCdf = state.TileDeltaLFCdf
+		state.SavedDeltaLFMultiCdf = state.TileDeltaLFMultiCdf
+		state.SavedIntraTxTypeSet1Cdf = state.TileIntraTxTypeSet1Cdf
+		state.SavedIntraTxTypeSet2Cdf = state.TileIntraTxTypeSet2Cdf
+		state.SavedInterTxTypeSet1Cdf = state.TileInterTxTypeSet1Cdf
+		state.SavedInterTxTypeSet2Cdf = state.TileInterTxTypeSet2Cdf
+		state.SavedInterTxTypeSet3Cdf = state.TileInterTxTypeSet3Cdf
+		state.SavedUseObmcCdf = state.TileUseObmcCdf
+		state.SavedInterIntraCdf = state.TileInterIntraCdf
+		state.SavedCompRefTypeCdf = state.CompRefTypeCdf
+		state.SavedCflSignCdf = state.TileCflSignCdf
+		state.SavedUniCompRefCdf = state.TileUniCompRefCdf
+		state.SavedWedgeInterIntraCdf = state.TileWedgeInterIntraCdf
+		state.SavedCompGroupIdxCdf = state.TileCompGroupIdxCdf
+		state.SavedCompoundIdxCdf = state.TileCompoundIdxCdf
+		state.SavedCompoundTypeCdf = state.TileCompoundTypeCdf
+		state.SavedInterIntraModeCdf = state.TileInterIntraModeCdf
+		state.SavedWedgeIndexCdf = state.TileWedgeIndexCdf
+		state.SavedCflAlphaCdf = state.TileCflAlphaCdf
+		state.SavedUseWienerCdf = state.TileUseWienerCdf
+		state.SavedUseSgrprojCdf = state.TileUseSgrprojCdf
+		state.SavedRestorationTypeCdf = state.TileRestorationTypeCdf
+
+		state.SavedTxbSkipCdf = state.TileTxbSkipCdf
+		state.SavedEobPt16Cdf = state.TileEobPt16Cdf
+		state.SavedEobPt32Cdf = state.TileEobPt32Cdf
+		state.SavedEobPt64Cdf = state.TileEobPt64Cdf
+		state.SavedEobPt128Cdf = state.TileEobPt128Cdf
+		state.SavedEobPt256Cdf = state.TileEobPt256Cdf
+		state.SavedEobPt512Cdf = state.TileEobPt512Cdf
+		state.SavedEobPt1024Cdf = state.TileEobPt1024Cdf
+		state.SavedEobExtraCdf = state.TileEobExtraCdf
+		state.SavedDcSignCdf = state.TileDcSignCdf
+		state.SavedCoeffBaseEobCdf = state.TileCoeffBaseEobCdf
+		state.SavedCoeffBaseCdf = state.TileCoeffBaseCdf
+		state.SavedCoeffBrCdf = state.TileCoeffBrCdf
 	}
 }
 
