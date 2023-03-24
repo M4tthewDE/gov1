@@ -18,7 +18,7 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 	w4 := Tx_Width[txSz] >> 2
 	h4 := Tx_Height[txSz] >> 2
 	txSzCtx := (TX_SIZE_SQR[txSz] + TX_SIZE_SQR_UP[txSz] + 1) >> 1
-	_ = plane > 0
+	ptype := util.Int(plane > 0)
 	var segEob int
 	if txSz == TX_16X64 || txSz == TX_64X16 {
 		segEob = 512
@@ -60,25 +60,30 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 
 		var eobPt int
 		if eobMultisize == 0 {
-			eob_pt_16 := b.S()
+			ctx := t.getEobPtCtx(plane, txSz, x4, y4, state, uh, sh)
+			eob_pt_16 := symbol.ReadSymbol(state.TileEobPt16Cdf[ptype][ctx], state, b, uh)
 			eobPt = eob_pt_16 + 1
 		} else if eobMultisize == 1 {
-			eob_pt_32 := b.S()
+			ctx := t.getEobPtCtx(plane, txSz, x4, y4, state, uh, sh)
+			eob_pt_32 := symbol.ReadSymbol(state.TileEobPt32Cdf[ptype][ctx], state, b, uh)
 			eobPt = eob_pt_32 + 1
 		} else if eobMultisize == 2 {
-			eob_pt_64 := b.S()
+			ctx := t.getEobPtCtx(plane, txSz, x4, y4, state, uh, sh)
+			eob_pt_64 := symbol.ReadSymbol(state.TileEobPt64Cdf[ptype][ctx], state, b, uh)
 			eobPt = eob_pt_64 + 1
 		} else if eobMultisize == 3 {
-			eob_pt_128 := b.S()
+			ctx := t.getEobPtCtx(plane, txSz, x4, y4, state, uh, sh)
+			eob_pt_128 := symbol.ReadSymbol(state.TileEobPt128Cdf[ptype][ctx], state, b, uh)
 			eobPt = eob_pt_128 + 1
 		} else if eobMultisize == 4 {
-			eob_pt_256 := b.S()
+			ctx := t.getEobPtCtx(plane, txSz, x4, y4, state, uh, sh)
+			eob_pt_256 := symbol.ReadSymbol(state.TileEobPt256Cdf[ptype][ctx], state, b, uh)
 			eobPt = eob_pt_256 + 1
 		} else if eobMultisize == 5 {
-			eob_pt_512 := b.S()
+			eob_pt_512 := symbol.ReadSymbol(state.TileEobPt512Cdf[ptype], state, b, uh)
 			eobPt = eob_pt_512 + 1
 		} else {
-			eob_pt_1024 := b.S()
+			eob_pt_1024 := symbol.ReadSymbol(state.TileEobPt1024Cdf[ptype], state, b, uh)
 			eobPt = eob_pt_1024 + 1
 		}
 
@@ -91,7 +96,7 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 
 		eobShift := util.Max(-1, eobPt-3)
 		if eobShift >= 0 {
-			eobExtra := b.S()
+			eobExtra := symbol.ReadSymbol(state.TileEobExtraCdf[txSzCtx][ptype][eobPt-3], state, b, uh)
 			if util.Bool(eobExtra) {
 				eob += (1 << eobShift)
 			}
@@ -110,16 +115,18 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 
 			pos := scan[c]
 			if c == (eob - 1) {
-				coeff_base_eob := b.S()
+				ctx := t.getCoeffBaseCtx(txSz, plane, x4, y4, scan[c], c, true, state, uh, sh) - SIG_COEF_CONTEXTS + SIG_COEF_CONTEXTS_EOB
+				coeff_base_eob := symbol.ReadSymbol(state.TileCoeffBaseEobCdf[txSzCtx][ptype][ctx], state, b, uh)
 				level = coeff_base_eob + 1
 			} else {
-				coeffBase := b.S()
+				ctx := t.getCoeffBaseCtx(txSz, plane, x4, y4, scan[c], c, false, state, uh, sh)
+				coeffBase := symbol.ReadSymbol(state.TileCoeffBaseCdf[txSzCtx][ptype][ctx], state, b, uh)
 				level = coeffBase
 			}
 
 			if level > NUM_BASE_LEVELS {
 				for idx := 0; idx < COEFF_BASE_RANGE/(BR_CDF_SIZE-1); idx++ {
-					coeffBr := b.S()
+					coeffBr := t.readCoeffBrSymbol(txSz, pos, plane, x4, y4, txSzCtx, ptype, state, b, uh, sh)
 					level += coeffBr
 					if coeffBr < BR_CDF_SIZE-1 {
 						break
@@ -134,7 +141,7 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 			pos := scan[c]
 			if t.Quant[pos] != 0 {
 				if c == 0 {
-					dcSign := b.S()
+					dcSign := t.readDcSignSymbol(plane, w4, h4, x4, y4, ptype, state, b, uh, sh)
 					sign = dcSign
 				} else {
 					signBit := literal.L(0, state, b, uh)
@@ -188,6 +195,232 @@ func (t *TileGroup) coeffs(plane int, startX int, startY int, txSz int, b *bitst
 	}
 
 	return eob
+}
+
+func (t *TileGroup) readDcSignSymbol(plane int, w4 int, h4 int, x4 int, y4 int, ptype int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) int {
+	maxX4 := state.MiCols
+	maxY4 := state.MiRows
+	if plane > 0 {
+		maxX4 = maxX4 >> util.Int(sh.ColorConfig.SubsamplingX)
+		maxY4 = maxY4 >> util.Int(sh.ColorConfig.SubsamplingY)
+	}
+
+	dcSign := 0
+	for k := 0; k < w4; k++ {
+		if x4+k < maxX4 {
+			sign := t.AboveDcContext[plane][x4+k]
+			if sign == 1 {
+				dcSign--
+			} else if sign == 2 {
+				dcSign++
+			}
+		}
+	}
+
+	for k := 0; k < h4; k++ {
+		if y4+k < maxY4 {
+			sign := t.LeftDcContext[plane][y4+k]
+			if sign == 1 {
+				dcSign--
+			} else if sign == 2 {
+				dcSign++
+			}
+		}
+	}
+
+	var ctx int
+	if dcSign < 0 {
+		ctx = 1
+	} else if dcSign > 0 {
+		ctx = 2
+	} else {
+		ctx = 0
+	}
+
+	return symbol.ReadSymbol(state.TileDcSignCdf[ptype][ctx], state, b, uh)
+}
+
+func (t *TileGroup) readCoeffBrSymbol(txSz int, pos int, plane int, x4 int, y4 int, txSzCtx int, ptype int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) int {
+	adjTxSz := ADJUSTED_TX_SIZE[txSz]
+	bwl := TX_WIDTH_LOG2[adjTxSz]
+	txw := Tx_Width[adjTxSz]
+	txh := Tx_Height[adjTxSz]
+	row := pos >> bwl
+	col := pos - (row << bwl)
+
+	mag := 0
+
+	txType := t.computeTxType(plane, txSz, x4, y4, state, uh, sh)
+	txClass := getTxClass(txType)
+
+	for idx := 0; idx < 3; idx++ {
+		refRow := row + MAG_REF_OFFSET_WITH_TX_CLASS[txClass][idx][0]
+		refCol := col + MAG_REF_OFFSET_WITH_TX_CLASS[txClass][idx][1]
+
+		if refRow >= 0 &&
+			refCol >= 0 &&
+			refRow < txh &&
+			refCol < (1<<bwl) {
+			mag += util.Min(t.Quant[refRow*txw+refCol], COEFF_BASE_RANGE+NUM_BASE_LEVELS+1)
+		}
+	}
+
+	mag = util.Min((mag+1)>>1, 6)
+	var ctx int
+	if pos == 0 {
+		ctx = mag
+	} else if txClass == 0 {
+		if row < 2 && col < 2 {
+			ctx = mag + 7
+		} else {
+			ctx = mag + 14
+		}
+	} else {
+		if txClass == 1 {
+			if col == 0 {
+				ctx = mag + 7
+			} else {
+				ctx = mag + 14
+			}
+		} else {
+			if row == 0 {
+				ctx = mag + 7
+			} else {
+				ctx = mag + 14
+			}
+		}
+	}
+
+	return symbol.ReadSymbol(state.TileCoeffBrCdf[util.Min(txSzCtx, TX_32X32)][ptype][ctx], state, b, uh)
+
+}
+
+var ADJUSTED_TX_SIZE = []int{
+	TX_4X4,
+	TX_8X8,
+	TX_16X16,
+	TX_32X32,
+	TX_32X32,
+	TX_4X8,
+	TX_8X4,
+	TX_8X16,
+	TX_16X8,
+	TX_16X32,
+	TX_32X16,
+	TX_32X32,
+	TX_32X32,
+	TX_4X16,
+	TX_16X4,
+	TX_8X32,
+	TX_32X8,
+	TX_16X32,
+	TX_32X16,
+}
+
+const SIG_COEF_CONTEXTS = 42
+const SIG_COEF_CONTEXTS_EOB = 4
+const SIG_REF_DIFF_OFFSET_NUM = 5
+
+var SIG_REF_DIFF_OFFSET = [][][]int{
+	{
+		{0, 1}, {1, 0}, {1, 1}, {0, 2}, {2, 0},
+	},
+	{
+		{0, 1}, {1, 0}, {0, 2}, {0, 3}, {0, 4},
+	},
+	{
+		{0, 1}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
+	},
+}
+
+// get_coeff_base_ctx( txSz, plane, blockX, blockY, pos, c, isEob )
+func (t *TileGroup) getCoeffBaseCtx(txSz int, plane int, blockX int, blockY int, pos int, c int, isEob bool, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) int {
+	adjTxSz := ADJUSTED_TX_SIZE[txSz]
+	bwl := TX_WIDTH_LOG2[adjTxSz]
+	width := 1 << bwl
+	height := Tx_Height[adjTxSz]
+	txType := t.computeTxType(plane, txSz, blockX, blockY, state, uh, sh)
+
+	if isEob {
+		if c == 0 {
+			return SIG_COEF_CONTEXTS - 4
+		}
+		if c <= (height<<bwl)/8 {
+			return SIG_COEF_CONTEXTS - 3
+		}
+
+		if c <= (height<<bwl)/4 {
+			return SIG_COEF_CONTEXTS - 2
+		}
+
+		return SIG_COEF_CONTEXTS - 1
+	}
+
+	txClass := getTxClass(txType)
+	row := pos >> bwl
+	col := pos - (row << bwl)
+	mag := 0
+
+	for idx := 0; idx < SIG_REF_DIFF_OFFSET_NUM; idx++ {
+		refRow := row + SIG_REF_DIFF_OFFSET[txClass][idx][0]
+		refCol := col + SIG_REF_DIFF_OFFSET[txClass][idx][1]
+
+		if refRow >= 0 &&
+			refCol >= 0 &&
+			refRow < height &&
+			refCol < width {
+			mag += util.Min(util.Abs(t.Quant[(refRow<<bwl)+refCol]), 3)
+		}
+	}
+
+	ctx := util.Min((mag+1)>>1, 4)
+	if txClass == TX_CLASS_2D {
+		if row == 0 && col == 0 {
+			return 0
+		}
+
+		return ctx + COEFF_BASE_CTX_OFFSET[txSz][util.Min(row, 4)][util.Min(col, 4)]
+	}
+
+	var idx int
+	if txClass == TX_CLASS_VERT {
+		idx = row
+	} else {
+		idx = col
+	}
+
+	return ctx + COEFF_BASE_POS_CTX_OFFSET[util.Min(idx, 2)]
+
+}
+
+func (t *TileGroup) getEobPtCtx(plane int, txSz int, x4 int, y4 int, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) int {
+	txType := t.computeTxType(plane, txSz, x4, y4, state, uh, sh)
+	if getTxClass(txType) == TX_CLASS_2D {
+		return 0
+	}
+
+	return 1
+}
+
+const TX_CLASS_2D = 0
+const TX_CLASS_HORIZ = 1
+const TX_CLASS_VERT = 2
+
+// get_tx_class ( txType )
+func getTxClass(txType int) int {
+	if txType == V_DCT ||
+		txType == V_ADST ||
+		txType == V_FLIPADST {
+		return TX_CLASS_VERT
+	}
+
+	if txType == H_DCT ||
+		txType == H_ADST ||
+		txType == H_FLIPADST {
+		return TX_CLASS_HORIZ
+	}
+
+	return TX_CLASS_2D
 }
 
 func (t *TileGroup) allZeroSymbol(plane int, txSz int, w4 int, h4 int, x4 int, y4 int, txSzCtx int, state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) int {
@@ -1077,3 +1310,153 @@ var Mcol_Scan_16x4 = []int{
 const NUM_BASE_LEVELS = 2
 const COEFF_BASE_RANGE = 12
 const BR_CDF_SIZE = 4
+
+var COEFF_BASE_CTX_OFFSET = [][][]int{
+	{
+		{0, 1, 6, 6, 0},
+		{1, 6, 6, 21, 0},
+		{6, 6, 21, 21, 0},
+		{6, 21, 21, 21, 0},
+		{0, 0, 0, 0, 0},
+	},
+	{
+		{0, 1, 6, 6, 21},
+		{1, 6, 6, 21, 21},
+		{6, 6, 21, 21, 21},
+		{6, 21, 21, 21, 21},
+		{21, 21, 21, 21, 21},
+	},
+	{
+		{0, 1, 6, 6, 21},
+		{1, 6, 6, 21, 21},
+		{6, 6, 21, 21, 21},
+		{6, 21, 21, 21, 21},
+		{21, 21, 21, 21, 21},
+	},
+	{
+		{0, 1, 6, 6, 21},
+		{1, 6, 6, 21, 21},
+		{6, 6, 21, 21, 21},
+		{6, 21, 21, 21, 21},
+		{21, 21, 21, 21, 21},
+	},
+	{
+		{0, 1, 6, 6, 21},
+		{1, 6, 6, 21, 21},
+		{6, 6, 21, 21, 21},
+		{6, 21, 21, 21, 21},
+		{21, 21, 21, 21, 21},
+	},
+	{
+		{0, 11, 11, 11, 0},
+		{11, 11, 11, 11, 0},
+		{6, 6, 21, 21, 0},
+		{6, 21, 21, 21, 0},
+		{21, 21, 21, 21, 0},
+	},
+	{
+		{0, 16, 6, 6, 21},
+		{16, 16, 6, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+		{0, 0, 0, 0, 0},
+	},
+	{
+		{0, 11, 11, 11, 11},
+		{11, 11, 11, 11, 11},
+		{6, 6, 21, 21, 21},
+		{6, 21, 21, 21, 21},
+		{21, 21, 21, 21, 21},
+	},
+	{
+		{0, 16, 6, 6, 21},
+		{16, 16, 6, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+	},
+	{
+		{0, 11, 11, 11, 11},
+		{11, 11, 11, 11, 11},
+		{6, 6, 21, 21, 21},
+		{6, 21, 21, 21, 21},
+		{21, 21, 21, 21, 21},
+	},
+	{
+		{0, 16, 6, 6, 21},
+		{16, 16, 6, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+	},
+	{
+		{0, 11, 11, 11, 11},
+		{11, 11, 11, 11, 11},
+		{6, 6, 21, 21, 21},
+		{6, 21, 21, 21, 21},
+		{21, 21, 21, 21, 21},
+	},
+	{
+		{0, 16, 6, 6, 21},
+		{16, 16, 6, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+	},
+	{
+		{0, 11, 11, 11, 0},
+		{11, 11, 11, 11, 0},
+		{6, 6, 21, 21, 0},
+		{6, 21, 21, 21, 0},
+		{21, 21, 21, 21, 0},
+	},
+	{
+		{0, 16, 6, 6, 21},
+		{16, 16, 6, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+		{0, 0, 0, 0, 0},
+	},
+	{
+		{0, 11, 11, 11, 11},
+		{11, 11, 11, 11, 11},
+		{6, 6, 21, 21, 21},
+		{6, 21, 21, 21, 21},
+		{21, 21, 21, 21, 21},
+	},
+	{
+		{0, 16, 6, 6, 21},
+		{16, 16, 6, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+	},
+	{
+		{0, 11, 11, 11, 11},
+		{11, 11, 11, 11, 11},
+		{6, 6, 21, 21, 21},
+		{6, 21, 21, 21, 21},
+		{21, 21, 21, 21, 21},
+	},
+	{
+		{0, 16, 6, 6, 21},
+		{16, 16, 6, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+		{16, 16, 21, 21, 21},
+	},
+}
+
+const SIG_COEF_CONTEXTS_2D = 26
+
+var COEFF_BASE_POS_CTX_OFFSET = []int{
+	SIG_COEF_CONTEXTS_2D,
+	SIG_COEF_CONTEXTS_2D + 5,
+	SIG_COEF_CONTEXTS_2D + 10,
+}
+
+var MAG_REF_OFFSET_WITH_TX_CLASS = [][][]int{
+	{{0, 1}, {1, 0}, {1, 1}},
+	{{0, 1}, {1, 0}, {0, 2}},
+	{{0, 1}, {1, 0}, {2, 0}},
+}
