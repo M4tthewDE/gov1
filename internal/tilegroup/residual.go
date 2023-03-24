@@ -230,7 +230,7 @@ func (t *TileGroup) predictChromaFromLuma(plane int, startX int, startY int, txS
 		alpha = t.CflAlphaV
 	}
 
-	L := [][]int{}
+	L := [64][64]int{}
 
 	lumaAvg := 0
 	for i := 0; i < h; i++ {

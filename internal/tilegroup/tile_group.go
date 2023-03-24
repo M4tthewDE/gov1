@@ -235,7 +235,7 @@ type TileGroup struct {
 	LocalValid      bool
 	LocalWarpParams [6]int
 
-	FrameStore [][2][9][9]int
+	FrameStore [][3][9][9]int
 	Mask       [][]int
 
 	FwdWeight int
@@ -254,7 +254,7 @@ type TileGroup struct {
 	TxTypes           [2][2]int
 	T                 []int
 	Residual          [][]int
-	LoopFilterTxSizes [1][2][2]int
+	LoopFilterTxSizes [3][2][2]int
 
 	NewMvContext int
 	RefMvContext int
