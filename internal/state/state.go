@@ -41,7 +41,7 @@ type State struct {
 	MiSize          int
 	MiSizes         [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
 	DeltaLF         [shared.FRAME_LF_COUNT]int
-	DeltaLFs        [][][]int
+	DeltaLFs        [2][2][4]int
 	RefLrWiener     [][][]int
 	ReadDeltas      bool
 	Cdef            cdef.Cdef

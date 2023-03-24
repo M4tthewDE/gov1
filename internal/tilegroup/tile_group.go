@@ -134,8 +134,8 @@ type TileGroup struct {
 	SegmentIds          [][]int
 	Lossless            bool
 	Skip                int
-	Skips               [][]int
-	SkipModes           [][]int
+	Skips               [2][2]int
+	SkipModes           [2][2]int
 	YMode               int
 	YModes              [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
 	UVMode              int
@@ -148,7 +148,7 @@ type TileGroup struct {
 	NewMvCount          int
 	GlobalMvs           [2][2]int
 	MotionFieldMvs      [][][][2]int
-	IsInters            [][]int
+	IsInters            [2][2]int
 	Mv                  [2][2]int
 	Mvs                 [shared.MAX_TILE_COLS][shared.MAX_TILE_ROWS][1][2]int
 	FoundMatch          int
@@ -169,7 +169,7 @@ type TileGroup struct {
 	PredMv              [2][2]int
 	RefMvIdx            int
 	MvCtx               int
-	PaletteSizes        [][][]int
+	PaletteSizes        [2][2][2]int
 	PaletteColors       [][][][]int
 	PaletteCache        []int
 	PaletteColorsY      []int
@@ -210,7 +210,7 @@ type TileGroup struct {
 
 	InterTxSizes [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
 	TxSize       int
-	TxSizes      [][]int
+	TxSizes      [2][2]int
 
 	AboveLevelContext  [][]int
 	AboveDcContext     [][]int
