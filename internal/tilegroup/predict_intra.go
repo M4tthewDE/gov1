@@ -75,6 +75,7 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 		pred = t.basicIntraPredictionProcess(w, h)
 	}
 
+	//runtime.Breakpoint()
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {
 			state.CurrFrame[plane][y+i][x+j] = pred[i][j]
