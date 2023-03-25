@@ -13,7 +13,7 @@ Using testdata to slowly build stuff up, then fix whatever doesn't work.
 
 Testdata: https://aomedia.org/av1-video-decoder-verification-tool/ 
 
-Also not going to consider speed till it confirms to all tests.
+Also not going to consider speed till it conforms to all tests.
 
 ## Spec
 https://aomediacodec.github.io/av1-spec/av1-spec.pdf
