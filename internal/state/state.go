@@ -65,7 +65,7 @@ type State struct {
 	Skip                   int
 	IsInter                int
 	CdefSize4              int
-	CdefFrame              [][][]int
+	CdefFrame              [3][9][9]int
 	UpscaledCurrFrame      [][][]int
 	LrFrame                [][][]int
 	TileIntraFrameYModeCdf [][][]int

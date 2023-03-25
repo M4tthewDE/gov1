@@ -1,10 +1,5 @@
 package tilegroup
 
-// 7.15
-func (t *TileGroup) cdefProcess() [][][]int {
-	panic("not implemented")
-}
-
 // 7.16
 func (t *TileGroup) upscalingProcess() [][][]int {
 	panic("not implemented")

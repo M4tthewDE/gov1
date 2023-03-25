@@ -256,8 +256,9 @@ type TileGroup struct {
 	Residual          [][]int
 	LoopFilterTxSizes [3][2][2]int
 
-	NewMvContext int
-	RefMvContext int
+	NewMvContext  int
+	RefMvContext  int
+	CdefAvailable bool
 }
 
 func NewTileGroup(sz int, b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) TileGroup {
@@ -334,7 +335,7 @@ func (t *TileGroup) decodeFrameWrapup(state *state.State, uh uncompressedheader.
 			t.loopFilter(state, uh, sh)
 		}
 
-		state.CdefFrame = t.cdefProcess()
+		t.cdefProcess(state, sh, uh)
 		state.UpscaledCurrFrame = t.upscalingProcess()
 		state.UpscaledCurrFrame = t.upscalingProcess()
 		state.LrFrame = t.loopRestorationProcess()

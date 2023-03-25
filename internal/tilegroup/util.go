@@ -27,3 +27,14 @@ func (t *TileGroup) isScaled(refFrame int, uh uncompressedheader.UncompressedHea
 func (t *TileGroup) isDirectionalMode(mode int) bool {
 	return (mode >= V_PRED) && (mode <= D67_PRED)
 }
+
+func isInsideFilterRegion(candidateR int, candidateC int, state *state.State) bool {
+	colStart := 0
+	colEnd := state.MiCols
+	rowStart := 0
+	rowEnd := state.MiRows
+	return candidateC >= colStart &&
+		candidateC < colEnd &&
+		candidateR >= rowStart &&
+		candidateR < rowEnd
+}
