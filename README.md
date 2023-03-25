@@ -3,28 +3,21 @@
 ## Why?
 To lose what is left of my fleeting sanity
 
-## How?
-Not sure tbh
+Implementing AV1 is a more ambitious project with a clear defined goal.
+The existing testdata creates a solid foundation to program against,
+and I hope to improve my math/algorithm skills through the project.
 
-Shitton of TDD, slowly building stuff up
+## How?
+
+Using testdata to slowly build stuff up, then fix whatever doesn't work.
 
 Testdata: https://aomedia.org/av1-video-decoder-verification-tool/ 
 
-Then refactor till I lose all my hair
+Also not going to consider speed till it confirms to all tests.
 
-Also not caring about speed till it works (really)
-
-## Source
+## Spec
 https://aomediacodec.github.io/av1-spec/av1-spec.pdf
 
-## Implemented things (oh boy)
-
-### OBU syntax
-- [] General OBU syntax
-- [] OBU header syntax
-- [] OBU extension header syntax
-- [] Trailing bits syntax
-- [] Byte alignment syntax
 
 
 ## Notes
@@ -32,8 +25,6 @@ https://aomediacodec.github.io/av1-spec/av1-spec.pdf
 Mv = Motion Vector (implement struct for that?)
 
 Variables starting with an upper case letter are derived for the decoding of the current syntax
-AV1 Bitstream & Decoding Process Specification
-Section: Conventions Page 20 of 669
 structure and all depending syntax structures
 
 
