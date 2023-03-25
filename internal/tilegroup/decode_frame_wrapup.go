@@ -97,11 +97,6 @@ var UPSCALE_FILTER = [SUPERRES_FILTER_SHIFTS][SUPERRES_FILTER_TAPS]int{
 	{0, 1, -2, 4, 127, -3, 1, 0}, {0, 0, -1, 2, 128, -1, 0, 0},
 }
 
-// 7.18
-func (t *TileGroup) outputProcess() [][][]int {
-	panic("not implemented")
-}
-
 // 7.19
 func (t *TileGroup) motionVectorStorageProcess() {
 	panic("not implemented")
@@ -190,22 +185,26 @@ func (t *TileGroup) referenceFrameUpdate(state *state.State, uh uncompressedhead
 
 // save_cdfs( i )
 func saveCdfs(ctx int) {
-	panic("not implemented")
+	// TODO: implement
+	//panic("not implemented")
 }
 
 // save_grain_params( i )
 func saveGrainParams(ctx int) {
-	panic("not implemented")
+	// TODO: implement
+	//panic("not implemented")
 }
 
 // save_loop_filter_params( i )
 func saveLoopFilterParams(ctx int) {
-	panic("not implemented")
+	// TODO: implement
+	//panic("not implemented")
 }
 
 // save_segmentation_params( i )
 func saveSegmentationParams(ctx int) {
-	panic("not implemented")
+	// TODO: implement
+	//panic("not implemented")
 }
 
 // 7.21

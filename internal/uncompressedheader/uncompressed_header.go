@@ -135,6 +135,7 @@ type UncompressedHeader struct {
 	OverlapFlag           bool
 	ClipToRestrictedRange bool
 	RefreshFrameFlags     int
+	FrameToShowMapIdx     int
 }
 
 func NewUncompressedHeader(h header.Header, sh sequenceheader.SequenceHeader, b *bitstream.BitStream, s *state.State) UncompressedHeader {
@@ -171,7 +172,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 		showExistingFrame := util.Bool(b.F(1))
 
 		if showExistingFrame {
-			frameToShowMapIdx := b.F(3)
+			u.FrameToShowMapIdx = b.F(3)
 
 			if sh.DecoderModelInfoPresent && !sh.TimingInfo.EqualPictureInterval {
 				u.TemporalPointInfo(sh, b)
@@ -182,14 +183,14 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 				u.DisplayFrameId = b.F(idLen)
 			}
 
-			u.FrameType = s.RefFrameType[frameToShowMapIdx]
+			u.FrameType = s.RefFrameType[u.FrameToShowMapIdx]
 
 			if u.FrameType == shared.KEY_FRAME {
 				u.RefreshImageFlags = allFrames
 			}
 
 			if sh.FilmGrainParamsPresent {
-				u.loadGrainParams(frameToShowMapIdx)
+				u.loadGrainParams(u.FrameToShowMapIdx)
 			}
 
 			return

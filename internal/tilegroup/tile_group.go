@@ -264,6 +264,10 @@ type TileGroup struct {
 	StripeEndY   int
 	PlaneEndX    int
 	PlaneEndY    int
+
+	OutY [1][1]int
+	OutU [1][1]int
+	OutV [1][1]int
 }
 
 func NewTileGroup(sz int, b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) TileGroup {
@@ -360,7 +364,7 @@ func (t *TileGroup) decodeFrameWrapup(state *state.State, uh uncompressedheader.
 
 	t.referenceFrameUpdate(state, uh, sh)
 	if uh.ShowFrame || uh.ShowExistingFrame {
-		t.outputProcess()
+		t.outputProcess(state, uh, sh)
 	}
 }
 
