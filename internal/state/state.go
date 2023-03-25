@@ -20,7 +20,7 @@ type State struct {
 	GmType            [shared.ALTREF_FRAME + 1]int
 	PrevGmParams      [shared.ALTREF_FRAME + 1][6]int
 	PrevSegmentIds    [][]int
-	RefFrameType      [7]int
+	RefFrameType      [shared.NUM_REF_FRAMES]int
 	CurrentQIndex     int
 	OperatingPointIdc int
 	MiColStart        int
@@ -33,8 +33,6 @@ type State struct {
 	SeenFrameHeader bool
 	RenderWidth     int
 	RenderHeight    int
-	UpscaledWidth   int
-	UpscaledHeight  int
 	TileNum         int
 	MiCol           int
 	MiRow           int
@@ -55,8 +53,16 @@ type State struct {
 	AvailLChroma           bool
 	RefFrame               [2]int
 	RefFrames              [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS][2]int
-	RefFrameWidth          []int
-	RefFrameHeight         []int
+	RefFrameWidth          [shared.NUM_REF_FRAMES]int
+	RefFrameHeight         [shared.NUM_REF_FRAMES]int
+	RefRenderWidth         [shared.NUM_REF_FRAMES]int
+	RefRenderHeight        [shared.NUM_REF_FRAMES]int
+	RefMiCols              [shared.NUM_REF_FRAMES]int
+	RefMiRows              [shared.NUM_REF_FRAMES]int
+	RefSubsamplingX        [shared.NUM_REF_FRAMES]int
+	RefSubsamplingY        [shared.NUM_REF_FRAMES]int
+	RefBitDepth            [shared.NUM_REF_FRAMES]int
+	SavedOrderHints        [shared.NUM_REF_FRAMES][shared.REFS_PER_FRAME + shared.LAST_FRAME]int
 	CurrFrame              [3][9][9]int
 	SymbolMaxBits          int
 	SymbolValue            int
@@ -70,6 +76,12 @@ type State struct {
 	UpscaledCdefFrame      [3][9][9]int
 	LrFrame                [3][9][9]int
 	TileIntraFrameYModeCdf [][][]int
+	MfMvs                  [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS][2]int
+	SavedMvs               [shared.NUM_REF_FRAMES][shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS][2]int
+	SavedRefFrames         [shared.NUM_REF_FRAMES][shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
+	MfRefFrames            [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
+	SavedGmParams          [shared.NUM_REF_FRAMES][shared.ALTREF_FRAME + 1][6]int
+	SavedSegmentIds        [shared.NUM_REF_FRAMES][shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
 
 	TxbSkipCdf      [][][]int
 	EobPt16Cdf      [][][]int
@@ -109,6 +121,7 @@ type State struct {
 	NewMvCdf               [][]int
 	ZeroMvCdf              [][]int
 	RefMvCdf               [][]int
+	RefOrderHint           [shared.NUM_REF_FRAMES]int
 	CompoundModeCdf        [][]int
 	DrlModeCdf             [][]int
 	IsInterCdf             [][]int
@@ -364,4 +377,5 @@ type State struct {
 	SavedCoeffBaseEobCdf [][][][]int
 	SavedCoeffBaseCdf    [][][][]int
 	SavedCoeffBrCdf      [][][][]int
+	RefValid             [shared.NUM_REF_FRAMES]int
 }

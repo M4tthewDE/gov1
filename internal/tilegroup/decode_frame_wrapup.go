@@ -2,6 +2,7 @@ package tilegroup
 
 import (
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
+	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 	"github.com/m4tthewde/gov1/internal/util"
@@ -106,8 +107,104 @@ func (t *TileGroup) motionVectorStorageProcess() {
 	panic("not implemented")
 }
 
-// 7.20
-func (t *TileGroup) referenceFrameUpdateProcess() {
+// 7.20 Reference frame update process
+func (t *TileGroup) referenceFrameUpdate(state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) {
+	for i := 0; i < shared.NUM_REF_FRAMES; i++ {
+		if ((uh.RefreshFrameFlags >> i) & 1) == 1 {
+			state.RefValid[i] = 1
+			// might be concerning that this is not stored in the state
+			t.RefUpscaledWidth[i] = uh.UpscaledWidth
+			state.RefFrameWidth[i] = uh.FrameWidth
+			state.RefFrameHeight[i] = uh.FrameHeight
+			state.RefRenderWidth[i] = uh.RenderWidth
+			state.RefRenderHeight[i] = uh.RenderHeight
+			state.RefMiCols[i] = state.MiCols
+			state.RefMiRows[i] = state.MiRows
+			state.RefFrameType[i] = uh.FrameType
+			state.RefSubsamplingX[i] = util.Int(sh.ColorConfig.SubsamplingX)
+			state.RefSubsamplingY[i] = util.Int(sh.ColorConfig.SubsamplingY)
+			state.RefBitDepth[i] = sh.ColorConfig.BitDepth
+
+			for j := 0; j < shared.REFS_PER_FRAME; j++ {
+				state.SavedOrderHints[i][j+shared.LAST_FRAME] = uh.OrderHints[j+shared.LAST_FRAME]
+			}
+
+			for x := 0; x < uh.UpscaledWidth; x++ {
+				for y := 0; y < uh.FrameHeight; y++ {
+					t.FrameStore[i][0][y][x] = state.LrFrame[0][y][x]
+				}
+			}
+
+			for plane := 1; plane <= 2; plane++ {
+				for x := 0; x < (uh.UpscaledWidth + util.Int(sh.ColorConfig.SubsamplingX)>>util.Int(sh.ColorConfig.SubsamplingX)); x++ {
+					for y := 0; y < (uh.FrameHeight + util.Int(sh.ColorConfig.SubsamplingY)>>util.Int(sh.ColorConfig.SubsamplingY)); y++ {
+						t.FrameStore[i][plane][y][x] = state.LrFrame[plane][y][x]
+					}
+				}
+			}
+
+			for row := 0; row < state.MiRows; row++ {
+				for col := 0; col < state.MiCols; col++ {
+					state.SavedRefFrames[i][row][col] = state.MfRefFrames[row][col]
+				}
+			}
+
+			for comp := 0; comp <= 1; comp++ {
+				for row := 0; row < state.MiRows; row++ {
+					for col := 0; col < state.MiCols; col++ {
+						state.SavedMvs[i][row][col][comp] = state.MfMvs[row][col][comp]
+					}
+				}
+			}
+
+			for ref := shared.LAST_FRAME; ref <= shared.ALTREF_FRAME; ref++ {
+				for j := 0; j <= 5; j++ {
+					state.SavedGmParams[i][ref][j] = uh.GmParams[ref][j]
+				}
+			}
+
+			for row := 0; row < state.MiRows; row++ {
+				for col := 0; col < state.MiCols; col++ {
+					state.SavedSegmentIds[i][row][col] = t.SegmentIds[row][col]
+				}
+			}
+
+			saveCdfs(i)
+
+			if sh.FilmGrainParamsPresent {
+				saveGrainParams(i)
+			}
+
+			saveLoopFilterParams(i)
+			saveSegmentationParams(i)
+
+			for i := 0; i < shared.NUM_REF_FRAMES; i++ {
+				if ((uh.RefreshFrameFlags >> i) & 1) == 1 {
+					state.RefOrderHint[i] = uh.OrderHint
+				}
+			}
+		}
+	}
+
+}
+
+// save_cdfs( i )
+func saveCdfs(ctx int) {
+	panic("not implemented")
+}
+
+// save_grain_params( i )
+func saveGrainParams(ctx int) {
+	panic("not implemented")
+}
+
+// save_loop_filter_params( i )
+func saveLoopFilterParams(ctx int) {
+	panic("not implemented")
+}
+
+// save_segmentation_params( i )
+func saveSegmentationParams(ctx int) {
 	panic("not implemented")
 }
 

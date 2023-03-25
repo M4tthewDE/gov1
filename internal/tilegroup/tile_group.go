@@ -131,7 +131,7 @@ type TileGroup struct {
 	LrSgrXqd            [3][1][1][2]int
 	HasChroma           bool
 	SegmentId           int
-	SegmentIds          [][]int
+	SegmentIds          [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
 	Lossless            bool
 	Skip                int
 	Skips               [2][2]int
@@ -235,7 +235,7 @@ type TileGroup struct {
 	LocalValid      bool
 	LocalWarpParams [6]int
 
-	FrameStore [][3][9][9]int
+	FrameStore [shared.NUM_REF_FRAMES][3][9][9]int
 	Mask       [][]int
 
 	FwdWeight int
@@ -358,7 +358,7 @@ func (t *TileGroup) decodeFrameWrapup(state *state.State, uh uncompressedheader.
 		}
 	}
 
-	t.referenceFrameUpdateProcess()
+	t.referenceFrameUpdate(state, uh, sh)
 	if uh.ShowFrame || uh.ShowExistingFrame {
 		t.outputProcess()
 	}

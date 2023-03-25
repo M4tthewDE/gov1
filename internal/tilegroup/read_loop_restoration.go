@@ -35,7 +35,7 @@ func (t *TileGroup) readLr(r int, c int, bSize int, b *bitstream.BitStream, stat
 
 			unitSize := state.LoopRestorationSize[plane]
 			unitRows := util.CountUnitsInFrame(unitSize, util.Round2(uh.FrameHeight, subY))
-			unitCols := util.CountUnitsInFrame(unitSize, util.Round2(state.UpscaledWidth, subX))
+			unitCols := util.CountUnitsInFrame(unitSize, util.Round2(uh.UpscaledWidth, subX))
 			unitRowStart := (r*(MI_SIZE>>subY) + unitSize - 1) / unitSize
 			unitRowEnd := util.Min(unitRows, ((r+h)*(MI_SIZE>>subY)+unitSize-1)/unitSize)
 

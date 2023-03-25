@@ -71,7 +71,6 @@ type UncompressedHeader struct {
 	PrevFrameId                int
 	CurrentFrameId             int
 	RefFrameId                 []int
-	RefValid                   []int
 	TileInfo                   tileinfo.TileInfo
 	FramePresentationTime      int
 	PrimaryRefFrame            int
@@ -85,10 +84,9 @@ type UncompressedHeader struct {
 	GmParams                   [shared.ALTREF_FRAME + 1][6]int
 	ForceIntegerMv             bool
 	AllowScreenContentTools    int
-	RefOrderHint               []int
 	RefFrameIdx                [7]int
 	OrderHint                  int
-	OrderHints                 []int
+	OrderHints                 [8]int
 	SkipModeFrame              []int
 	SkipModePresent            int
 	SegQMLevel                 [3][shared.MAX_SEGMENTS]int
@@ -136,6 +134,7 @@ type UncompressedHeader struct {
 	CrOffset              int
 	OverlapFlag           bool
 	ClipToRestrictedRange bool
+	RefreshFrameFlags     int
 }
 
 func NewUncompressedHeader(h header.Header, sh sequenceheader.SequenceHeader, b *bitstream.BitStream, s *state.State) UncompressedHeader {
@@ -255,7 +254,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 	if sh.FrameIdNumbersPresent {
 		u.PrevFrameId = u.CurrentFrameId
 		u.CurrentFrameId = b.F(idLen)
-		u.markRefFrames(idLen, sh)
+		u.markRefFrames(idLen, s, sh)
 	} else {
 		u.CurrentFrameId = 0
 	}
@@ -297,25 +296,23 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 		}
 	}
 
-	RefValid := []int{}
 	ref_order_hint := []int{}
 
 	u.UseRefFrameMvs = false
-	var refreshFrameFlags int
 
 	if u.FrameType == 3 || u.FrameType == 0 || u.ShowFrame {
-		refreshFrameFlags = allFrames
+		u.RefreshFrameFlags = allFrames
 	} else {
-		refreshFrameFlags = b.F(8)
+		u.RefreshFrameFlags = b.F(8)
 	}
 
-	if !u.FrameIsIntra || refreshFrameFlags != allFrames {
+	if !u.FrameIsIntra || u.RefreshFrameFlags != allFrames {
 		if errorResilientMode && sh.EnableOrderHint {
 			for i := 0; i < shared.NUM_REF_FRAMES; i++ {
 				ref_order_hint[i] = b.F(sh.OrderHintBits)
 
-				if ref_order_hint[i] != u.RefOrderHint[i] {
-					RefValid[i] = 0
+				if ref_order_hint[i] != s.RefOrderHint[i] {
+					s.RefValid[i] = 0
 				}
 			}
 		}
@@ -386,7 +383,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 
 		for i := 0; i < shared.REFS_PER_FRAME; i++ {
 			refFrame := shared.LAST_FRAME + 1
-			hint := u.RefOrderHint[u.RefFrameIdx[i]]
+			hint := s.RefOrderHint[u.RefFrameIdx[i]]
 			u.OrderHints[refFrame] = hint
 			if !sh.EnableOrderHint {
 				RefFrameSignBias[refFrame] = false
@@ -458,7 +455,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 	u.lrParams(b, s, sh)
 	u.readTxMode(b)
 	u.frameReferenceMode(b)
-	u.skipModeParams(b, sh)
+	u.skipModeParams(s, b, sh)
 
 	if u.FrameIsIntra || errorResilientMode || !sh.EnableWarpedMotion {
 		u.AllowWarpedMotion = false
@@ -473,18 +470,18 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 }
 
 // mark_ref_frames( idLen)
-func (u *UncompressedHeader) markRefFrames(idLen int, sh sequenceheader.SequenceHeader) {
+func (u *UncompressedHeader) markRefFrames(idLen int, state *state.State, sh sequenceheader.SequenceHeader) {
 	diffLen := sh.DeltaFrameIdLengthMinusTwo + 2
 
 	for i := 0; i < shared.NUM_REF_FRAMES; i++ {
 		if u.CurrentFrameId > (1 << diffLen) {
 			if u.RefFrameId[i] > u.CurrentFrameId ||
 				u.RefFrameId[i] < (u.CurrentFrameId-(1<<diffLen)) {
-				u.RefValid[i] = 0
+				state.RefValid[i] = 0
 			}
 		} else {
 			if u.RefFrameId[i] > u.CurrentFrameId && u.RefFrameId[i] < ((1<<idLen)+u.CurrentFrameId-(1<<diffLen)) {
-				u.RefValid[i] = 0
+				state.RefValid[i] = 0
 			}
 		}
 	}
@@ -1003,7 +1000,7 @@ func (u *UncompressedHeader) frameReferenceMode(b *bitstream.BitStream) {
 }
 
 // skip_mode_params()
-func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
+func (u *UncompressedHeader) skipModeParams(state *state.State, b *bitstream.BitStream, sh sequenceheader.SequenceHeader) {
 	var skipModeAllowed = 0
 	var forwardHint int
 	var backwardHint int
@@ -1014,7 +1011,7 @@ func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream, sh sequenceh
 		backwardIdx := -1
 
 		for i := 0; i < shared.REFS_PER_FRAME; i++ {
-			refHint := u.RefOrderHint[u.RefFrameIdx[i]]
+			refHint := state.RefOrderHint[u.RefFrameIdx[i]]
 
 			if u.GetRelativeDist(refHint, u.OrderHint, sh) < 0 {
 				if forwardIdx < 0 || u.GetRelativeDist(refHint, forwardHint, sh) > 0 {
@@ -1039,7 +1036,7 @@ func (u *UncompressedHeader) skipModeParams(b *bitstream.BitStream, sh sequenceh
 			secondForwardIdx := -1
 			var secondForwardHint int
 			for i := 0; i < shared.REFS_PER_FRAME; i++ {
-				refHint := u.RefOrderHint[u.RefFrameIdx[i]]
+				refHint := state.RefOrderHint[u.RefFrameIdx[i]]
 				if u.GetRelativeDist(refHint, forwardHint, sh) < 0 {
 					if secondForwardIdx < 0 || u.GetRelativeDist(refHint, secondForwardHint, sh) > 0 {
 						secondForwardIdx = i
