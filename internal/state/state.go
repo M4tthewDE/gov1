@@ -66,7 +66,8 @@ type State struct {
 	IsInter                int
 	CdefSize4              int
 	CdefFrame              [3][9][9]int
-	UpscaledCurrFrame      [][][]int
+	UpscaledCurrFrame      [3][9][9]int
+	UpscaledCdefFrame      [3][9][9]int
 	LrFrame                [][][]int
 	TileIntraFrameYModeCdf [][][]int
 

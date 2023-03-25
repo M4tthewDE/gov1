@@ -336,8 +336,8 @@ func (t *TileGroup) decodeFrameWrapup(state *state.State, uh uncompressedheader.
 		}
 
 		t.cdefProcess(state, sh, uh)
-		state.UpscaledCurrFrame = t.upscalingProcess()
-		state.UpscaledCurrFrame = t.upscalingProcess()
+		state.UpscaledCdefFrame = t.upscalingProcess(state.CdefFrame, state, sh, uh)
+		state.UpscaledCurrFrame = t.upscalingProcess(state.CurrFrame, state, sh, uh)
 		state.LrFrame = t.loopRestorationProcess()
 
 		if uh.SegmentationEnabled && uh.SegmentationUpdateMap == 0 {
