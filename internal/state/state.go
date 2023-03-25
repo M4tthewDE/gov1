@@ -68,7 +68,7 @@ type State struct {
 	CdefFrame              [3][9][9]int
 	UpscaledCurrFrame      [3][9][9]int
 	UpscaledCdefFrame      [3][9][9]int
-	LrFrame                [][][]int
+	LrFrame                [3][9][9]int
 	TileIntraFrameYModeCdf [][][]int
 
 	TxbSkipCdf      [][][]int

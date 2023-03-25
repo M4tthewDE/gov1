@@ -96,11 +96,6 @@ var UPSCALE_FILTER = [SUPERRES_FILTER_SHIFTS][SUPERRES_FILTER_TAPS]int{
 	{0, 1, -2, 4, 127, -3, 1, 0}, {0, 0, -1, 2, 128, -1, 0, 0},
 }
 
-// 7.17
-func (t *TileGroup) loopRestorationProcess() [][][]int {
-	panic("not implemented")
-}
-
 // 7.18
 func (t *TileGroup) outputProcess() [][][]int {
 	panic("not implemented")

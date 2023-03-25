@@ -125,7 +125,7 @@ const DIV_LUT_BITS = 8
 type TileGroup struct {
 	LrType              [3][1][1]int
 	RefLrWiener         [3][2][3]int
-	LrWiener            [][][][][]int
+	LrWiener            [][][][][3]int
 	LrSgrSet            [3][1][1]int
 	RefSgrXqd           [3][2]int
 	LrSgrXqd            [3][1][1][2]int
@@ -259,6 +259,11 @@ type TileGroup struct {
 	NewMvContext  int
 	RefMvContext  int
 	CdefAvailable bool
+
+	StripeStartY int
+	StripeEndY   int
+	PlaneEndX    int
+	PlaneEndY    int
 }
 
 func NewTileGroup(sz int, b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) TileGroup {
@@ -338,7 +343,7 @@ func (t *TileGroup) decodeFrameWrapup(state *state.State, uh uncompressedheader.
 		t.cdefProcess(state, sh, uh)
 		state.UpscaledCdefFrame = t.upscalingProcess(state.CdefFrame, state, sh, uh)
 		state.UpscaledCurrFrame = t.upscalingProcess(state.CurrFrame, state, sh, uh)
-		state.LrFrame = t.loopRestorationProcess()
+		t.loopRestoration(state, uh, sh)
 
 		if uh.SegmentationEnabled && uh.SegmentationUpdateMap == 0 {
 			for row := 0; row < state.MiRows; row++ {

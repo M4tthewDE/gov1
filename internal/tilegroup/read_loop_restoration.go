@@ -104,7 +104,7 @@ func (t *TileGroup) readLrUnit(plane int, unitRow int, unitCol int, state *state
 		t.LrSgrSet[plane][unitRow][unitCol] = lrSgrSet
 
 		for i := 0; i < 2; i++ {
-			radius := SgrParams[lrSgrSet][i*2]
+			radius := SGR_PARAMS[lrSgrSet][i*2]
 			min := Sgrproj_Xqd_Min[i]
 			max := Sgrproj_Xqd_Max[i]
 
@@ -175,7 +175,7 @@ var Wiener_Taps_Min = []int{-5, -23, -17}
 var Wiener_Taps_Max = []int{10, 8, 46}
 var Wiener_Taps_K = []int{1, 2, 3}
 
-var SgrParams = [][]int{
+var SGR_PARAMS = [][]int{
 	{2, 12, 1, 4}, {2, 15, 1, 6}, {2, 18, 1, 8}, {2, 21, 1, 9},
 	{2, 24, 1, 10}, {2, 29, 1, 11}, {2, 36, 1, 12}, {2, 45, 1, 13},
 	{2, 56, 1, 14}, {2, 68, 1, 15}, {0, 0, 1, 5}, {0, 0, 1, 8},
