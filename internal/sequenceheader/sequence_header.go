@@ -52,6 +52,10 @@ type SequenceHeader struct {
 	EnableRestoration                   bool
 	ColorConfig                         ColorConfig
 	FilmGrainParamsPresent              bool
+
+	DecoderBufferDelay []int
+	EncoderBufferDelay []int
+	LowDelayModeFlag   []bool
 }
 
 type TimingInfo struct {
@@ -143,8 +147,7 @@ func NewSequenceHeader(b *bitstream.BitStream, state *state.State) SequenceHeade
 					s.DecoderModelPresentForThisOp[i] = util.Bool(b.F(1))
 
 					if s.DecoderModelPresentForThisOp[i] {
-						// TODO: what are we doing with this?
-						_ = NewOperatingParametersInfo(b, i)
+						s.operatingParametersInfo(b, i)
 					}
 				} else {
 					s.DecoderModelPresentForThisOp[i] = false
@@ -356,14 +359,12 @@ func NewColorConfig(b *bitstream.BitStream, seqProfile int) ColorConfig {
 }
 
 // operating_parameters_info( op )
-func NewOperatingParametersInfo(b *bitstream.BitStream, bufferDelayLengthMinusOne int) OperatingParametersInfo {
-	n := bufferDelayLengthMinusOne + 1
+func (sh *SequenceHeader) operatingParametersInfo(b *bitstream.BitStream, op int) {
+	n := sh.DecoderModelInfo.BufferDelayLengthMinusOne + 1
 
-	return OperatingParametersInfo{
-		DecoderBufferDelay: []int{b.F(n)},
-		EncoderBufferDelay: []int{b.F(n)},
-		LowDelayModeFlag:   []bool{b.F(n) != 0},
-	}
+	sh.DecoderBufferDelay[op] = b.F(n)
+	sh.EncoderBufferDelay[op] = b.F(n)
+	sh.LowDelayModeFlag[op] = util.Bool(b.F(1))
 }
 
 // choose_operating_point()
