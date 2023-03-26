@@ -12,7 +12,7 @@ const MV_BORDER = 128
 
 // 7.10.2. Find MV stack process
 // find_mv_stack( isCompound )
-func (t *TileGroup) findMvStack(isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) findMvStack(isCompound bool, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
 	bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 
@@ -26,7 +26,7 @@ func (t *TileGroup) findMvStack(isCompound int, state *state.State, uh uncompres
 	t.GlobalMvs[0] = t.setupGlobalMvProcess(0, state, uh)
 
 	// 4.
-	if util.Bool(isCompound) {
+	if isCompound {
 		t.GlobalMvs[1] = t.setupGlobalMvProcess(1, state, uh)
 	}
 
@@ -197,7 +197,7 @@ func (t *TileGroup) setupGlobalMvProcess(refList int, state *state.State, uh unc
 }
 
 // 7.10.2.2 Scan row process
-func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) scanRowProcess(deltaRow int, isCompound bool, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
 	end4 := util.Min(util.Min(bw4, state.MiCols-state.MiCol), 16)
 	deltaCol := 0
@@ -232,7 +232,7 @@ func (t *TileGroup) scanRowProcess(deltaRow int, isCompound int, state *state.St
 }
 
 // 7.10.2.3 Scan col process
-func (t *TileGroup) scanColProcess(deltaCol int, isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) scanColProcess(deltaCol int, isCompound bool, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 	end4 := util.Min(util.Min(bh4, state.MiRows-state.MiRow), 16)
 	deltaRow := 0
@@ -267,7 +267,7 @@ func (t *TileGroup) scanColProcess(deltaCol int, isCompound int, state *state.St
 }
 
 // 7.10.2.4 Scan point proces
-func (t *TileGroup) scanPointProcess(deltaRow int, deltaCol int, isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) scanPointProcess(deltaRow int, deltaCol int, isCompound bool, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	mvRow := state.MiRow + deltaRow
 	mvCol := state.MiCol + deltaCol
 	weight := 4
@@ -279,7 +279,7 @@ func (t *TileGroup) scanPointProcess(deltaRow int, deltaCol int, isCompound int,
 }
 
 // 7.10.2.5 Temporal scan process
-func (t *TileGroup) temporalScanProcess(isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) temporalScanProcess(isCompound bool, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	bw4 := shared.NUM_4X4_BLOCKS_WIDE[state.MiSize]
 	bh4 := shared.NUM_4X4_BLOCKS_HIGH[state.MiSize]
 
@@ -301,7 +301,7 @@ func (t *TileGroup) temporalScanProcess(isCompound int, state *state.State, uh u
 }
 
 // 7.10.2.6 Temporal sample process
-func (t *TileGroup) temporalSampleProcess(deltaRow int, deltaCol int, isCompound int, state *state.State, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) temporalSampleProcess(deltaRow int, deltaCol int, isCompound bool, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	mvRow := (state.MiRow + deltaRow) | 1
 	mvCol := (state.MiCol + deltaCol) | 1
 
@@ -316,7 +316,7 @@ func (t *TileGroup) temporalSampleProcess(deltaRow int, deltaCol int, isCompound
 		t.ZeroMvContext = 1
 	}
 
-	if !util.Bool(isCompound) {
+	if !isCompound {
 		candMv := t.MotionFieldMvs[state.RefFrame[0]][y8][x8]
 		if candMv[0] == -1<<15 {
 			return
@@ -394,22 +394,21 @@ func (t *TileGroup) temporalSampleProcess(deltaRow int, deltaCol int, isCompound
 }
 
 // 7.10.2.7. Add reference motion vector process
-func (t *TileGroup) addRefMvCandidate(mvRow int, mvCol int, isCompound int, weight int, state *state.State, uh uncompressedheader.UncompressedHeader) {
+func (t *TileGroup) addRefMvCandidate(mvRow int, mvCol int, isCompound bool, weight int, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	if t.IsInters[mvRow][mvCol] == 0 {
 		return
 	}
 
 	// TODO: not sure if this loop is correct here
-	for candList := 0; candList < 2; candList++ {
-		if isCompound == 0 {
+	if !isCompound {
+		for candList := 0; candList < 2; candList++ {
 			if state.RefFrames[mvRow][mvCol][candList] == state.RefFrame[0] {
 				t.searchStackProcess(mvRow, mvCol, candList, weight, state, uh)
 			}
-
-		} else {
-			if state.RefFrames[mvRow][mvCol][0] == state.RefFrame[0] && state.RefFrames[mvRow][mvCol][1] == state.RefFrame[1] {
-				t.compoundSearchStackProcess(mvRow, mvCol, weight)
-			}
+		}
+	} else {
+		if state.RefFrames[mvRow][mvCol][0] == state.RefFrame[0] && state.RefFrames[mvRow][mvCol][1] == state.RefFrame[1] {
+			t.compoundSearchStackProcess(mvRow, mvCol, weight)
 		}
 	}
 }
@@ -484,7 +483,7 @@ func (t *TileGroup) lowerPrecisionProcess(candMv [2]int, uh uncompressedheader.U
 }
 
 // 7.10.2.11 Sorting proces
-func (t *TileGroup) sortingProcess(start int, end int, isCompound int) {
+func (t *TileGroup) sortingProcess(start int, end int, isCompound bool) {
 	for end > start {
 		newEnd := start
 		for idx := start + 1; idx < end; idx++ {
@@ -497,12 +496,12 @@ func (t *TileGroup) sortingProcess(start int, end int, isCompound int) {
 	}
 }
 
-func (t *TileGroup) swapStack(i int, j int, isCompound int) {
+func (t *TileGroup) swapStack(i int, j int, isCompound bool) {
 	temp := t.WeightStack[i]
 	t.WeightStack[i] = t.WeightStack[j]
 	t.WeightStack[j] = temp
 
-	for list := 0; list < 1+isCompound; list++ {
+	for list := 0; list < 1+util.Int(isCompound); list++ {
 		for comp := 0; comp < 2; comp++ {
 			t.RefStackMv[i][list][comp] = t.RefStackMv[j][list][comp]
 			t.RefStackMv[j][list][comp] = temp
@@ -512,7 +511,7 @@ func (t *TileGroup) swapStack(i int, j int, isCompound int) {
 }
 
 // 7.10.2.12 Extra search process
-func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
+func (t *TileGroup) extraSearchProcess(isCompound bool, state *state.State) {
 	for list := 0; list < 2; list++ {
 		t.RefIdCount[list] = 0
 		t.RefDiffCount[list] = 0
@@ -560,7 +559,7 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 	}
 
 	var combinedMvs [][][2]int
-	if isCompound == 1 {
+	if isCompound {
 		for list := 0; list < 2; list++ {
 			compCount := 0
 			for idx := 0; idx < t.RefIdCount[list]; idx++ {
@@ -597,7 +596,7 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 		}
 	}
 
-	if isCompound == 0 {
+	if !isCompound {
 		for idx := t.NumMvFound; idx < 2; idx++ {
 			t.RefStackMv[idx][0] = t.GlobalMvs[0]
 		}
@@ -605,7 +604,7 @@ func (t *TileGroup) extraSearchProcess(isCompound int, state *state.State) {
 }
 
 // 7.10.2.13 Add extra mv candidate process
-func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound int, state *state.State) {
+func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound bool, state *state.State) {
 	// Unsure if negative indexing here is intended
 	if mvRow < 0 {
 		mvRow = len(state.RefFrames) + mvRow
@@ -617,7 +616,7 @@ func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound 
 
 	var candRef int
 	var candMv [2]int
-	if util.Bool(isCompound) {
+	if isCompound {
 		for candList := 0; candList < 2; candList++ {
 			candRef = state.RefFrames[mvRow][mvCol][candList]
 			if candRef > shared.INTRA_FRAME {
@@ -663,12 +662,12 @@ func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound 
 }
 
 // 7.10.2.14 Context and claping process
-func (t *TileGroup) contextAndClampingProcess(isCompound int, numNew int, state *state.State) {
+func (t *TileGroup) contextAndClampingProcess(isCompound bool, numNew int, state *state.State) {
 	bw := shared.BLOCK_WIDTH[state.MiSize]
 	bh := shared.BLOCK_HEIGHT[state.MiSize]
 
 	numLists := 1
-	if util.Bool(isCompound) {
+	if isCompound {
 		numLists = 2
 	}
 

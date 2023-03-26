@@ -48,7 +48,7 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 		t.PaletteSizeUV = 0
 		t.InterpFilter[0] = shared.BILINEAR
 		t.InterpFilter[1] = shared.BILINEAR
-		t.findMvStack(0, state, uh)
+		t.findMvStack(false, state, uh)
 		t.assignMv(0, b, state, sh, uh)
 	} else {
 		t.IsInter = 0

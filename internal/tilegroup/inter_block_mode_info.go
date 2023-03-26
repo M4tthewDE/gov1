@@ -25,7 +25,7 @@ func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 	t.readRefFrames(b, state, uh)
 
 	isCompound := state.RefFrame[1] > shared.INTRA_FRAME
-	t.findMvStack(util.Int(isCompound), state, uh)
+	t.findMvStack(isCompound, state, uh)
 
 	if util.Bool(t.SkipMode) {
 		t.YMode = shared.NEAREST_NEARESTMV
