@@ -399,7 +399,6 @@ func (t *TileGroup) addRefMvCandidate(mvRow int, mvCol int, isCompound bool, wei
 		return
 	}
 
-	// TODO: not sure if this loop is correct here
 	if !isCompound {
 		for candList := 0; candList < 2; candList++ {
 			if state.RefFrames[mvRow][mvCol][candList] == state.RefFrame[0] {
