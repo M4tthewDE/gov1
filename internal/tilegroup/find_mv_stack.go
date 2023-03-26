@@ -407,7 +407,7 @@ func (t *TileGroup) addRefMvCandidate(mvRow int, mvCol int, isCompound bool, wei
 		}
 	} else {
 		if state.RefFrames[mvRow][mvCol][0] == state.RefFrame[0] && state.RefFrames[mvRow][mvCol][1] == state.RefFrame[1] {
-			t.compoundSearchStackProcess(mvRow, mvCol, weight)
+			t.compoundSearchStackProcess(mvRow, mvCol, weight, state, uh)
 		}
 	}
 }
@@ -447,8 +447,41 @@ func (t *TileGroup) searchStackProcess(mvRow int, mvCol int, candList int, weigh
 }
 
 // 7.10.2.9. Compound search stack process
-func (t *TileGroup) compoundSearchStackProcess(mvRow int, mvCol int, weight int) {
-	// TODO: implement
+func (t *TileGroup) compoundSearchStackProcess(mvRow int, mvCol int, weight int, state *state.State, uh uncompressedheader.UncompressedHeader) {
+	candMvs := t.Mvs[mvRow][mvCol]
+	candMode := t.YModes[mvRow][mvCol]
+
+	if candMode == shared.GLOBAL_GLOBALMV {
+		for refList := 0; refList <= 1; refList++ {
+			if state.GmType[state.RefFrame[refList]] > shared.TRANSLATION {
+				candMvs[refList] = t.GlobalMvs[refList]
+			}
+		}
+	}
+
+	for i := 0; i <= 1; i++ {
+		t.lowerPrecisionProcess(candMvs[i], uh)
+	}
+
+	t.FoundMatch = 1
+
+	for idx := 0; idx < t.NumMvFound; idx++ {
+		if candMvs[0] == t.RefStackMv[idx][0] && candMvs[1] == t.RefStackMv[idx][1] {
+			t.WeightStack[idx] += weight
+		}
+	}
+
+	if t.NumMvFound < MAX_REF_MV_STACK_SIZE {
+		t.RefStackMv[t.NumMvFound][0] = candMvs[0]
+		t.RefStackMv[t.NumMvFound][1] = candMvs[1]
+		t.WeightStack[t.NumMvFound] = weight
+		t.NumMvFound++
+	}
+
+	if util.HasNewmv(candMode) {
+		t.NewMvCount++
+	}
+
 }
 
 // 7.10.2.10. Lower precision process

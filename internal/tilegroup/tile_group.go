@@ -150,7 +150,7 @@ type TileGroup struct {
 	MotionFieldMvs      [][][][2]int
 	IsInters            [2][2]int
 	Mv                  [2][2]int
-	Mvs                 [shared.MAX_TILE_COLS][shared.MAX_TILE_ROWS][1][2]int
+	Mvs                 [shared.MAX_TILE_COLS][shared.MAX_TILE_ROWS][2][2]int
 	FoundMatch          int
 	TotalMatches        int
 	CloseMatches        int
