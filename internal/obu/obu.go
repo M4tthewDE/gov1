@@ -15,9 +15,11 @@ import (
 type ObuType int
 
 type Obu struct {
-	Size           int
-	Header         header.Header
-	SequenceHeader sequenceheader.SequenceHeader
+	Size               int
+	Header             header.Header
+	SequenceHeader     sequenceheader.SequenceHeader
+	UncompressedHeader uncompressedheader.UncompressedHeader
+	TileGroup          tilegroup.TileGroup
 }
 
 func NewObu(sz int, state *state.State, b *bitstream.BitStream, sh sequenceheader.SequenceHeader) Obu {
@@ -62,11 +64,11 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 	case header.OBU_TEMPORAL_DELIMITER:
 		state.SeenFrameHeader = false
 	case header.OBU_FRAME_HEADER:
-		o.ParseFrameHeader(b, state, o.Header, o.SequenceHeader)
+		o.UncompressedHeader = o.ParseFrameHeader(b, state, o.Header, o.SequenceHeader)
 	case header.OBU_REDUNDANT_FRAME_HEADER:
 		o.ParseFrameHeader(b, state, o.Header, o.SequenceHeader)
 	case header.OBU_FRAME:
-		o.newFrame(o.Size, b, state, o.Header, o.SequenceHeader)
+		o.TileGroup = o.newFrame(o.Size, b, state, o.Header, o.SequenceHeader)
 	case header.OBU_PADDING:
 		o.paddingObu(b)
 	default:
@@ -89,6 +91,7 @@ func (o *Obu) newFrame(sz int, b *bitstream.BitStream, state *state.State, h hea
 	startBitPos := b.Position
 
 	uh := o.ParseFrameHeader(b, state, h, sh)
+	o.UncompressedHeader = uh
 	b.ByteAlignment()
 
 	endBitPos := b.Position

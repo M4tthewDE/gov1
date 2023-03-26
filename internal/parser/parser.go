@@ -13,6 +13,7 @@ import (
 type Parser struct {
 	bitStream      *bitstream.BitStream
 	SequenceHeader sequenceheader.SequenceHeader
+	obus           []obu.Obu
 }
 
 func NewParser(b *bitstream.BitStream) Parser {
@@ -43,6 +44,7 @@ func (p *Parser) frameUnit(sz int) {
 		logger.Logger.Info("Starting obu parsing process...", zap.Int("sz", sz))
 
 		o := obu.NewObu(obuLength, &state, p.bitStream, p.SequenceHeader)
+		p.obus = append(p.obus, o)
 
 		switch o.Header.Type {
 		case header.OBU_SEQUENCE_HEADER:
@@ -55,12 +57,14 @@ func (p *Parser) frameUnit(sz int) {
 }
 
 // bitstream( )
-func (p *Parser) bitstream() {
+func (p *Parser) bitstream() []obu.Obu {
 	logger.Logger.Info("Starting bitstream...")
 	for p.bitStream.MoreDataInBistream() {
 		temporalUnitSize := p.bitStream.Leb128()
 		p.temporalUnit(temporalUnitSize)
 	}
+
+	return p.obus
 }
 
 // choose_operating_point()
