@@ -18,8 +18,6 @@ Also not going to consider speed till it conforms to all tests.
 ## Spec
 https://aomediacodec.github.io/av1-spec/av1-spec.pdf
 
-
-
 ## Notes
 
 Mv = Motion Vector (implement struct for that?)
