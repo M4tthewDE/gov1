@@ -47,7 +47,7 @@ func (t *TileGroup) intermediateOutputPreparation(uh uncompressedheader.Uncompre
 			}
 		}
 
-		// TODO: does this assignment work? normall sequenceheader doesn't get modified
+		// TODO: does this assignment work? sequenceheader isn't supposed to get modified this way
 		sh.ColorConfig.BitDepth = state.RefBitDepth[uh.FrameToShowMapIdx]
 	} else {
 		w := uh.UpscaledWidth
