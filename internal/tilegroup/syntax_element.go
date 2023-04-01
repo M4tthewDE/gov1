@@ -8,18 +8,6 @@ import (
 	"github.com/m4tthewde/gov1/internal/uncompressedheader"
 )
 
-func (t *TileGroup) singleRefP1Symbol(state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
-	fwdCount := t.countRefs(shared.LAST_FRAME, state)
-	fwdCount += t.countRefs(shared.LAST2_FRAME, state)
-	fwdCount += t.countRefs(shared.LAST3_FRAME, state)
-	fwdCount += t.countRefs(shared.GOLDEN_FRAME, state)
-	bwdCount := t.countRefs(shared.BWDREF_FRAME, state)
-	bwdCount += t.countRefs(shared.ALTREF2_FRAME, state)
-	bwdCount += t.countRefs(shared.ALTREF_FRAME, state)
-	ctx := refCountCtx(fwdCount, bwdCount)
-	return symbol.ReadSymbol(state.TileSingleRefCdf[ctx][0], state, b, uh)
-}
-
 func (t *TileGroup) countRefs(frameType int, state *state.State) int {
 	c := 0
 	if state.AvailU {
@@ -51,6 +39,26 @@ func refCountCtx(counts0 int, counts1 int) int {
 	}
 
 	return 2
+}
+
+func (t *TileGroup) singleRefP1Symbol(state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
+	fwdCount := t.countRefs(shared.LAST_FRAME, state)
+	fwdCount += t.countRefs(shared.LAST2_FRAME, state)
+	fwdCount += t.countRefs(shared.LAST3_FRAME, state)
+	fwdCount += t.countRefs(shared.GOLDEN_FRAME, state)
+	bwdCount := t.countRefs(shared.BWDREF_FRAME, state)
+	bwdCount += t.countRefs(shared.ALTREF2_FRAME, state)
+	bwdCount += t.countRefs(shared.ALTREF_FRAME, state)
+	ctx := refCountCtx(fwdCount, bwdCount)
+	return symbol.ReadSymbol(state.TileSingleRefCdf[ctx][0], state, b, uh)
+}
+
+func (t *TileGroup) singleRefP2Symbol(state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
+	brfCount := t.countRefs(shared.BWDREF_FRAME, state)
+	arf2Count := t.countRefs(shared.ALTREF2_FRAME, state)
+	ctx := refCountCtx(brfCount, arf2Count)
+
+	return symbol.ReadSymbol(state.TileSingleRefCdf[ctx][1], state, b, uh)
 }
 
 func (t *TileGroup) singleRefP3Symbol(state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {

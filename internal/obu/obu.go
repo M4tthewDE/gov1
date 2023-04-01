@@ -71,6 +71,8 @@ func (o *Obu) build(sz int, b *bitstream.BitStream, state *state.State) {
 		o.TileGroup = o.newFrame(o.Size, b, state, o.Header, o.SequenceHeader)
 	case header.OBU_PADDING:
 		o.paddingObu(b)
+	case header.OBU_TILE_GROUP:
+		o.TileGroup = tilegroup.NewTileGroup(o.Size, b, state, o.UncompressedHeader, o.SequenceHeader)
 	default:
 		panic("not implemented")
 	}

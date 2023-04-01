@@ -40,7 +40,7 @@ func (t *TileGroup) interBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 		if newMv == 0 {
 			t.YMode = shared.NEWMV
 		} else {
-			zeroMv := b.S()
+			zeroMv := symbol.ReadSymbol(state.TileZeroMvCdf[t.ZeroMvContext], state, b, uh)
 			if zeroMv == 0 {
 				t.YMode = shared.GLOBALMV
 			} else {
@@ -192,7 +192,7 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream, state *state.State, uh
 		} else {
 			singleRefP1 := t.singleRefP1Symbol(state, b, uh)
 			if util.Bool(singleRefP1) {
-				singleRefP2 := b.S()
+				singleRefP2 := t.singleRefP2Symbol(state, b, uh)
 				if singleRefP2 == 0 {
 					singleRefP6 := b.S()
 					if util.Bool(singleRefP6) {
