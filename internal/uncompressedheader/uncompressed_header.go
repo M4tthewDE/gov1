@@ -742,7 +742,7 @@ func (u *UncompressedHeader) segmentationParams(b *bitstream.BitStream, s *state
 		}
 	} else {
 		for i := 0; i < shared.MAX_SEGMENTS; i++ {
-			for j := 0; j < shared.SEG_LVL_MAX; i++ {
+			for j := 0; j < shared.SEG_LVL_MAX; j++ {
 				s.FeatureEnabled[i][j] = 0
 				s.FeatureData[i][j] = 0
 			}
