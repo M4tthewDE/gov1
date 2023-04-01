@@ -22,9 +22,10 @@ type Obu struct {
 	TileGroup          tilegroup.TileGroup
 }
 
-func NewObu(sz int, state *state.State, b *bitstream.BitStream, sh sequenceheader.SequenceHeader) Obu {
+func NewObu(sz int, state *state.State, b *bitstream.BitStream, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) Obu {
 	obu := Obu{}
 	obu.SequenceHeader = sh
+	obu.UncompressedHeader = uh
 	obu.build(sz, b, state)
 
 	return obu
