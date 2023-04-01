@@ -64,4 +64,11 @@ func TestParseEndToEnd(t *testing.T) {
 	check(err)
 
 	assert.NotEqual(t, 0, n)
+
+	cleanUp()
+}
+
+func cleanUp() {
+	err := os.Remove("../../out.yuv")
+	check(err)
 }
