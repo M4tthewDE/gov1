@@ -72,7 +72,7 @@ func (t *TileGroup) intraFrameModeInfo(b *bitstream.BitStream, uh uncompressedhe
 				t.readCflAlphas(b, state, uh)
 			}
 
-			t.intraAngleInfoUv(b, state)
+			t.intraAngleInfoUv(b, state, uh)
 		}
 
 		t.PaletteSizeY = 0
@@ -371,11 +371,11 @@ func (t *TileGroup) readCflAlphas(b *bitstream.BitStream, state *state.State, uh
 }
 
 // intra_angle_info_uv()
-func (t *TileGroup) intraAngleInfoUv(b *bitstream.BitStream, state *state.State) {
+func (t *TileGroup) intraAngleInfoUv(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	t.AngleDeltaUV = 0
 	if state.MiSize >= shared.BLOCK_8X8 {
 		if t.isDirectionalMode(t.UVMode) {
-			angleDeltaUv := b.S()
+			angleDeltaUv := symbol.ReadSymbol(state.TileAngleDeltaCdf[t.UVMode-V_PRED], state, b, uh)
 			t.AngleDeltaUV = angleDeltaUv - MAX_ANGLE_DELTA
 		}
 	}

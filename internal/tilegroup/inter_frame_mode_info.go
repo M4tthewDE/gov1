@@ -79,7 +79,7 @@ func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.Stat
 			t.readCflAlphas(b, state, uh)
 		}
 
-		t.intraAngleInfoUv(b, state)
+		t.intraAngleInfoUv(b, state, uh)
 	}
 
 	t.PaletteSizeY = 0
