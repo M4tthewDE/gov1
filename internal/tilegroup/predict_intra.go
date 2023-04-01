@@ -262,6 +262,11 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 					idx = (i << 6) - (j+1)*dy
 					base = idx >> (6 - util.Int(upsampleLeft))
 					shift := ((idx << util.Int(upsampleLeft)) >> 1) & 0x1F
+
+					// handle negative indezes
+					if base < 0 {
+						base = len(t.LeftCol) + base
+					}
 					pred[i][j] = util.Round2(t.LeftCol[base]*(32-shift)+t.LeftCol[base+1]*shift, 5)
 				}
 			}
