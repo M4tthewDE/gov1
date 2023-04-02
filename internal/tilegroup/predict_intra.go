@@ -265,9 +265,10 @@ func (t *TileGroup) directionalIntraPredictionProcess(plane int, x int, y int, h
 
 					// handle negative indezes
 					if base < 0 {
-						base = len(t.LeftCol) + base
+						pred[i][j] = util.Round2(t.LeftCol[len(t.LeftCol)+base]*(32-shift)+t.LeftCol[base+1]*shift, 5)
+					} else {
+						pred[i][j] = util.Round2(t.LeftCol[base]*(32-shift)+t.LeftCol[base+1]*shift, 5)
 					}
-					pred[i][j] = util.Round2(t.LeftCol[base]*(32-shift)+t.LeftCol[base+1]*shift, 5)
 				}
 			}
 		}
@@ -560,7 +561,7 @@ func (t *TileGroup) intraEdgeUpsampleSelectionProcess(w int, h int, filterType i
 
 // 7.11.2.11 Intra edge upsample process
 func (t *TileGroup) intraEdgeUpsampleProcess(numPx int, dir bool, sh sequenceheader.SequenceHeader) {
-	var buf *[15]int
+	var buf *[32768]int
 	if !dir {
 		buf = &t.AboveRow
 	} else {
