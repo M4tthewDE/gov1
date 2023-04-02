@@ -67,12 +67,20 @@ func (t *TileGroup) interFrameModeInfo(b *bitstream.BitStream, state *state.Stat
 func (t *TileGroup) intraBlockModeInfo(b *bitstream.BitStream, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) {
 	state.RefFrame[0] = shared.INTRA_FRAME
 	state.RefFrame[1] = shared.NONE
-	yMode := b.S()
+	yMode := symbol.ReadSymbol(state.TileYModeCdf[SIZE_GROUP[state.MiSize]], state, b, uh)
 	t.YMode = yMode
 	t.intraAngleInfoY(b, state, uh)
 
 	if t.HasChroma {
-		uvMode := b.S()
+		var uvMode int
+		if t.Lossless && t.getPlaneResidualSize(state.MiSize, 1, sh) == shared.BLOCK_4X4 {
+			uvMode = symbol.ReadSymbol(state.TileUVModeCflAllowedCdf[t.YMode], state, b, uh)
+		} else if !t.Lossless && util.Max(shared.BLOCK_WIDTH[state.MiSize], shared.BLOCK_HEIGHT[state.MiSize]) <= 32 {
+			uvMode = symbol.ReadSymbol(state.TileUVModeCflAllowedCdf[t.YMode], state, b, uh)
+		} else {
+			uvMode = symbol.ReadSymbol(state.TileUVModeCflNotAllowedCdf[t.YMode], state, b, uh)
+		}
+
 		t.UVMode = uvMode
 
 		if t.UVMode == UV_CFL_PRED {
@@ -201,4 +209,9 @@ func (t *TileGroup) readIsInter(b *bitstream.BitStream, state *state.State, uh u
 
 		t.IsInter = symbol.ReadSymbol(state.TileIsInterCdf[ctx], state, b, uh)
 	}
+}
+
+var SIZE_GROUP = []int{
+	0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3,
+	3, 3, 3, 3, 3, 0, 0, 1, 1, 2, 2,
 }
