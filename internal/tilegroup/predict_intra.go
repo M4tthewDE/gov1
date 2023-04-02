@@ -15,6 +15,11 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 	maxX := (state.MiCols * MI_SIZE) - 1
 	maxY := (state.MiRows * MI_SIZE) - 1
 
+	yMinusOne := y
+	if y-1 == -1 {
+		yMinusOne = len(state.CurrFrame[plane]) - 1
+	}
+
 	if plane > 0 {
 		maxX = ((state.MiCols * MI_SIZE) >> util.Int(sh.ColorConfig.SubsamplingX)) - 1
 		maxY = ((state.MiRows * MI_SIZE) >> util.Int(sh.ColorConfig.SubsamplingY)) - 1
@@ -35,7 +40,7 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 			if haveAboveRight {
 				aboveLimit = util.Min(maxX, x+2*w-1)
 			}
-			t.AboveRow[i] = state.CurrFrame[plane][y-1][util.Min(aboveLimit, x+i)]
+			t.AboveRow[i] = state.CurrFrame[plane][yMinusOne][util.Min(aboveLimit, x+i)]
 		}
 	}
 
@@ -52,7 +57,7 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 			}
 
 			if x-1 == -1 {
-				t.AboveRow[i] = state.CurrFrame[plane][util.Min(leftLimit, y+i)][len(state.CurrFrame[plane][util.Min(leftLimit, y+i)-1])]
+				t.AboveRow[i] = state.CurrFrame[plane][util.Min(leftLimit, y+i)][len(state.CurrFrame[plane][util.Min(leftLimit, y+i)])-1]
 			} else {
 				t.AboveRow[i] = state.CurrFrame[plane][util.Min(leftLimit, y+i)][x-1]
 			}
@@ -60,11 +65,21 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 	}
 
 	if util.Int(haveAbove) == 1 && util.Int(haveLeft) == 1 {
-		t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y-1][x-1]
+		if x-1 == -1 {
+			t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][yMinusOne][len(state.CurrFrame[plane][y-1])-1]
+		} else {
+			t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][yMinusOne][x-1]
+		}
 	} else if util.Int(haveAbove) == 1 {
 		t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y-1][x]
 	} else if util.Int(haveLeft) == 1 {
-		t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y][x-1]
+		if x-1 == -1 {
+			t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y][len(state.CurrFrame[plane][y])-1]
+		} else {
+			t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y][x-1]
+
+		}
+
 	} else {
 		t.AboveRow[len(t.AboveRow)-1] = 1 << (sh.ColorConfig.BitDepth - 1)
 	}
