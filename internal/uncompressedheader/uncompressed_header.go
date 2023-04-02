@@ -136,6 +136,7 @@ type UncompressedHeader struct {
 	ClipToRestrictedRange bool
 	RefreshFrameFlags     int
 	FrameToShowMapIdx     int
+	RefFrameSignBias      [3]bool
 }
 
 func NewUncompressedHeader(h header.Header, sh sequenceheader.SequenceHeader, b *bitstream.BitStream, s *state.State) UncompressedHeader {
@@ -380,16 +381,14 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 			u.UseRefFrameMvs = util.Bool(b.F(1))
 		}
 
-		RefFrameSignBias := []bool{}
-
 		for i := 0; i < shared.REFS_PER_FRAME; i++ {
 			refFrame := shared.LAST_FRAME + 1
 			hint := s.RefOrderHint[u.RefFrameIdx[i]]
 			u.OrderHints[refFrame] = hint
 			if !sh.EnableOrderHint {
-				RefFrameSignBias[refFrame] = false
+				u.RefFrameSignBias[refFrame] = false
 			} else {
-				RefFrameSignBias[refFrame] = u.GetRelativeDist(hint, u.OrderHint, sh) > 0
+				u.RefFrameSignBias[refFrame] = u.GetRelativeDist(hint, u.OrderHint, sh) > 0
 			}
 		}
 	}

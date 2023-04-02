@@ -148,7 +148,7 @@ func (t *TileGroup) findMvStack(isCompound bool, state *state.State, uh uncompre
 
 	// 35.
 	if t.NumMvFound < 2 {
-		t.extraSearchProcess(isCompound, state)
+		t.extraSearchProcess(isCompound, state, uh)
 	}
 
 	// 36.
@@ -543,7 +543,7 @@ func (t *TileGroup) swapStack(i int, j int, isCompound bool) {
 }
 
 // 7.10.2.12 Extra search process
-func (t *TileGroup) extraSearchProcess(isCompound bool, state *state.State) {
+func (t *TileGroup) extraSearchProcess(isCompound bool, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	for list := 0; list < 2; list++ {
 		t.RefIdCount[list] = 0
 		t.RefDiffCount[list] = 0
@@ -572,7 +572,7 @@ func (t *TileGroup) extraSearchProcess(isCompound bool, state *state.State) {
 				break
 			}
 
-			t.addExtraMvCandidateProcess(mvRow, mvCol, isCompound, state)
+			t.addExtraMvCandidateProcess(mvRow, mvCol, isCompound, state, uh)
 
 			// Unsure if negative indexing here is intended
 			if mvRow < 0 {
@@ -636,7 +636,7 @@ func (t *TileGroup) extraSearchProcess(isCompound bool, state *state.State) {
 }
 
 // 7.10.2.13 Add extra mv candidate process
-func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound bool, state *state.State) {
+func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound bool, state *state.State, uh uncompressedheader.UncompressedHeader) {
 	// Unsure if negative indexing here is intended
 	if mvRow < 0 {
 		mvRow = len(state.RefFrames) + mvRow
@@ -658,7 +658,7 @@ func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound 
 						t.RefIdMvs[list][t.RefIdCount[list]] = candMv
 						t.RefIdCount[list]++
 					} else if t.RefDiffCount[list] < 2 {
-						if t.RefFrameSignBias[candRef] != t.RefFrameSignBias[state.RefFrame[list]] {
+						if uh.RefFrameSignBias[candRef] != uh.RefFrameSignBias[state.RefFrame[list]] {
 							candMv[0] *= -1
 							candMv[1] *= -1
 						}
@@ -673,7 +673,7 @@ func (t *TileGroup) addExtraMvCandidateProcess(mvRow int, mvCol int, isCompound 
 			candRef = state.RefFrames[mvRow][mvCol][candList]
 			if candRef > shared.INTRA_FRAME {
 				candMv = t.Mvs[mvRow][mvCol][candList]
-				if t.RefFrameSignBias[candRef] != t.RefFrameSignBias[state.RefFrame[0]] {
+				if uh.RefFrameSignBias[candRef] != uh.RefFrameSignBias[state.RefFrame[0]] {
 					candMv[0] *= -1
 					candMv[1] *= -1
 				}

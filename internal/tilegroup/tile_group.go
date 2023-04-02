@@ -159,7 +159,6 @@ type TileGroup struct {
 	RefIdMvs            [][][2]int
 	RefDiffCount        [2]int
 	RefDiffMvs          [][][2]int
-	RefFrameSignBias    []int
 	WeightStack         []int
 	AngleDeltaY         int
 	AngleDeltaUV        int
