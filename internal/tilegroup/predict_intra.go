@@ -46,7 +46,7 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 
 	for i := 0; i < w+h-1; i++ {
 		if util.Int(haveLeft) == 0 && util.Int(haveAbove) == 1 {
-			t.LeftCol[i] = state.CurrFrame[plane][y-1][x]
+			t.LeftCol[i] = state.CurrFrame[plane][yMinusOne][x]
 		} else if util.Int(haveLeft) == 0 && util.Int(haveAbove) == 0 {
 			t.AboveRow[i] = (1 << (sh.ColorConfig.BitDepth - 1)) + 1
 
@@ -71,7 +71,7 @@ func (t *TileGroup) predictIntra(plane int, x int, y int, haveLeft bool, haveAbo
 			t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][yMinusOne][x-1]
 		}
 	} else if util.Int(haveAbove) == 1 {
-		t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y-1][x]
+		t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][yMinusOne][x]
 	} else if util.Int(haveLeft) == 1 {
 		if x-1 == -1 {
 			t.AboveRow[len(t.AboveRow)-1] = state.CurrFrame[plane][y][len(state.CurrFrame[plane][y])-1]

@@ -139,11 +139,11 @@ type TileGroup struct {
 	YMode               int
 	YModes              [shared.MAX_TILE_ROWS][shared.MAX_TILE_COLS]int
 	UVMode              int
-	UVModes             [][]int
+	UVModes             [2][2]int
 	PaletteSizeY        int
 	PaletteSizeUV       int
 	InterpFilter        [2]int
-	InterpFilters       [][][]int
+	InterpFilters       [2][2][2]int
 	NumMvFound          int
 	NewMvCount          int
 	GlobalMvs           [2][2]int
@@ -199,7 +199,7 @@ type TileGroup struct {
 	CandList          [][]int
 
 	RefUpscaledWidth [8]int
-	RefFrameHeight   []int
+	RefFrameHeight   [2]int
 	MaskType         int
 
 	ColorMapY        [][]int

@@ -200,6 +200,25 @@ func (t *TileGroup) roundVariablesDerivationProcess(isCompound bool, sh sequence
 
 // 7.11.3.3  Motion vector scaling process
 func (t *TileGroup) motionVectorScalingProcess(plane int, refIdx int, x int, y int, mv [2]int, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) (int, int, int, int) {
+	if 2*uh.FrameWidth >= t.RefUpscaledWidth[refIdx] {
+		panic("bitstream conformance violated: 2*uh.FrameWidth >= t.RefUpscaledWidth[refIdx]")
+	}
+
+	if 2*uh.FrameHeight >= t.RefFrameHeight[refIdx] {
+		panic("bitstream conformance violated: 2*uh.FrameHeight >= t.RefFrameHeight[refIdx]")
+	}
+
+	if uh.FrameWidth <= 16*t.RefUpscaledWidth[refIdx] {
+		panic("bitstream conformance violated: uh.FrameWidth <= 16*t.RefUpscaledWidth[refIdx]")
+	}
+
+	if uh.FrameHeight <= 16*t.RefFrameHeight[refIdx] {
+		panic("bitstream conformance violated: uh.FrameHeight <= 16*t.RefFrameHeight[refIdx]")
+	}
+
+	// TODO: Note: When intra block copy is being used, refIdx will be equal to -1 to signal prediction from the frame currently
+	// being decoded. The arrays RefFrameWidth, RefFrameHeight, and RefUpscaledWidth include values at index -1
+	// giving the dimensions of the current frame.
 	xScale := ((t.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (uh.FrameWidth / 2)) / uh.FrameWidth
 	yScale := ((t.RefFrameHeight[refIdx] << REF_SCALE_SHIFT) + (uh.FrameHeight / 2)) / uh.FrameHeight
 
