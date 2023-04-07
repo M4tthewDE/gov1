@@ -62,8 +62,9 @@ type State struct {
 	RefSubsamplingX        [shared.NUM_REF_FRAMES]int
 	RefSubsamplingY        [shared.NUM_REF_FRAMES]int
 	RefBitDepth            [shared.NUM_REF_FRAMES]int
+	RefUpscaledWidth       [8]int
 	SavedOrderHints        [shared.NUM_REF_FRAMES][shared.REFS_PER_FRAME + shared.LAST_FRAME]int
-	CurrFrame              [3][9][9]int
+	CurrFrame              [3][16][16]int
 	SymbolMaxBits          int
 	SymbolValue            int
 	SymbolRange            int
@@ -71,7 +72,7 @@ type State struct {
 	Skip                   int
 	IsInter                int
 	CdefSize4              int
-	CdefFrame              [3][9][9]int
+	CdefFrame              [3][16][16]int
 	UpscaledCurrFrame      [3][9][9]int
 	UpscaledCdefFrame      [3][9][9]int
 	LrFrame                [3][9][9]int

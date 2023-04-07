@@ -24,8 +24,8 @@ func (t *TileGroup) outputProcess(state *state.State, uh uncompressedheader.Unco
 func (t *TileGroup) intermediateOutputPreparation(uh uncompressedheader.UncompressedHeader, state *state.State, sh *sequenceheader.SequenceHeader) (int, int, int, int) {
 	var w, h, subX, subY int
 	if uh.ShowExistingFrame {
-		w := t.RefUpscaledWidth[uh.FrameToShowMapIdx]
-		h := t.RefFrameHeight[uh.FrameToShowMapIdx]
+		w := state.RefUpscaledWidth[uh.FrameToShowMapIdx]
+		h := state.RefFrameHeight[uh.FrameToShowMapIdx]
 		subX := state.RefSubsamplingX[uh.FrameToShowMapIdx]
 		subY := state.RefSubsamplingY[uh.FrameToShowMapIdx]
 

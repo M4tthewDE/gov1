@@ -198,9 +198,7 @@ type TileGroup struct {
 	NumSamplesScanned int
 	CandList          [][]int
 
-	RefUpscaledWidth [8]int
-	RefFrameHeight   [2]int
-	MaskType         int
+	MaskType int
 
 	ColorMapY        [][]int
 	ColorMapUV       [][]int
@@ -235,7 +233,7 @@ type TileGroup struct {
 	LocalValid      bool
 	LocalWarpParams [6]int
 
-	FrameStore [shared.NUM_REF_FRAMES][3][9][9]int
+	FrameStore [shared.NUM_REF_FRAMES][3][16][16]int
 	Mask       [][]int
 
 	FwdWeight int

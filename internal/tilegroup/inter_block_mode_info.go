@@ -252,7 +252,7 @@ func (t *TileGroup) readMotionMode(isCompound bool, b *bitstream.BitStream, uh u
 	}
 
 	t.findWarpSamples(state)
-	if uh.ForceIntegerMv || t.NumSamples == 0 || !uh.AllowWarpedMotion || t.isScaled(state.RefFrame[0], uh) {
+	if uh.ForceIntegerMv || t.NumSamples == 0 || !uh.AllowWarpedMotion || t.isScaled(state.RefFrame[0], state, uh) {
 		useObmc := b.S()
 		if util.Bool(useObmc) {
 			t.MotionMode = OBMC

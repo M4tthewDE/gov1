@@ -9,7 +9,7 @@ import (
 )
 
 // 7.16 Upscaling process
-func (t *TileGroup) upscalingProcess(inputFrame [3][9][9]int, state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) [3][9][9]int {
+func (t *TileGroup) upscalingProcess(inputFrame [3][16][16]int, state *state.State, sh sequenceheader.SequenceHeader, uh uncompressedheader.UncompressedHeader) [3][9][9]int {
 	var outputFrame [3][9][9]int
 	for plane := 0; plane < sh.ColorConfig.NumPlanes; plane++ {
 		var subX, subY int
@@ -107,8 +107,7 @@ func (t *TileGroup) referenceFrameUpdate(state *state.State, uh uncompressedhead
 	for i := 0; i < shared.NUM_REF_FRAMES; i++ {
 		if ((uh.RefreshFrameFlags >> i) & 1) == 1 {
 			state.RefValid[i] = 1
-			// might be concerning that this is not stored in the state
-			t.RefUpscaledWidth[i] = uh.UpscaledWidth
+			state.RefUpscaledWidth[i] = uh.UpscaledWidth
 			state.RefFrameWidth[i] = uh.FrameWidth
 			state.RefFrameHeight[i] = uh.FrameHeight
 			state.RefRenderWidth[i] = uh.RenderWidth

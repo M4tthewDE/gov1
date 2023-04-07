@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"github.com/m4tthewde/gov1/internal/bitstream"
+	"github.com/m4tthewde/gov1/internal/logger"
 	"github.com/m4tthewde/gov1/internal/obu"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func check(err error) {
@@ -81,6 +83,8 @@ func TestParseEndToEndProfile0Core(t *testing.T) {
 
 		b := bitstream.NewBitStream(data)
 		p := NewParser(&b)
+
+		logger.Logger.Info("Starting parser", zap.String("fileName", fileName))
 		p.bitstream()
 	}
 

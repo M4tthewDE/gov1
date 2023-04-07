@@ -17,6 +17,8 @@ var Quant_Dist_Lookup = [][]int{
 	{9, 7}, {11, 5}, {12, 4}, {13, 3},
 }
 
+const PRED_SIZE = 16
+
 // 7.11.3 Inter prediction process
 func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow int, candCol int, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) {
 	isCompound := state.RefFrames[candRow][candCol][1] > shared.INTRA_FRAME
@@ -46,7 +48,7 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 		useWarp = 0
 	} else if t.MotionMode == LOCALWARP && t.LocalValid {
 		useWarp = 1
-	} else if (t.YMode == shared.GLOBALMV || t.YMode == shared.GLOBAL_GLOBALMV) && state.GmType[refFrame] > shared.TRANSLATION && !t.isScaled(refFrame, uh) && globalValid {
+	} else if (t.YMode == shared.GLOBALMV || t.YMode == shared.GLOBAL_GLOBALMV) && state.GmType[refFrame] > shared.TRANSLATION && !t.isScaled(refFrame, state, uh) && globalValid {
 		useWarp = 2
 	}
 
@@ -59,17 +61,17 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 		refIdx = -1
 		state.RefFrameWidth[len(state.RefFrameWidth)-1] = uh.FrameWidth
 		state.RefFrameHeight[len(state.RefFrameHeight)-1] = uh.FrameHeight
-		t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = uh.UpscaledWidth
+		state.RefUpscaledWidth[len(state.RefUpscaledWidth)-1] = uh.UpscaledWidth
 	}
-	startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, x, y, mv, uh, sh)
+	startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, x, y, mv, state, uh, sh)
 
 	if util.Bool(t.useIntrabc) {
 		state.RefFrameWidth[len(state.RefFrameWidth)-1] = state.MiCols * MI_SIZE
 		state.RefFrameHeight[len(state.RefFrameHeight)-1] = state.MiRows * MI_SIZE
-		t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = state.MiCols * MI_SIZE
+		state.RefUpscaledWidth[len(state.RefUpscaledWidth)-1] = state.MiCols * MI_SIZE
 	}
 
-	var preds [][][]int
+	var preds [2][PRED_SIZE][PRED_SIZE]int
 	if useWarp != 0 {
 		for i8 := 0; i8 <= ((h - 1) >> 3); i8++ {
 			for j8 := 0; j8 <= ((w - 1) >> 3); j8++ {
@@ -100,7 +102,7 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 			useWarp = 0
 		} else if t.MotionMode == LOCALWARP && t.LocalValid {
 			useWarp = 1
-		} else if (t.YMode == shared.GLOBALMV || t.YMode == shared.GLOBAL_GLOBALMV) && state.GmType[refFrame] > shared.TRANSLATION && !t.isScaled(refFrame, uh) && globalValid {
+		} else if (t.YMode == shared.GLOBALMV || t.YMode == shared.GLOBAL_GLOBALMV) && state.GmType[refFrame] > shared.TRANSLATION && !t.isScaled(refFrame, state, uh) && globalValid {
 			useWarp = 2
 		}
 
@@ -113,18 +115,18 @@ func (t *TileGroup) predictInter(plane int, x int, y int, w int, h int, candRow 
 			refIdx = -1
 			state.RefFrameWidth[len(state.RefFrameWidth)-1] = uh.FrameWidth
 			state.RefFrameHeight[len(state.RefFrameHeight)-1] = uh.FrameHeight
-			t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = uh.UpscaledWidth
+			state.RefUpscaledWidth[len(state.RefUpscaledWidth)-1] = uh.UpscaledWidth
 		}
 
-		startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, x, y, mv, uh, sh)
+		startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, x, y, mv, state, uh, sh)
 
 		if util.Bool(t.useIntrabc) {
 			state.RefFrameWidth[len(state.RefFrameWidth)-1] = state.MiCols * MI_SIZE
 			state.RefFrameHeight[len(state.RefFrameHeight)-1] = state.MiRows * MI_SIZE
-			t.RefUpscaledWidth[len(t.RefUpscaledWidth)-1] = state.MiCols * MI_SIZE
+			state.RefUpscaledWidth[len(state.RefUpscaledWidth)-1] = state.MiCols * MI_SIZE
 		}
 
-		var preds [][][]int
+		var preds [][PRED_SIZE][PRED_SIZE]int
 		if useWarp != 0 {
 			for i8 := 0; i8 <= ((h - 1) >> 3); i8++ {
 				for j8 := 0; j8 <= ((w - 1) >> 3); j8++ {
@@ -199,28 +201,28 @@ func (t *TileGroup) roundVariablesDerivationProcess(isCompound bool, sh sequence
 }
 
 // 7.11.3.3  Motion vector scaling process
-func (t *TileGroup) motionVectorScalingProcess(plane int, refIdx int, x int, y int, mv [2]int, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) (int, int, int, int) {
-	if 2*uh.FrameWidth >= t.RefUpscaledWidth[refIdx] {
+func (t *TileGroup) motionVectorScalingProcess(plane int, refIdx int, x int, y int, mv [2]int, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) (int, int, int, int) {
+	if !(2*uh.FrameWidth >= state.RefUpscaledWidth[refIdx]) {
 		panic("bitstream conformance violated: 2*uh.FrameWidth >= t.RefUpscaledWidth[refIdx]")
 	}
 
-	if 2*uh.FrameHeight >= t.RefFrameHeight[refIdx] {
+	if !(2*uh.FrameHeight >= state.RefFrameHeight[refIdx]) {
 		panic("bitstream conformance violated: 2*uh.FrameHeight >= t.RefFrameHeight[refIdx]")
 	}
 
-	if uh.FrameWidth <= 16*t.RefUpscaledWidth[refIdx] {
+	if !(uh.FrameWidth <= 16*state.RefUpscaledWidth[refIdx]) {
 		panic("bitstream conformance violated: uh.FrameWidth <= 16*t.RefUpscaledWidth[refIdx]")
 	}
 
-	if uh.FrameHeight <= 16*t.RefFrameHeight[refIdx] {
+	if !(uh.FrameHeight <= 16*state.RefFrameHeight[refIdx]) {
 		panic("bitstream conformance violated: uh.FrameHeight <= 16*t.RefFrameHeight[refIdx]")
 	}
 
 	// TODO: Note: When intra block copy is being used, refIdx will be equal to -1 to signal prediction from the frame currently
 	// being decoded. The arrays RefFrameWidth, RefFrameHeight, and RefUpscaledWidth include values at index -1
 	// giving the dimensions of the current frame.
-	xScale := ((t.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (uh.FrameWidth / 2)) / uh.FrameWidth
-	yScale := ((t.RefFrameHeight[refIdx] << REF_SCALE_SHIFT) + (uh.FrameHeight / 2)) / uh.FrameHeight
+	xScale := ((state.RefUpscaledWidth[refIdx] << REF_SCALE_SHIFT) + (uh.FrameWidth / 2)) / uh.FrameWidth
+	yScale := ((state.RefFrameHeight[refIdx] << REF_SCALE_SHIFT) + (uh.FrameHeight / 2)) / uh.FrameHeight
 
 	subX := 0
 	subY := 0
@@ -248,8 +250,8 @@ func (t *TileGroup) motionVectorScalingProcess(plane int, refIdx int, x int, y i
 }
 
 // 7.11.3.4 Block inter prediction process
-func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y int, xStep int, yStep int, w int, h int, candRow int, candCol int, state *state.State, sh sequenceheader.SequenceHeader) [][]int {
-	var ref [3][9][9]int
+func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y int, xStep int, yStep int, w int, h int, candRow int, candCol int, state *state.State, sh sequenceheader.SequenceHeader) [PRED_SIZE][PRED_SIZE]int {
+	var ref [3][16][16]int
 	if refIdx == -1 {
 		ref = state.CurrFrame
 	} else {
@@ -263,7 +265,7 @@ func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y 
 		subY = util.Int(sh.ColorConfig.SubsamplingY)
 	}
 
-	lastX := ((t.RefUpscaledWidth[refIdx] + subX) >> subX) - 1
+	lastX := ((state.RefUpscaledWidth[refIdx] + subX) >> subX) - 1
 	lastY := ((state.RefFrameHeight[refIdx] + subY) >> subY) - 1
 
 	intermediateHeight := (((h-1)*yStep + (1 << SCALE_SUBPEL_BITS) - 1) >> SCALE_SUBPEL_BITS) + 8
@@ -277,7 +279,7 @@ func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y 
 		}
 	}
 
-	var intermediate [][]int
+	var intermediate [8][8]int
 	for r := 0; r < intermediateHeight; r++ {
 		for c := 0; c < w; c++ {
 			s := 0
@@ -298,7 +300,7 @@ func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y 
 		}
 	}
 
-	var pred [][]int
+	var pred [PRED_SIZE][PRED_SIZE]int
 	for r := 0; r < h; r++ {
 		for c := 0; c < w; c++ {
 			s := 0
@@ -314,8 +316,8 @@ func (t *TileGroup) blockInterPredictionProcess(plane int, refIdx int, x int, y 
 }
 
 // 7.11.3.5 Block warp process
-func (t *TileGroup) blockWarpProcess(useWarp int, plane int, refList int, x int, y int, i8 int, j8 int, w int, h int, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) [][]int {
-	var pred [][]int
+func (t *TileGroup) blockWarpProcess(useWarp int, plane int, refList int, x int, y int, i8 int, j8 int, w int, h int, state *state.State, uh uncompressedheader.UncompressedHeader, sh sequenceheader.SequenceHeader) [PRED_SIZE][PRED_SIZE]int {
+	var pred [PRED_SIZE][PRED_SIZE]int
 
 	refIdx := uh.RefFrameIdx[state.RefFrame[refList]-shared.LAST_FRAME]
 	ref := t.FrameStore[refIdx]
@@ -327,7 +329,7 @@ func (t *TileGroup) blockWarpProcess(useWarp int, plane int, refList int, x int,
 		subY = util.Int(sh.ColorConfig.SubsamplingY)
 	}
 
-	lastX := ((t.RefUpscaledWidth[refIdx] + subX) >> subX) - 1
+	lastX := ((state.RefUpscaledWidth[refIdx] + subX) >> subX) - 1
 	lastY := ((state.RefFrameHeight[refIdx] + subY) >> subY) - 1
 
 	srcX := (x + j8*8 + 4) << subX
@@ -542,7 +544,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int,
 					refIdx := uh.RefFrameIdx[state.RefFrames[candRow][candCol][0]-shared.LAST_FRAME]
 					predX := (x4 * 4) >> subX
 					predY := (y4 * 4) >> subY
-					startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, predX, predY, mv, uh, sh)
+					startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, predX, predY, mv, state, uh, sh)
 					obmcPred := t.blockInterPredictionProcess(plane, refIdx, startX, startY, stepX, stepY, predW, predH, candRow, candCol, state, sh)
 
 					for i := 0; i < predH; i++ {
@@ -582,7 +584,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int,
 				refIdx := uh.RefFrameIdx[state.RefFrames[candRow][candCol][0]-shared.LAST_FRAME]
 				predX := (x4 * 4) >> subX
 				predY := (y4 * 4) >> subY
-				startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, predX, predY, mv, uh, sh)
+				startX, startY, stepX, stepY := t.motionVectorScalingProcess(plane, refIdx, predX, predY, mv, state, uh, sh)
 				obmcPred := t.blockInterPredictionProcess(plane, refIdx, startX, startY, stepX, stepY, predW, predH, candRow, candCol, state, sh)
 
 				for i := 0; i < predH; i++ {
@@ -599,7 +601,7 @@ func (t *TileGroup) overlappedMotionCompensationProcess(plane int, w int, h int,
 }
 
 // 7.11.3.10 Overlap blending process
-func (t *TileGroup) overlapBlendingProcess(plane int, predX int, predY int, predW int, predH int, pass bool, obmcPred [][]int, mask []int, state *state.State) {
+func (t *TileGroup) overlapBlendingProcess(plane int, predX int, predY int, predW int, predH int, pass bool, obmcPred [PRED_SIZE][PRED_SIZE]int, mask []int, state *state.State) {
 	for i := 0; i < predH; i++ {
 		var m int
 		for j := 0; j < predW; j++ {
@@ -625,7 +627,7 @@ func (t *TileGroup) wedgeMaskProcess(w int, h int, state *state.State) {
 }
 
 // 7.11.3.12 Difference weight mask process
-func (t *TileGroup) differenceWeightMaskProcess(preds [][][]int, w int, h int, sh sequenceheader.SequenceHeader) {
+func (t *TileGroup) differenceWeightMaskProcess(preds [2][PRED_SIZE][PRED_SIZE]int, w int, h int, sh sequenceheader.SequenceHeader) {
 	for i := 0; i < h; i++ {
 		for j := 0; j < w; j++ {
 			diff := util.Abs(preds[0][i][j] - preds[1][i][j])
@@ -659,7 +661,7 @@ func (t *TileGroup) intraModeVariantMaskProcess(w int, h int) {
 }
 
 // 7.11.3.14 Mask blend process
-func (t *TileGroup) maskBlendProcess(preds [][][]int, plane int, dstX int, dstY int, w int, h int, sh sequenceheader.SequenceHeader, state *state.State) {
+func (t *TileGroup) maskBlendProcess(preds [2][PRED_SIZE][PRED_SIZE]int, plane int, dstX int, dstY int, w int, h int, sh sequenceheader.SequenceHeader, state *state.State) {
 	subX := 0
 	subY := 0
 	if plane != 0 {
