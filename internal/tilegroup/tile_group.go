@@ -159,7 +159,7 @@ type TileGroup struct {
 	RefIdMvs            [][][2]int
 	RefDiffCount        [2]int
 	RefDiffMvs          [][][2]int
-	WeightStack         []int
+	WeightStack         [8]int
 	AngleDeltaY         int
 	AngleDeltaUV        int
 	CflAlphaU           int
@@ -212,7 +212,7 @@ type TileGroup struct {
 	AboveLevelContext  [][]int
 	AboveDcContext     [][]int
 	LeftLevelContext   [][]int
-	LeftDcContext      [][]int
+	LeftDcContext      [3][]int
 	LeftSegPredContext []int
 
 	CompGroupIdxs [][]int
@@ -240,7 +240,7 @@ type TileGroup struct {
 	BckWeight int
 
 	ZeroMvContext int
-	DrlCtxStack   []int
+	DrlCtxStack   [1]int
 
 	MaxLumaH int
 	MaxLumaW int
@@ -711,7 +711,7 @@ func (t *TileGroup) clearAboveContext(state *state.State) {
 // clear_left_context( )
 func (t *TileGroup) clearLeftContext(state *state.State) {
 	t.LeftLevelContext = make([][]int, 3)
-	t.LeftDcContext = make([][]int, 3)
+	t.LeftDcContext = [3][]int{}
 	t.LeftSegPredContext = make([]int, 3)
 
 	for i := 0; i < 3; i++ {
