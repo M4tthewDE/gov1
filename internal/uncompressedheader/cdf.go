@@ -964,7 +964,7 @@ var DEFAULT_MV_FR_CDF = [][]int{
 }
 
 var DEFAULT_MV_CLASS0_BIT_CDF = []int{
-	216 * 218, 32768, 0,
+	216 * 128, 32768, 0,
 }
 
 var DEFAULT_MV_CLASS_CDF = [][]int{
