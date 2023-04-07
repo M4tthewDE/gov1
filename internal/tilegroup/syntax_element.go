@@ -79,3 +79,11 @@ func (t *TileGroup) singleRefP4Symbol(state *state.State, b *bitstream.BitStream
 	ctx := refCountCtx(fwdCount, bwdCount)
 	return symbol.ReadSymbol(state.TileSingleRefCdf[ctx][3], state, b, uh)
 }
+
+func (t *TileGroup) singleRefP6Symbol(state *state.State, b *bitstream.BitStream, uh uncompressedheader.UncompressedHeader) int {
+	brfCount := t.countRefs(shared.BWDREF_FRAME, state)
+	arf2Count := t.countRefs(shared.ALTREF2_FRAME, state)
+	ctx := refCountCtx(brfCount, arf2Count)
+
+	return symbol.ReadSymbol(state.TileSingleRefCdf[ctx][5], state, b, uh)
+}

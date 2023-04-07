@@ -194,7 +194,7 @@ func (t *TileGroup) readRefFrames(b *bitstream.BitStream, state *state.State, uh
 			if util.Bool(singleRefP1) {
 				singleRefP2 := t.singleRefP2Symbol(state, b, uh)
 				if singleRefP2 == 0 {
-					singleRefP6 := b.S()
+					singleRefP6 := t.singleRefP6Symbol(state, b, uh)
 					if util.Bool(singleRefP6) {
 						state.RefFrame[0] = shared.ALTREF2_FRAME
 					} else {
