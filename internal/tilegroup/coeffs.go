@@ -700,7 +700,17 @@ func (t *TileGroup) transformType(x4 int, y4 int, txSz int, uh uncompressedheade
 	}
 	if set > 0 && qIndex > 0 {
 		if util.Bool(t.IsInter) {
-			interTxType := b.S()
+			var interTxType int
+			if set == TX_SET_INTER_1 {
+				interTxType = symbol.ReadSymbol(state.TileInterTxTypeSet1Cdf[TX_SIZE_SQR[txSz]], state, b, uh)
+			}
+			if set == TX_SET_INTER_2 {
+				interTxType = symbol.ReadSymbol(state.TileInterTxTypeSet2Cdf, state, b, uh)
+			}
+			if set == TX_SET_INTER_3 {
+				interTxType = symbol.ReadSymbol(state.TileInterTxTypeSet3Cdf[TX_SIZE_SQR[txSz]], state, b, uh)
+			}
+
 			if set == TX_SET_INTER_1 {
 				t.TxType = Tx_Type_Inter_Inv_Set1[interTxType]
 			} else if set == TX_SET_INTER_2 {
