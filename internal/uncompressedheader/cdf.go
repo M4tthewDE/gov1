@@ -136,7 +136,6 @@ func initCoeffCdfs(state *state.State, uh UncompressedHeader) {
 // save_cdfs( i )
 func SaveCdfs(ctx int, s *state.State) {
 	memoryArea := state.MemoryArea{}
-	memoryArea.Ctx = ctx
 
 	memoryArea.YModeCdf = s.YModeCdf
 	memoryArea.UVModeCflNotAllowedCdf = s.UVModeCflNotAllowedCdf
@@ -236,7 +235,7 @@ func SaveCdfs(ctx int, s *state.State) {
 	memoryArea.CoeffBaseCdf = s.CoeffBaseCdf
 	memoryArea.CoeffBrCdf = s.CoeffBrCdf
 
-	s.Memory = append(s.Memory, memoryArea)
+	s.Memory[ctx] = memoryArea
 }
 
 var DEFAULT_INTER_TX_TYPE_SET2_CDF = []int{

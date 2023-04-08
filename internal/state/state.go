@@ -380,12 +380,10 @@ type State struct {
 	SavedCoeffBrCdf      [][][][]int
 	RefValid             [shared.NUM_REF_FRAMES]int
 
-	Memory []MemoryArea
+	Memory [shared.NUM_REF_FRAMES]MemoryArea
 }
 
 type MemoryArea struct {
-	Ctx int
-
 	TxbSkipCdf      [][][]int
 	EobPt16Cdf      [][][]int
 	EobPt32Cdf      [][][]int
