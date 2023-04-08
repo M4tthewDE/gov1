@@ -238,6 +238,110 @@ func SaveCdfs(ctx int, s *state.State) {
 	s.Memory[ctx] = memoryArea
 }
 
+func loadCdfs(ctx int, s *state.State) {
+	memoryArea := s.Memory[ctx]
+
+	s.YModeCdf = memoryArea.YModeCdf
+	s.UVModeCflNotAllowedCdf = memoryArea.UVModeCflNotAllowedCdf
+	s.UVModeCflAllowedCdf = memoryArea.UVModeCflAllowedCdf
+	s.AngleDeltaCdf = memoryArea.AngleDeltaCdf
+	s.IntrabcCdf = memoryArea.IntrabcCdf
+	s.PartitionW8Cdf = memoryArea.PartitionW8Cdf
+	s.PartitionW16Cdf = memoryArea.PartitionW16Cdf
+	s.PartitionW32Cdf = memoryArea.PartitionW32Cdf
+	s.PartitionW64Cdf = memoryArea.PartitionW64Cdf
+	s.PartitionW128Cdf = memoryArea.PartitionW128Cdf
+	s.SegmentIdCdf = memoryArea.SegmentIdCdf
+	s.SegmentIdPredictedCdf = memoryArea.SegmentIdPredictedCdf
+	s.Tx8x8Cdf = memoryArea.Tx8x8Cdf
+	s.Tx16x16Cdf = memoryArea.Tx16x16Cdf
+	s.Tx32x32Cdf = memoryArea.Tx32x32Cdf
+	s.Tx64x64Cdf = memoryArea.Tx64x64Cdf
+	s.TxfmSplitCdf = memoryArea.TxfmSplitCdf
+	s.FilterIntraModeCdf = memoryArea.FilterIntraModeCdf
+	s.FilterIntraCdf = memoryArea.FilterIntraCdf
+	s.InterpFilterCdf = memoryArea.InterpFilterCdf
+	s.MotionModeCdf = memoryArea.MotionModeCdf
+	s.NewMvCdf = memoryArea.NewMvCdf
+	s.ZeroMvCdf = memoryArea.ZeroMvCdf
+	s.RefMvCdf = memoryArea.RefMvCdf
+	s.CompoundModeCdf = memoryArea.CompoundModeCdf
+	s.DrlModeCdf = memoryArea.DrlModeCdf
+	s.IsInterCdf = memoryArea.IsInterCdf
+	s.CompModeCdf = memoryArea.CompModeCdf
+	s.SkipModeCdf = memoryArea.SkipModeCdf
+	s.SkipCdf = memoryArea.SkipCdf
+	s.CompRefCdf = memoryArea.CompRefCdf
+	s.CompBwdRefCdf = memoryArea.CompBwdRefCdf
+	s.SingleRefCdf = memoryArea.SingleRefCdf
+	s.MvJointCdf = memoryArea.MvJointCdf
+	s.MvClassCdf = memoryArea.MvClassCdf
+	s.MvClass0BitCdf = memoryArea.MvClass0BitCdf
+	s.MvFrCdf = memoryArea.MvFrCdf
+	s.MvClass0FrCdf = memoryArea.MvClass0FrCdf
+	s.MvClass0HpCdf = memoryArea.MvClass0HpCdf
+	s.MvSignCdf = memoryArea.MvSignCdf
+	s.MvBitCdf = memoryArea.MvBitCdf
+	s.MvHpCdf = memoryArea.MvHpCdf
+	s.PaletteYModeCdf = memoryArea.PaletteYModeCdf
+	s.PaletteUVModeCdf = memoryArea.PaletteUVModeCdf
+	s.PaletteUVSizeCdf = memoryArea.PaletteUVSizeCdf
+	s.PaletteSize2YColorCdf = memoryArea.PaletteSize2YColorCdf
+	s.PaletteSize2UVColorCdf = memoryArea.PaletteSize2UVColorCdf
+	s.PaletteSize3YColorCdf = memoryArea.PaletteSize3YColorCdf
+	s.PaletteSize3UVColorCdf = memoryArea.PaletteSize3UVColorCdf
+	s.PaletteSize4YColorCdf = memoryArea.PaletteSize4YColorCdf
+	s.PaletteSize4UVColorCdf = memoryArea.PaletteSize4UVColorCdf
+	s.PaletteSize5YColorCdf = memoryArea.PaletteSize5YColorCdf
+	s.PaletteSize5UVColorCdf = memoryArea.PaletteSize5UVColorCdf
+	s.PaletteSize6YColorCdf = memoryArea.PaletteSize6YColorCdf
+	s.PaletteSize6UVColorCdf = memoryArea.PaletteSize6UVColorCdf
+	s.PaletteSize7YColorCdf = memoryArea.PaletteSize7YColorCdf
+	s.PaletteSize7UVColorCdf = memoryArea.PaletteSize7UVColorCdf
+	s.PaletteSize8YColorCdf = memoryArea.PaletteSize8YColorCdf
+	s.PaletteSize8UVColorCdf = memoryArea.PaletteSize8UVColorCdf
+
+	s.DeltaQCdf = memoryArea.DeltaQCdf
+	s.DeltaLFCdf = memoryArea.DeltaLFCdf
+	s.DeltaLFMultiCdf = memoryArea.DeltaLFMultiCdf
+	s.IntraTxTypeSet1Cdf = memoryArea.IntraTxTypeSet1Cdf
+	s.IntraTxTypeSet2Cdf = memoryArea.IntraTxTypeSet2Cdf
+	s.InterTxTypeSet1Cdf = memoryArea.InterTxTypeSet1Cdf
+	s.InterTxTypeSet2Cdf = memoryArea.InterTxTypeSet2Cdf
+	s.InterTxTypeSet3Cdf = memoryArea.InterTxTypeSet3Cdf
+	s.UseObmcCdf = memoryArea.UseObmcCdf
+	s.InterIntraCdf = memoryArea.InterIntraCdf
+	s.CompRefTypeCdf = memoryArea.CompRefTypeCdf
+	s.CflSignCdf = memoryArea.CflSignCdf
+	s.UniCompRefCdf = memoryArea.UniCompRefCdf
+	s.WedgeInterIntraCdf = memoryArea.WedgeInterIntraCdf
+	s.CompGroupIdxCdf = memoryArea.CompGroupIdxCdf
+	s.CompoundIdxCdf = memoryArea.CompoundIdxCdf
+	s.CompoundTypeCdf = memoryArea.CompoundTypeCdf
+	s.InterIntraModeCdf = memoryArea.InterIntraModeCdf
+	s.WedgeIndexCdf = memoryArea.WedgeIndexCdf
+	s.CflAlphaCdf = memoryArea.CflAlphaCdf
+	s.UseWienerCdf = memoryArea.UseWienerCdf
+	s.UseSgrprojCdf = memoryArea.UseSgrprojCdf
+	s.RestorationTypeCdf = memoryArea.RestorationTypeCdf
+
+	s.TxbSkipCdf = memoryArea.TxbSkipCdf
+	s.EobPt16Cdf = memoryArea.EobPt16Cdf
+	s.EobPt32Cdf = memoryArea.EobPt32Cdf
+	s.EobPt64Cdf = memoryArea.EobPt64Cdf
+	s.EobPt128Cdf = memoryArea.EobPt128Cdf
+	s.EobPt256Cdf = memoryArea.EobPt256Cdf
+	s.EobPt512Cdf = memoryArea.EobPt512Cdf
+	s.EobPt1024Cdf = memoryArea.EobPt1024Cdf
+	s.EobExtraCdf = memoryArea.EobExtraCdf
+	s.DcSignCdf = memoryArea.DcSignCdf
+	s.CoeffBaseEobCdf = memoryArea.CoeffBaseEobCdf
+	s.CoeffBaseCdf = memoryArea.CoeffBaseCdf
+	s.CoeffBrCdf = memoryArea.CoeffBrCdf
+
+	panic("TODO: set last entry of every array to 0")
+}
+
 var DEFAULT_INTER_TX_TYPE_SET2_CDF = []int{
 	770, 2421, 5225, 12907, 15819, 18927, 21561, 24089, 26595,
 	28526, 30529, 32768, 0,

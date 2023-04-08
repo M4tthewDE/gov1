@@ -403,7 +403,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 		initNonCoeffCdfs(s)
 		u.setupPastIndependence(s)
 	} else {
-		u.loadCdfs(u.RefFrameIdx[u.PrimaryRefFrame])
+		loadCdfs(u.RefFrameIdx[u.PrimaryRefFrame], s)
 		u.loadPrevious()
 	}
 
@@ -625,10 +625,6 @@ func (u *UncompressedHeader) setupPastIndependence(s *state.State) {
 
 	u.LoopFilterModeDeltas[0] = 0
 	u.LoopFilterModeDeltas[1] = 0
-}
-
-func (u *UncompressedHeader) loadCdfs(a int) {
-	panic("not implemented")
 }
 
 func (u *UncompressedHeader) loadPrevious() {
