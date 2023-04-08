@@ -420,7 +420,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 
 	if u.PrimaryRefFrame == shared.PRIMARY_REF_NONE {
 
-		u.initCoeffCdfs(s)
+		initCoeffCdfs(s, *u)
 	} else {
 		u.loadPreviousSegementIds()
 	}

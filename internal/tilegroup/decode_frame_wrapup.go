@@ -163,7 +163,7 @@ func (t *TileGroup) referenceFrameUpdate(state *state.State, uh uncompressedhead
 				}
 			}
 
-			saveCdfs(i)
+			uncompressedheader.SaveCdfs(i, state)
 
 			if sh.FilmGrainParamsPresent {
 				saveGrainParams(i)
@@ -180,12 +180,6 @@ func (t *TileGroup) referenceFrameUpdate(state *state.State, uh uncompressedhead
 		}
 	}
 
-}
-
-// save_cdfs( i )
-func saveCdfs(ctx int) {
-	// TODO: implement
-	//panic("not implemented")
 }
 
 // save_grain_params( i )

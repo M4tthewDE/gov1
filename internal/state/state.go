@@ -379,4 +379,109 @@ type State struct {
 	SavedCoeffBaseCdf    [][][][]int
 	SavedCoeffBrCdf      [][][][]int
 	RefValid             [shared.NUM_REF_FRAMES]int
+
+	Memory []MemoryArea
+}
+
+type MemoryArea struct {
+	Ctx int
+
+	TxbSkipCdf      [][][]int
+	EobPt16Cdf      [][][]int
+	EobPt32Cdf      [][][]int
+	EobPt64Cdf      [][][]int
+	EobPt128Cdf     [][][]int
+	EobPt256Cdf     [][][]int
+	EobPt512Cdf     [][]int
+	EobPt1024Cdf    [][]int
+	EobExtraCdf     [][][][]int
+	DcSignCdf       [][][]int
+	CoeffBaseEobCdf [][][][]int
+	CoeffBaseCdf    [][][][]int
+	CoeffBrCdf      [][][][]int
+
+	YModeCdf               [][]int
+	UVModeCflNotAllowedCdf [][]int
+	UVModeCflAllowedCdf    [][]int
+	AngleDeltaCdf          [][]int
+	IntrabcCdf             []int
+	PartitionW8Cdf         [][]int
+	PartitionW16Cdf        [][]int
+	PartitionW32Cdf        [][]int
+	PartitionW64Cdf        [][]int
+	PartitionW128Cdf       [][]int
+	SegmentIdCdf           [][]int
+	SegmentIdPredictedCdf  [][]int
+	Tx8x8Cdf               [][]int
+	Tx16x16Cdf             [][]int
+	Tx32x32Cdf             [][]int
+	Tx64x64Cdf             [][]int
+	TxfmSplitCdf           [][]int
+	FilterIntraModeCdf     []int
+	FilterIntraCdf         [][]int
+	InterpFilterCdf        [][]int
+	MotionModeCdf          [][]int
+	NewMvCdf               [][]int
+	ZeroMvCdf              [][]int
+	RefMvCdf               [][]int
+	RefOrderHint           [shared.NUM_REF_FRAMES]int
+	CompoundModeCdf        [][]int
+	DrlModeCdf             [][]int
+	IsInterCdf             [][]int
+	CompModeCdf            [][]int
+	SkipModeCdf            [][]int
+	SkipCdf                [][]int
+	CompRefCdf             [][][]int
+	CompBwdRefCdf          [][][]int
+	SingleRefCdf           [][][]int
+	MvJointCdf             [shared.MV_CONTEXTS][]int
+	MvClassCdf             [shared.MV_CONTEXTS][][]int
+	MvClass0BitCdf         [shared.MV_CONTEXTS][2][]int
+	MvFrCdf                [shared.MV_CONTEXTS][][]int
+	MvClass0FrCdf          [shared.MV_CONTEXTS][][][]int
+	MvClass0HpCdf          [shared.MV_CONTEXTS][2][]int
+	MvSignCdf              [shared.MV_CONTEXTS][2][]int
+	MvBitCdf               [shared.MV_CONTEXTS][2][][]int
+	MvHpCdf                [shared.MV_CONTEXTS][2][]int
+	PaletteYModeCdf        [][][]int
+	PaletteUVModeCdf       [][]int
+	PaletteUVSizeCdf       [][]int
+	PaletteSize2YColorCdf  [][]int
+	PaletteSize2UVColorCdf [][]int
+	PaletteSize3YColorCdf  [][]int
+	PaletteSize3UVColorCdf [][]int
+	PaletteSize4YColorCdf  [][]int
+	PaletteSize4UVColorCdf [][]int
+	PaletteSize5YColorCdf  [][]int
+	PaletteSize5UVColorCdf [][]int
+	PaletteSize6YColorCdf  [][]int
+	PaletteSize6UVColorCdf [][]int
+	PaletteSize7YColorCdf  [][]int
+	PaletteSize7UVColorCdf [][]int
+	PaletteSize8YColorCdf  [][]int
+	PaletteSize8UVColorCdf [][]int
+
+	DeltaQCdf          []int
+	DeltaLFCdf         []int
+	DeltaLFMultiCdf    [shared.FRAME_LF_COUNT][]int
+	IntraTxTypeSet1Cdf [][][]int
+	IntraTxTypeSet2Cdf [][][]int
+	InterTxTypeSet1Cdf [][]int
+	InterTxTypeSet2Cdf []int
+	InterTxTypeSet3Cdf [][]int
+	UseObmcCdf         [][]int
+	InterIntraCdf      [][]int
+	CompRefTypeCdf     [][]int
+	CflSignCdf         []int
+	UniCompRefCdf      [][][]int
+	WedgeInterIntraCdf [][]int
+	CompGroupIdxCdf    [][]int
+	CompoundIdxCdf     [][]int
+	CompoundTypeCdf    [][]int
+	InterIntraModeCdf  [][]int
+	WedgeIndexCdf      [][]int
+	CflAlphaCdf        [][]int
+	UseWienerCdf       []int
+	UseSgrprojCdf      []int
+	RestorationTypeCdf []int
 }
