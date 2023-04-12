@@ -238,7 +238,7 @@ func SaveCdfs(ctx int, s *state.State) {
 	s.Memory[ctx] = memoryArea
 }
 
-func loadCdfs(ctx int, s *state.State) {
+func LoadCdfs(ctx int, s *state.State) {
 	memoryArea := s.Memory[ctx]
 
 	s.YModeCdf = memoryArea.YModeCdf
@@ -339,7 +339,7 @@ func loadCdfs(ctx int, s *state.State) {
 	s.CoeffBaseCdf = memoryArea.CoeffBaseCdf
 	s.CoeffBrCdf = memoryArea.CoeffBrCdf
 
-	panic("TODO: set last entry of every array to 0")
+	// TODO: set last entry of every array to 0
 }
 
 var DEFAULT_INTER_TX_TYPE_SET2_CDF = []int{

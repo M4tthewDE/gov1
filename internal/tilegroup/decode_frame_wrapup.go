@@ -200,7 +200,86 @@ func saveSegmentationParams(ctx int) {
 	//panic("not implemented")
 }
 
-// 7.21
-func (t *TileGroup) referenceFrameLoadingProcess() {
+// 7.21 Reference frame loading process
+func (t *TileGroup) referenceFrameLoadingProcess(state *state.State, u *uncompressedheader.UncompressedHeader, sh *sequenceheader.SequenceHeader) {
+	// where does i really come from?
+	i := u.FrameToShowMapIdx
+	u.CurrentFrameId = u.RefFrameId[i]
+	u.UpscaledWidth = state.RefUpscaledWidth[u.FrameToShowMapIdx]
+	u.FrameWidth = state.RefFrameWidth[u.FrameToShowMapIdx]
+	u.FrameHeight = state.RefFrameHeight[u.FrameToShowMapIdx]
+	u.RenderWidth = state.RefRenderWidth[u.FrameToShowMapIdx]
+	u.RenderHeight = state.RefRenderHeight[u.FrameToShowMapIdx]
+	state.MiCols = state.RefMiCols[u.FrameToShowMapIdx]
+	state.MiRows = state.RefMiRows[u.FrameToShowMapIdx]
+
+	subsamplingX := state.RefSubsamplingX[u.FrameToShowMapIdx]
+	subsamplingY := state.RefSubsamplingY[u.FrameToShowMapIdx]
+	sh.ColorConfig.BitDepth = state.RefBitDepth[u.FrameToShowMapIdx]
+	u.OrderHint = state.RefOrderHint[u.FrameToShowMapIdx]
+
+	for j := 0; j < shared.REFS_PER_FRAME; j++ {
+		u.OrderHints[j+shared.LAST_FRAME] = state.SavedOrderHints[u.FrameToShowMapIdx][j+shared.LAST_FRAME]
+	}
+
+	for x := 0; x < u.UpscaledWidth; x++ {
+		for y := 0; y < u.FrameHeight; y++ {
+			state.LrFrame[0][y][x] = t.FrameStore[u.FrameToShowMapIdx][0][y][x]
+		}
+	}
+
+	for plane := 1; plane <= 2; plane++ {
+		for x := 0; x < ((u.UpscaledWidth+subsamplingX)>>subsamplingX)-1; x++ {
+			for y := 0; y < ((u.FrameHeight+subsamplingY)>>subsamplingY)-1; x++ {
+				state.LrFrame[plane][y][x] = t.FrameStore[u.FrameToShowMapIdx][plane][y][x]
+			}
+		}
+	}
+
+	for row := 0; row < state.MiRows; row++ {
+		for col := 0; col < state.MiCols; col++ {
+			state.MfRefFrames[row][col] = state.SavedRefFrames[u.FrameToShowMapIdx][row][col]
+		}
+	}
+
+	for comp := 0; comp <= 1; comp++ {
+		for row := 0; row < state.MiRows; row++ {
+			for col := 0; col < state.MiCols; col++ {
+				state.MfMvs[row][col][comp] = state.SavedMvs[u.FrameToShowMapIdx][row][col][comp]
+			}
+		}
+	}
+
+	for ref := shared.LAST_FRAME; ref <= shared.ALTREF_FRAME; ref++ {
+		for j := 0; j <= 5; j++ {
+			u.GmParams[ref][j] = state.SavedGmParams[u.FrameToShowMapIdx][ref][j]
+		}
+	}
+
+	for row := 0; row < state.MiRows; row++ {
+		for col := 0; col < state.MiCols; col++ {
+			t.SegmentIds[row][col] = state.SavedSegmentIds[u.FrameToShowMapIdx][row][col]
+		}
+	}
+
+	uncompressedheader.LoadCdfs(u.FrameToShowMapIdx, state)
+
+	if sh.FilmGrainParamsPresent {
+		u.LoadGrainParams(u.FrameToShowMapIdx)
+	}
+
+	LoadLoopFilterParams(u.FrameToShowMapIdx)
+	LoadSegmentationParams(u.FrameToShowMapIdx)
+}
+
+// load_loop_filter_params( i )
+func LoadLoopFilterParams(i int) {
 	panic("not implemented")
+
+}
+
+// load_segmentation_params( i )
+func LoadSegmentationParams(i int) {
+	panic("not implemented")
+
 }

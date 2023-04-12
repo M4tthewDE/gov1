@@ -6,6 +6,7 @@ import (
 	"github.com/m4tthewde/gov1/internal/sequenceheader"
 	"github.com/m4tthewde/gov1/internal/shared"
 	"github.com/m4tthewde/gov1/internal/state"
+	"github.com/m4tthewde/gov1/internal/tilegroup"
 	"github.com/m4tthewde/gov1/internal/tileinfo"
 	"github.com/m4tthewde/gov1/internal/util"
 )
@@ -191,7 +192,7 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 			}
 
 			if sh.FilmGrainParamsPresent {
-				u.loadGrainParams(u.FrameToShowMapIdx)
+				u.LoadGrainParams(u.FrameToShowMapIdx)
 			}
 
 			return
@@ -403,8 +404,8 @@ func (u *UncompressedHeader) build(h header.Header, sh sequenceheader.SequenceHe
 		initNonCoeffCdfs(s)
 		u.setupPastIndependence(s)
 	} else {
-		loadCdfs(u.RefFrameIdx[u.PrimaryRefFrame], s)
-		u.loadPrevious()
+		LoadCdfs(u.RefFrameIdx[u.PrimaryRefFrame], s)
+		u.loadPrevious(s)
 	}
 
 	if u.UseRefFrameMvs {
@@ -627,7 +628,12 @@ func (u *UncompressedHeader) setupPastIndependence(s *state.State) {
 	u.LoopFilterModeDeltas[1] = 0
 }
 
-func (u *UncompressedHeader) loadPrevious() {
+func (u *UncompressedHeader) loadPrevious(state *state.State) {
+	prevFrame := u.RefFrameIdx[u.PrimaryRefFrame]
+	state.PrevGmParams = state.SavedGmParams[prevFrame]
+	tilegroup.LoadLoopFilterParams(prevFrame)
+	tilegroup.LoadSegmentationParams(prevFrame)
+
 	panic("not implemented")
 }
 
@@ -1198,7 +1204,7 @@ func (u *UncompressedHeader) filmGrainParams(b *bitstream.BitStream, sh sequence
 	if !updateGrain {
 		filmGrainParamsRefIdx := b.F(3)
 		tempGrainSeed := u.GrainSeed
-		u.loadGrainParams(filmGrainParamsRefIdx)
+		u.LoadGrainParams(filmGrainParamsRefIdx)
 		u.GrainSeed = tempGrainSeed
 		return
 	}
@@ -1332,6 +1338,6 @@ func (u *UncompressedHeader) TemporalPointInfo(sh sequenceheader.SequenceHeader,
 }
 
 // load_grain_params( idx )
-func (u *UncompressedHeader) loadGrainParams(idx int) {
+func (u *UncompressedHeader) LoadGrainParams(idx int) {
 	panic("not implemented")
 }

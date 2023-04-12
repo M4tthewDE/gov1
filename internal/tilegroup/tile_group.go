@@ -356,7 +356,7 @@ func (t *TileGroup) decodeFrameWrapup(state *state.State, uh uncompressedheader.
 		}
 	} else {
 		if uh.FrameType == shared.KEY_FRAME {
-			t.referenceFrameLoadingProcess()
+			t.referenceFrameLoadingProcess(state, &uh, &sh)
 		}
 	}
 
